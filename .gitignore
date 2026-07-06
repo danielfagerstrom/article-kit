@@ -1,0 +1,19 @@
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.pdf
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+blueprint/web/
+blueprint/print/
+
+# Lean / lake
+Formalization/.lake/
+Formalization/build/
+Formalization/lake-packages/
+*.olean
