@@ -12,8 +12,10 @@ script verifies the edges that live *inside this repository*:
     3. every paper "% shared with blueprint <label>" names a real blueprint statement label
 
   ADVISORY (reported, non-fatal)
-    - a paper shared statement whose own \\label differs from the blueprint label
-      (the same-label opportunity; enables true single-sourcing later)
+    - a *labelled* paper statement that shares a blueprint node but uses a different label
+      (rename to the blueprint label for true single-sourcing). Prose that merely references a
+      blueprint node -- nearest preceding label is a section, not a statement -- is a valid
+      weaker link and is not advised.
     - a \\leanok node with no \\lean{}, or a node marked both \\leanok and \\notready
 
 The wiki edge (\\notes{slug} <-> a Notes content note) is cross-repo; it is checked
@@ -39,6 +41,8 @@ LEAN_DIR = REPO / "Formalization"
 PAPER_DIR = REPO / "paper"
 
 STMT_ENVS = ("definition", "lemma", "proposition", "theorem", "corollary")
+# label prefixes that denote a statement (as opposed to a section/equation)
+STMT_LABEL_RE = re.compile(r"^(?:thm|prop|def|lem|cor):")
 # a Lean declaration keyword, allowing leading attributes / modifiers
 DECL_RE = re.compile(
     r"(?m)^\s*(?:@\[[^\]]*\]\s*)?"
@@ -156,10 +160,10 @@ def main() -> int:
             fatal.append(
                 f"[paper]  {fn}: 'shared with blueprint {key}' but no such blueprint label"
             )
-        elif nearest != key:
+        elif nearest != key and nearest and STMT_LABEL_RE.match(nearest):
             advisory.append(
-                f"[paper]  {fn}: shared statement labelled '{nearest}', blueprint key '{key}' "
-                f"(same-label would enable single-sourcing)"
+                f"[paper]  {fn}: labelled statement '{nearest}' shares blueprint '{key}' "
+                f"(rename to the blueprint label for single-sourcing)"
             )
 
     # optional: wiki notes

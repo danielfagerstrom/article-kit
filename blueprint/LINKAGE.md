@@ -41,9 +41,12 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
 3. **`[T]` nodes name their Lean decl** with `\lean{}` and mark `\leanok` once proved. A `\notready`
    node need not have a Lean decl yet.
 4. **A paper statement shared with the blueprint** carries `% shared with blueprint <label>`, and
-   `<label>` must be a real blueprint label. **Target (strong single-sourcing):** the paper statement's
-   own `\label` *equals* `<label>`, so the correspondence is machine-exact and statements could later be
-   `\input` from a shared file. The checker reports where they differ (advisory); align opportunistically.
+   `<label>` must be a real blueprint label. **Target (strong single-sourcing):** when the paper renders
+   the statement as a *labelled* theorem, its own `\label` *equals* `<label>`, so the correspondence is
+   machine-exact and statements could later be `\input` from a shared file. Prose that merely references a
+   blueprint node (its nearest label is a section, not a statement) is a valid weaker link — the checker
+   verifies the node exists but does not advise a same-label. Labelled-statement mismatches are reported as
+   advisories; align them opportunistically.
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script.)
@@ -71,9 +74,9 @@ natural home.
 - **Enforced now, checker green:** blueprint→Lean, blueprint→ledger, paper→blueprint (existence), and
   blueprint→wiki (with `--wiki`).
 - **Incremental rollout:** migrate the remaining "ledger AXX" prose to `\ledger{}`; add `\notes{}` to the
-  rest of the nodes; same-label the remaining paper shared statements (2 advisories today —
-  `thm:nonexistence`↔`thm:galilean-nonexistence`, `sec:affine`↔`thm:affine`); add reciprocal
-  `blueprint:` frontmatter to the wiki content notes.
+  rest of the nodes; add reciprocal `blueprint:` frontmatter to the wiki content notes. (Paper
+  same-labelling is settled: the non-existence theorem uses `thm:galilean-nonexistence`; the affine result
+  is shared at prose level — no advisories outstanding.)
 - **Larger, separate:** activate the full leanblueprint web/dep-graph build (Tier B is installed) so
   blueprint→Lean is checked by the official tool and the graph renders; and true statement
   single-sourcing via shared `\input`.
