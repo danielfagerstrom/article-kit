@@ -6,7 +6,9 @@ in-repo part of it.
 
 ## The hub and the canonical ID
 
-The **blueprint** (`blueprint/src/content.tex`) is the source of truth. Every knowledge unit is one
+The **blueprint** is the source of truth. `blueprint/src/content.tex` is a thin **aggregator** that
+`\input`s the per-section part files under `blueprint/src/parts/` (split so no single file grows
+unwieldy with proofs); the statement nodes themselves live in the parts. Every knowledge unit is one
 blueprint statement node
 
     \begin{theorem}[human title]\label{kind:name}      % kind ∈ def | lem | prop | thm | cor
@@ -54,6 +56,7 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
 ## The checker
 
 `scripts/check_linkage.py` — no dependencies; run `python scripts/check_linkage.py` from the repo root.
+It reads `content.tex` and inlines its `\input{parts/...}` includes, so the split is transparent to it.
 It enforces the **in-repo** edges and fails (exit 1) on:
 
 - a `\leanok` node whose `\lean{Decl}` is not declared in `Formalization/`;

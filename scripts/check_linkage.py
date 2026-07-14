@@ -55,6 +55,26 @@ def read(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
+def read_blueprint() -> str:
+    """content.tex, with `\\input{...}` includes inlined (the nodes live in parts/)."""
+    inp = re.compile(r"^\s*\\input\{([^}]+)\}")
+
+    def expand(path: Path) -> str:
+        out = []
+        for line in read(path).splitlines(keepends=True):
+            m = inp.match(line)
+            if m and not line.lstrip().startswith("%"):
+                inc = m.group(1)
+                if not inc.endswith(".tex"):
+                    inc += ".tex"
+                out.append(expand(path.parent / inc))
+            else:
+                out.append(line)
+        return "".join(out)
+
+    return expand(BLUEPRINT)
+
+
 def blueprint_nodes(tex: str):
     """One dict per statement environment."""
     nodes = []
@@ -125,7 +145,7 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    tex = read(BLUEPRINT)
+    tex = read_blueprint()
     nodes = blueprint_nodes(tex)
     labels = {n["label"] for n in nodes if n["label"]}
     lean_names = lean_declared_names()
