@@ -30,6 +30,7 @@ See blueprint/LINKAGE.md for the spec this enforces.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -124,6 +125,39 @@ def ledger_keys() -> set[str]:
     return set(re.findall(r"(?m)^##\s*(A\d+)\b", read(AXIOMS)))
 
 
+def build_manifest(nodes, lean_names: set[str]) -> dict:
+    """Projection of the blueprint the wiki reads to resolve `claim/…` proof-refs.
+
+    Same role as the librarian's library.json (citekeys): a generated, single-writer
+    manifest another repo reads. `kind` is the label prefix (thm|prop|def|lem|cor) —
+    exactly the token a wiki claim ref uses. `lean_decls` are short declaration names
+    (matched on final component, as the in-repo \\lean{} check does). See blueprint/LINKAGE.md.
+    """
+    labels: dict[str, dict] = {}
+    for n in nodes:
+        lab = n["label"]
+        if not lab:
+            continue
+        labels[lab] = {
+            "kind": lab.split(":", 1)[0],
+            "leanok": n["leanok"],
+            "notready": n["notready"],
+            "lean": n["lean"],
+        }
+    scripts = (
+        sorted(p.relative_to(REPO).as_posix() for p in (REPO / "scripts").glob("*.py"))
+        if (REPO / "scripts").is_dir()
+        else []
+    )
+    return {
+        "generated_by": "scripts/check_linkage.py",
+        "note": "Projection of blueprint/src/content.tex — generated, do not hand-edit.",
+        "labels": labels,
+        "lean_decls": sorted(lean_names),
+        "scripts": scripts,
+    }
+
+
 def paper_shared():
     """(file, blueprint_key, nearest_preceding_paper_label)."""
     out = []
@@ -143,13 +177,31 @@ def main() -> int:
     ap.add_argument(
         "--wiki", type=Path, help="Path to the Notes wiki (enables \\notes{} checking)"
     )
+    ap.add_argument(
+        "--emit-manifest",
+        type=Path,
+        metavar="PATH",
+        help="Write the blueprint manifest (labels + leanok + Lean decls) the wiki reads "
+        "to resolve claim proof-refs, e.g. --emit-manifest ~/Documents/Notes/blueprint-manifest.json",
+    )
     args = ap.parse_args()
+
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     tex = read_blueprint()
     nodes = blueprint_nodes(tex)
     labels = {n["label"] for n in nodes if n["label"]}
     lean_names = lean_declared_names()
     axk = ledger_keys()
+
+    if args.emit_manifest:
+        args.emit_manifest.write_text(
+            json.dumps(build_manifest(nodes, lean_names), indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        n_lab = sum(1 for n in nodes if n["label"])
+        print(f"Wrote manifest ({n_lab} labels, {len(lean_names)} Lean decls) → {args.emit_manifest}")
 
     fatal: list[str] = []
     advisory: list[str] = []
