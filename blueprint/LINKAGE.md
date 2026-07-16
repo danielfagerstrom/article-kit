@@ -103,14 +103,19 @@ as the librarian's `library.json`: **we are the single writer, the wiki only rea
   the same pre-release / CI step that runs the checker; a commit hook that re-emits on any
   `content.tex` change is the lighter-weight option.
 
-**In — demand (`demand`, planned).** The inverse is a **pull, not a file we receive**: when planning
-proofs, run `wiki demands --json` (with `$WIKI_VAULT` pointing at the Notes vault) to see which blueprint
-labels the wiki's claims rest on and at what confidence. It reports *raw* demand — a pure function of the
-wiki's claims — and **we do the join** against our own proved-status, since we own that half. Sorting
-`(demand desc, proved asc)` is the prover's worklist: the nodes that unblock the most wiki content
-first. A demand may name a label **not in the blueprint yet** — that is the wiki asking for a *new*
-theorem, and the right response is to add the node (or push back), exactly as one would triage a
-`library acquire request` for a source not yet held.
+**In — demand (`demand`; the hub half shipped 2026-07-16).** The inverse is a **pull, not a file we
+receive**: when planning proofs, run `wiki demands --json` (with `$WIKI_VAULT` pointing at the Notes
+vault) to see which blueprint labels the wiki's claims rest on and at what confidence, **strongest
+first**. It reports *raw* demand — a pure function of the wiki's claims, carrying no proved-status — so
+**we do the join** against our own `\leanok`, the half we own and the only one that is authoritative.
+The hub's ordering already puts the most load-bearing non-frontier demand first; join it with proved
+`asc` to drop what is done and the top is the prover's worklist. Frontier-flagged demands are the wiki's
+declared-open leads and rank last — not blocking any note. A demand may name a label **not in the
+blueprint yet** (the hub flags it `⚠ NOT a blueprint node yet`) — that is the wiki asking for a *new*
+theorem; the right response is to add the node (or push back), exactly as one would triage a
+`library acquire request` for a source not yet held. *(What is not yet built here: consuming this into
+the proof plan — nothing on this side reads `wiki demands` automatically. `PROOFS-PLAN.md` is still
+hand-ordered.)*
 
 Neither direction certifies *faithfulness* — whether a Lean statement is true to what the note means it
 to say. That is a judgement, left to a reviewing agent (the wiki's `curator`) working with the prover,
