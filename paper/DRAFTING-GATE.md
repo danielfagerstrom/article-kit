@@ -29,10 +29,22 @@ A section may be drafted as prose only when every applicable box is checked.
 - [ ] Each **[A]** node is grounded in `AXIOMS.md` (named theorem + page), or flagged un-pinned.
 
 ### 3. Content — the knowledge is grounded and mature
-*owner: the wiki content note (e.g. `Notes/wiki/covariant-memory-evolution.md`) + its `maturity:` frontmatter*
+*owner: the wiki content note (e.g. `Notes/wiki/covariant-memory-evolution.md`) + its quality axes*
 - [ ] A content note carries the actual argument (the "what"), with references and Lean pointers.
-- [ ] Maturity at or above `grounded` — or the immature part *is* the section's declared frontier (item 6).
+- [ ] The note clears the **gate triple `(maturity: evergreen, confidence: verified, lifecycle: active)`**
+      — or the shortfall *is* the section's declared frontier (item 6).
 - [ ] Open questions / contradictions in the note are resolved or explicitly parked.
+
+> **On the triple.** Earlier drafts of this gate asked for "maturity at or above `grounded`". There is
+> no such level: `grounded` was this repo's invention, and it collapsed three independent things into
+> one word. The wiki's schema is deliberately **three orthogonal axes** — `maturity` (seed → budding →
+> evergreen) is how worked-out the prose is, `confidence` (speculative → probable → verified) is how
+> sure it is correct, `lifecycle` (active → stale → superseded) is freshness. A note can honestly be
+> `evergreen` yet only `probable`; that is a finished write-up of an open question, not a defect, and a
+> single "grounded" reading cannot express it. The hub owns this schema
+> ([`Notes/CLAIMS.md`](file:///C:/Users/danie/Documents/Notes/CLAIMS.md)); this gate consumes it and
+> must not mint levels of its own. `wiki rollup` already aggregates each slot's notes weakest-link
+> against exactly this triple.
 
 ### 4. Illustration & numerics — the story is visible and checked
 *owner: `scripts/` + the content note*
