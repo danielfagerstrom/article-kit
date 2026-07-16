@@ -17,10 +17,11 @@ box has no clean owner, that is a hole in the foundation, not in the prose.
 A section may be drafted as prose only when every applicable box is checked.
 
 ### 1. Spine — the section's role is settled
-*owner: the outline — `Notes/wiki/projects/spatio-temporal-scale-space.md`*
-- [ ] Fixed place and order in the outline.
-- [ ] A one-line thesis: the single claim the section makes.
+*owner: the outline — `Notes/wiki/projects/spatio-temporal-scale-space.md`, its `## Slots` section*
+- [ ] Fixed place and order in the outline — i.e. the section is a slot.
+- [ ] A one-line thesis: the single claim the section makes. (`thesis:` sub-bullet on the slot.)
 - [ ] Scope boundary explicit — what it delivers vs. what it defers to a sibling or successor.
+      (`scope:` sub-bullet.)
 
 ### 2. Statements — the formal spine exists
 *owner: `blueprint/src/content.tex` + `blueprint/AXIOMS.md`*
@@ -78,6 +79,27 @@ A section may be drafted as prose only when every applicable box is checked.
 
 **Meta-rule:** when a box fails, **fix the upstream artifact — do not compensate in the prose.**
 Compensating in prose is the exact failure this gate prevents.
+
+## Running it
+
+The hub executes this document. From anywhere in the wiki vault, or from this repo with
+`$WIKI_VAULT` set to it:
+
+```bash
+wiki gate --slot "§5"              # all seven boxes, each read from its owning artifact
+wiki gate --slot "§5" --worklist   # just what to go and do, merged with the evaluator's list
+wiki gate --check                  # exit 1 if a machine-checkable box fails
+```
+
+It reports items 1–4 deterministically, hands items 5–6 to a reader, and leaves item 7 here.
+**It never reports READY, by design:** items 5 and 6 are judgements about prose, and item 6's cached
+findings are free text that mixes violations with clearances — a tool that "read" them would be
+inventing authority it does not have. What it *can* assert is whether the audit behind item 6 is
+current, since a section may not lean on an audit of prose that has since changed. So its best verdict
+is `NEEDS-REVIEW`: everything checkable clears, now go and read.
+
+The hub owns that tool and its schema (`Notes/CLAIMS.md` § "The gate"); this document is the spec it
+implements. If a box here changes, the change lands here first.
 
 ## Relation to the pipeline
 
