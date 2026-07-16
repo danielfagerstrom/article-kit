@@ -29,7 +29,7 @@ manifest.
 | ledger → blueprint / Lean | `**Blueprint:**` / `**Lean:**` lines in each `AXIOMS.md` entry | reciprocal back-pointer |
 | wiki note → blueprint | `blueprint: [labels]` frontmatter *(incremental)* | reciprocal back-pointer |
 | blueprint → wiki *(projection)* | `check_linkage.py --emit-manifest` → `blueprint-manifest.json` | the wiki reads proved-status to validate a note ("check") |
-| wiki → blueprint *(pull, planned)* | `wiki demands --json` | the wiki's proof requests, incl. not-yet-existing nodes ("demand") |
+| wiki → blueprint *(pull)* | `wiki demands --json` → `scripts/proof_demand.py` | the wiki's proof requests, incl. not-yet-existing nodes ("demand") |
 
 The first seven rows are **reference** edges — pointer syntax inside one artifact. The last two are the
 cross-repo **workflow** channel and are documented under [The cross-repo channel](#the-cross-repo-channel--manifest-out-demand-in) below.
@@ -99,9 +99,10 @@ as the librarian's `library.json`: **we are the single writer, the wiki only rea
   the honest signal is "this did not come from a clean commit." Re-emit after committing for a clean
   read. This is what lets the wiki's audit cache re-verify a claim the moment its node flips to
   `\leanok` against a manifest whose currency is visible.
-- *Regeneration* is manual today (run `--emit-manifest` after a blueprint change). The natural home is
-  the same pre-release / CI step that runs the checker; a commit hook that re-emits on any
-  `content.tex` change is the lighter-weight option.
+- *Regeneration* is automatic: the versioned [`.githooks/post-commit`](../.githooks/post-commit) hook
+  re-emits the manifest after any commit touching `blueprint/`, `Formalization/`, or `scripts/`
+  (everything the manifest projects). Activate once per clone with `git config core.hooksPath .githooks`;
+  best-effort, never fails a commit. Manual `--emit-manifest` remains the fallback.
 
 **In — demand (`demand`; the hub half shipped 2026-07-16).** The inverse is a **pull, not a file we
 receive**: when planning proofs, run `wiki demands --json` (with `$WIKI_VAULT` pointing at the Notes
@@ -113,9 +114,15 @@ The hub's ordering already puts the most load-bearing non-frontier demand first;
 declared-open leads and rank last — not blocking any note. A demand may name a label **not in the
 blueprint yet** (the hub flags it `⚠ NOT a blueprint node yet`) — that is the wiki asking for a *new*
 theorem; the right response is to add the node (or push back), exactly as one would triage a
-`library acquire request` for a source not yet held. *(What is not yet built here: consuming this into
-the proof plan — nothing on this side reads `wiki demands` automatically. `PROOFS-PLAN.md` is still
-hand-ordered.)*
+`library acquire request` for a source not yet held.
+
+- *The join (shipped 2026-07-16).* [`scripts/proof_demand.py`](../scripts/proof_demand.py) is the
+  consumer: it runs `wiki demands --json`, joins against the **live** blueprint parse (not the emitted
+  manifest — that is our output and can lag; `\leanok` in `content.tex` never does), and prints the
+  unproved demand in the hub's order. Proved labels drop off; `\notready` / no-decl / not-in-blueprint
+  are annotated, and it warns when the wiki's manifest is behind this repo's HEAD. `--json` for machine
+  use. It is a *query*, run when planning proofs — `PROOFS-PLAN.md` stays hand-ordered and records the
+  judgement, not the snapshot.
 
 Neither direction certifies *faithfulness* — whether a Lean statement is true to what the note means it
 to say. That is a judgement, left to a reviewing agent (the wiki's `curator`) working with the prover,

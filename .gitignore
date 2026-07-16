@@ -12,6 +12,9 @@
 blueprint/web/
 blueprint/print/
 
+# Python
+__pycache__/
+
 # Lean / lake
 Formalization/.lake/
 Formalization/build/
