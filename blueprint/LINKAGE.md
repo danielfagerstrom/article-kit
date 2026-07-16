@@ -28,6 +28,11 @@ manifest.
 | paper → blueprint | `% shared with blueprint <label>` + the paper statement's own `\label` | shared statements |
 | ledger → blueprint / Lean | `**Blueprint:**` / `**Lean:**` lines in each `AXIOMS.md` entry | reciprocal back-pointer |
 | wiki note → blueprint | `blueprint: [labels]` frontmatter *(incremental)* | reciprocal back-pointer |
+| blueprint → wiki *(projection)* | `check_linkage.py --emit-manifest` → `blueprint-manifest.json` | the wiki reads proved-status to validate a note ("check") |
+| wiki → blueprint *(pull, planned)* | `wiki demands --json` | the wiki's proof requests, incl. not-yet-existing nodes ("demand") |
+
+The first seven rows are **reference** edges — pointer syntax inside one artifact. The last two are the
+cross-repo **workflow** channel and are documented under [The cross-repo channel](#the-cross-repo-channel--manifest-out-demand-in) below.
 
 `\lean`, `\leanok`, `\uses`, `\notready` are the standard **leanblueprint** API (no-ops in the standalone
 PDF build; live when built through leanblueprint). `\ledger` and `\notes` are this repo's additions
@@ -71,6 +76,41 @@ resolves to a `slug.md` under the wiki.
 
 Run it before publishing and as **gate item 7** (`paper/DRAFTING-GATE.md`); a pre-release / CI step is the
 natural home.
+
+## The cross-repo channel — manifest out, demand in
+
+The reference edges above are pointers; the **workflow** with the wiki is two-way and runs over two
+one-way projections, deliberately never one shared file. The full rationale (why not a co-written file,
+why the two directions are not mirror images) is the wiki's to state — see its
+[`ARCHITECTURE.md`](file:///C:/Users/danie/Documents/Notes/ARCHITECTURE.md) § "The theorem channel".
+This is the satellite side of that contract.
+
+**Out — the manifest (`check`).** `check_linkage.py --emit-manifest <path>` writes
+`blueprint-manifest.json` into the wiki: a projection of every label with `kind`, `leanok`, `notready`,
+and its `\lean{}` decls, plus the flat Lean-decl set and this repo's `scripts/` paths. The wiki reads it
+to answer "is the theorem this note claims actually proved?" — it never parses our LaTeX. Same contract
+as the librarian's `library.json`: **we are the single writer, the wiki only reads.**
+
+- *Planned — freshness stamp.* `build_manifest()` should add this repo's git SHA and a generation
+  timestamp, so the wiki can report "manifest from `ssf@<sha>`, N days old" instead of trusting an
+  undated file. This is what lets the wiki's audit cache re-verify a claim the moment its node flips to
+  `\leanok` — the promotion only fires against a manifest the wiki knows is current.
+- *Regeneration* is manual today (run `--emit-manifest` after a blueprint change). The natural home is
+  the same pre-release / CI step that runs the checker; a commit hook that re-emits on any
+  `content.tex` change is the lighter-weight option.
+
+**In — demand (`demand`, planned).** The inverse is a **pull, not a file we receive**: when planning
+proofs, run `wiki demands --json` (with `$WIKI_VAULT` pointing at the Notes vault) to see which blueprint
+labels the wiki's claims rest on and at what confidence. It reports *raw* demand — a pure function of the
+wiki's claims — and **we do the join** against our own proved-status, since we own that half. Sorting
+`(demand desc, proved asc)` is the prover's worklist: the nodes that unblock the most wiki content
+first. A demand may name a label **not in the blueprint yet** — that is the wiki asking for a *new*
+theorem, and the right response is to add the node (or push back), exactly as one would triage a
+`library acquire request` for a source not yet held.
+
+Neither direction certifies *faithfulness* — whether a Lean statement is true to what the note means it
+to say. That is a judgement, left to a reviewing agent (the wiki's `curator`) working with the prover,
+not to either projection.
 
 ## Status (2026-07)
 
