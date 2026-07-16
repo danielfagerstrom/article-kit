@@ -91,10 +91,14 @@ and its `\lean{}` decls, plus the flat Lean-decl set and this repo's `scripts/` 
 to answer "is the theorem this note claims actually proved?" — it never parses our LaTeX. Same contract
 as the librarian's `library.json`: **we are the single writer, the wiki only reads.**
 
-- *Planned — freshness stamp.* `build_manifest()` should add this repo's git SHA and a generation
-  timestamp, so the wiki can report "manifest from `ssf@<sha>`, N days old" instead of trusting an
-  undated file. This is what lets the wiki's audit cache re-verify a claim the moment its node flips to
-  `\leanok` — the promotion only fires against a manifest the wiki knows is current.
+- *Freshness stamp (shipped 2026-07-16).* `build_manifest()` adds this repo's short git SHA, a
+  generation timestamp, and a `source_dirty` flag (via `_git_provenance()`), so the wiki reports
+  "manifest: `ssf@<sha>`, N days old" and warns when the manifest is unstamped or was emitted from a
+  dirty tree — instead of trusting an undated file. `source_dirty` is whole-repo on purpose: the
+  manifest projects labels, Lean decls, and scripts, so a change anywhere may escape HEAD's SHA, and
+  the honest signal is "this did not come from a clean commit." Re-emit after committing for a clean
+  read. This is what lets the wiki's audit cache re-verify a claim the moment its node flips to
+  `\leanok` against a manifest whose currency is visible.
 - *Regeneration* is manual today (run `--emit-manifest` after a blueprint change). The natural home is
   the same pre-release / CI step that runs the checker; a commit hook that re-emits on any
   `content.tex` change is the lighter-weight option.
