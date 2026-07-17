@@ -17,7 +17,7 @@ box has no clean owner, that is a hole in the foundation, not in the prose.
 A section may be drafted as prose only when every applicable box is checked.
 
 ### 1. Spine — the section's role is settled
-*owner: the outline — `Notes/wiki/projects/spatio-temporal-scale-space.md`, its `## Slots` section*
+*owner: the outline — `Notes/wiki/outlines/spatio-temporal-scale-space.md`, its `## Slots` section*
 - [ ] Fixed place and order in the outline — i.e. the section is a slot.
 - [ ] A one-line thesis: the single claim the section makes. (`thesis:` sub-bullet on the slot.)
 - [ ] Scope boundary explicit — what it delivers vs. what it defers to a sibling or successor.

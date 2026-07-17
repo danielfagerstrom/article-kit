@@ -3,8 +3,8 @@
 The tooling/infrastructure backlog for this repo, the article **satellite**. Prioritised by what raises
 the trustworthiness and publication-readiness of the two deliverables (Lean + monograph).
 
-**This is not the research backlog** (that lives in the wiki hub's project page,
-`Notes/wiki/projects/spatio-temporal-scale-space.md`, and `RESEARCH.md`) **nor the write-up status**
+**This is not the research backlog** (that lives in the wiki hub's outline page,
+`Notes/wiki/outlines/spatio-temporal-scale-space.md`, and `RESEARCH.md`) **nor the write-up status**
 (that is `README.md` § "Manuscript status"). Like the hub's `Notes/ROADMAP.md`, this file is *work*, not
 knowledge — the split keeps work-planning out of the blueprint/paper content.
 
