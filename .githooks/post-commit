@@ -1,0 +1,15 @@
+#!/bin/sh
+# Re-emit blueprint-manifest.json into the wiki after any commit that touches what
+# the manifest projects (blueprint labels, Lean decls, scripts/ paths). Keeps the
+# wiki's freshness stamp current without a manual step — see blueprint/LINKAGE.md
+# § "The cross-repo channel". Activate once with:
+#     git config core.hooksPath .githooks
+# Best-effort: never fails the commit.
+
+git diff-tree --no-commit-id --name-only -r HEAD \
+    | grep -qE '^(blueprint/|Formalization/|scripts/)' || exit 0
+
+WIKI_VAULT="${WIKI_VAULT:-C:/Users/danie/Documents/Notes}"
+python scripts/check_linkage.py --emit-manifest "$WIKI_VAULT/blueprint-manifest.json" \
+    || echo "post-commit: manifest re-emit failed (run check_linkage.py --emit-manifest by hand)"
+exit 0

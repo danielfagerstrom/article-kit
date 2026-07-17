@@ -32,7 +32,9 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -125,6 +127,25 @@ def ledger_keys() -> set[str]:
     return set(re.findall(r"(?m)^##\s*(A\d+)\b", read(AXIOMS)))
 
 
+def _git_provenance() -> dict:
+    """The freshness stamp for the manifest: the short HEAD SHA and whether the working tree was
+    dirty at emit time. Best-effort — degrades to a null commit if git is unavailable, so a
+    manifest can still be emitted outside a checkout. `source_dirty` is whole-repo on purpose: the
+    manifest projects labels, Lean decls, and scripts, so a change anywhere may not be captured by
+    HEAD's SHA, and the honest signal is "this did not come from a clean commit." See the freshness
+    note in blueprint/LINKAGE.md § "The cross-repo channel"."""
+    def _git(*args: str) -> str | None:
+        try:
+            r = subprocess.run(["git", "-C", str(REPO), *args],
+                               capture_output=True, text=True, timeout=10)
+            return r.stdout.strip() if r.returncode == 0 else None
+        except (OSError, subprocess.SubprocessError):
+            return None
+
+    return {"source_commit": _git("rev-parse", "--short", "HEAD"),
+            "source_dirty": bool(_git("status", "--porcelain"))}
+
+
 def build_manifest(nodes, lean_names: set[str]) -> dict:
     """Projection of the blueprint the wiki reads to resolve `claim/…` proof-refs.
 
@@ -132,6 +153,10 @@ def build_manifest(nodes, lean_names: set[str]) -> dict:
     manifest another repo reads. `kind` is the label prefix (thm|prop|def|lem|cor) —
     exactly the token a wiki claim ref uses. `lean_decls` are short declaration names
     (matched on final component, as the in-repo \\lean{} check does). See blueprint/LINKAGE.md.
+
+    Carries a freshness stamp (`generated_at`, `source_commit`, `source_dirty`) so the wiki can
+    report where the manifest came from and how old it is, and never silently validate a note
+    against a stale view.
     """
     labels: dict[str, dict] = {}
     for n in nodes:
@@ -152,6 +177,8 @@ def build_manifest(nodes, lean_names: set[str]) -> dict:
     return {
         "generated_by": "scripts/check_linkage.py",
         "note": "Projection of blueprint/src/content.tex — generated, do not hand-edit.",
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        **_git_provenance(),
         "labels": labels,
         "lean_decls": sorted(lean_names),
         "scripts": scripts,
