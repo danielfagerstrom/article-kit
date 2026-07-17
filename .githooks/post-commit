@@ -6,7 +6,10 @@
 #     git config core.hooksPath .githooks
 # Best-effort: never fails the commit.
 
-git diff-tree --no-commit-id --name-only -r HEAD \
+# `-m --first-parent` so merge commits are diffed too (against the previous branch
+# tip); plain `diff-tree -r` emits nothing for a merge, which would silently skip
+# the re-emit on every merge to main.
+git diff-tree -m --first-parent --no-commit-id --name-only -r HEAD \
     | grep -qE '^(blueprint/|Formalization/|scripts/)' || exit 0
 
 WIKI_VAULT="${WIKI_VAULT:-C:/Users/danie/Documents/Notes}"
