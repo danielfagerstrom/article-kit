@@ -87,9 +87,10 @@ This is the satellite side of that contract.
 
 **Out — the manifest (`check`).** `check_linkage.py --emit-manifest <path>` writes
 `blueprint-manifest.json` into the wiki: a projection of every label with `kind`, `leanok`, `notready`,
-and its `\lean{}` decls, plus the flat Lean-decl set and this repo's `scripts/` paths. The wiki reads it
-to answer "is the theorem this note claims actually proved?" — it never parses our LaTeX. Same contract
-as the librarian's `library.json`: **we are the single writer, the wiki only reads.**
+its `\lean{}` decls, its `uses` dependency labels, and its normalized statement text (`statement`) with
+a short hash (`statement_sha`), plus the flat Lean-decl set and this repo's `scripts/` paths. The wiki
+reads it to answer "is the theorem this note claims actually proved?" — it never parses our LaTeX. Same
+contract as the librarian's `library.json`: **we are the single writer, the wiki only reads.**
 
 - *Freshness stamp (shipped 2026-07-16).* `build_manifest()` adds this repo's short git SHA, a
   generation timestamp, and a `source_dirty` flag (via `_git_provenance()`), so the wiki reports
@@ -99,6 +100,18 @@ as the librarian's `library.json`: **we are the single writer, the wiki only rea
   the honest signal is "this did not come from a clean commit." Re-emit after committing for a clean
   read. This is what lets the wiki's audit cache re-verify a claim the moment its node flips to
   `\leanok` against a manifest whose currency is visible.
+- *Statement text + hash, and `uses` (shipped 2026-07-20).* Each label entry carries `statement` —
+  the node's statement text with LaTeX comments and the metadata commands (`\label`/`\lean`/`\uses`/
+  `\notes`/`\ledger` with arguments; the bare `\notready`/`\leanok` tokens; `\statusT`/`\statusA`
+  together with their trailing `\quad\emph{...}` status annotation — a proof-status remark, so a
+  status edit does not move the sha) stripped and whitespace collapsed, the mathematical prose and
+  math kept verbatim — and
+  `statement_sha`, the first 12 hex chars of its sha256. The normalization is deterministic (same
+  input → same hash), so the sha moves exactly when the statement's content does: the wiki's lint
+  diffs a note's mirrored statement block against it to catch silent drift (the failure mode that
+  motivated this — two near-verbatim mirrors drifted and were caught only by manual audit). Each
+  entry also carries `uses`, the node's `\uses{}` labels in order of appearance, so the
+  blueprint-internal dependency edges are verifiable vault-side rather than opaque to the hub.
 - *Regeneration* is automatic: the versioned [`.githooks/post-commit`](../.githooks/post-commit) hook
   re-emits the manifest after any commit touching `blueprint/`, `Formalization/`, or `scripts/`
   (everything the manifest projects). Activate once per clone with `git config core.hooksPath .githooks`;
