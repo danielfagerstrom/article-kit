@@ -30,6 +30,7 @@ See blueprint/LINKAGE.md for the spec this enforces.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -78,6 +79,32 @@ def read_blueprint() -> str:
     return expand(BLUEPRINT)
 
 
+def normalize_statement(body: str) -> str:
+    """The statement text of a node body, normalized for stable hashing.
+
+    Strips LaTeX comments and the metadata commands (\\label/\\lean/\\uses/\\notes/\\ledger
+    with their arguments; the bare \\notready/\\leanok tokens; \\statusT/\\statusA together
+    with their trailing \\quad\\emph{...} status annotation — proof-status remarks, not
+    statement content, so a status edit does not move the sha), then collapses all whitespace
+    runs to single spaces. The mathematical prose and math are kept verbatim, so the text —
+    and its sha — changes exactly when the statement's content does. Deterministic: a pure
+    function of the body string, no environment input.
+    """
+    body = re.sub(r"(?<!\\)%[^\n]*", "", body)
+    body = re.sub(r"\\(?:label|lean|uses|notes|ledger)\{[^}]*\}", "", body)
+    # \statusT / \statusA plus the annotation that follows them: optional \quad / \qquad
+    # spacing, then an optional \emph{...} group (balanced to two brace-nesting levels —
+    # the annotations contain \texttt{...} / \ref{...}).
+    body = re.sub(
+        r"\\status[TA]\b(?:\s|\\quad\b|\\qquad\b)*"
+        r"(?:\\emph\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})?",
+        "",
+        body,
+    )
+    body = re.sub(r"\\(?:statusT|statusA|notready|leanok)\b", "", body)
+    return re.sub(r"\s+", " ", body).strip()
+
+
 def blueprint_nodes(tex: str):
     """One dict per statement environment."""
     nodes = []
@@ -92,13 +119,21 @@ def blueprint_nodes(tex: str):
             for d in dm.group(1).split(",")
             if d.strip()
         ]
+        uses = [
+            u.strip()
+            for um in re.finditer(r"\\uses\{([^}]+)\}", body)
+            for u in um.group(1).split(",")
+            if u.strip()
+        ]
         nodes.append(
             {
                 "env": m.group(1),
                 "label": lab.group(1) if lab else None,
                 "lean": decls,
+                "uses": uses,
                 "leanok": r"\leanok" in body,
                 "notready": r"\notready" in body,
+                "statement": normalize_statement(body),
             }
         )
     return nodes
@@ -157,6 +192,12 @@ def build_manifest(nodes, lean_names: set[str]) -> dict:
     Carries a freshness stamp (`generated_at`, `source_commit`, `source_dirty`) so the wiki can
     report where the manifest came from and how old it is, and never silently validate a note
     against a stale view.
+
+    Each label also carries `uses` (the node's \\uses{} dependency labels, so blueprint-internal
+    edges are verifiable vault-side), the normalized `statement` text, and `statement_sha` (a
+    short sha256 of it) — the wiki's lint diffs mirrored statement blocks against the hash to
+    catch silent drift. The normalization (`normalize_statement`) is deterministic, so the sha
+    changes exactly when the statement's mathematical content does.
     """
     labels: dict[str, dict] = {}
     for n in nodes:
@@ -168,6 +209,11 @@ def build_manifest(nodes, lean_names: set[str]) -> dict:
             "leanok": n["leanok"],
             "notready": n["notready"],
             "lean": n["lean"],
+            "uses": n["uses"],
+            "statement": n["statement"],
+            "statement_sha": hashlib.sha256(
+                n["statement"].encode("utf-8")
+            ).hexdigest()[:12],
         }
     scripts = (
         sorted(p.relative_to(REPO).as_posix() for p in (REPO / "scripts").glob("*.py"))
@@ -208,7 +254,7 @@ def main() -> int:
         "--emit-manifest",
         type=Path,
         metavar="PATH",
-        help="Write the blueprint manifest (labels + leanok + Lean decls) the wiki reads "
+        help="Write the blueprint manifest (labels + leanok + Lean decls + uses + statement hashes) the wiki reads "
         "to resolve claim proof-refs, e.g. --emit-manifest ~/Documents/Notes/blueprint-manifest.json",
     )
     args = ap.parse_args()
