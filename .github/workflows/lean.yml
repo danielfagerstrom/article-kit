@@ -25,8 +25,10 @@ jobs:
 
       # elan/lean/lake setup + `lake exe cache get` (auto, Mathlib detected) + `lake build ScaleSpace`.
       # `lake-package-directory` points the action at the Formalization package (not the repo root);
-      # `build-args` selects the ScaleSpace library target.
-      - name: Build the ScaleSpace library
+      # `build-args` selects the ScaleSpace library target. The lakefile's `globs = ["ScaleSpace.*"]`
+      # makes this compile *every* module under `ScaleSpace/` — so a broken proof in any of them
+      # (including the memory-bracket / mode / limit-kernel / Bessel modules) turns CI red.
+      - name: Build the ScaleSpace library (all modules)
         uses: leanprover/lean-action@v1
         with:
           lake-package-directory: "Formalization"
