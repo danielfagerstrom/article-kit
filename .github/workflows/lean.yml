@@ -1,0 +1,110 @@
+name: Lean CI
+
+# Cloud verification backstop for the Lean formalisation. Interactive proving stays local;
+# this re-verifies the proofs on every push to `main` and every pull request, so that
+# verification no longer depends on the author's desktop.
+#
+# The Lean project is the `Formalization/` package (target lib `ScaleSpace`); Mathlib is a
+# dependency, so `leanprover/lean-action` runs `lake exe cache get` automatically (Mathlib is
+# never compiled from source).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # elan/lean/lake setup + `lake exe cache get` (auto, Mathlib detected) + `lake build ScaleSpace`.
+      # `lake-package-directory` points the action at the Formalization package (not the repo root);
+      # `build-args` selects the ScaleSpace library target.
+      - name: Build the ScaleSpace library
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: "Formalization"
+          build-args: "ScaleSpace"
+
+      # Item 3 — no `sorry` as a whole word in the Lean sources. The pattern excludes the
+      # backtick-wrapped prose `sorry`(-free) that legitimately appears in a docstring, while
+      # still catching a real `sorry` term/tactic (always adjacent to whitespace/parens, never a
+      # backtick).
+      - name: Guard — no `sorry` in the Lean sources
+        run: |
+          if grep -rnE '(^|[^`[:alnum:]_])sorry([^`[:alnum:]_-]|$)' --include='*.lean' Formalization/ScaleSpace/; then
+            echo "::error::A 'sorry' appears in Formalization/ScaleSpace — the development must stay sorry-free."
+            exit 1
+          fi
+          echo "OK: no 'sorry' in Formalization/ScaleSpace."
+
+      # Item 4 — trust-boundary guard. `#print axioms` (via CIAxiomGuard.lean) the headline
+      # sorry-free theorems and assert the trust base reduces to Lean core plus only the A1–A18
+      # ledger interfaces (blueprint/AXIOMS.md). Fails on `sorryAx` or any axiom outside the ledger.
+      - name: Guard — trust boundary (`#print axioms`)
+        working-directory: Formalization
+        run: |
+          set -o pipefail
+          out="$(lake env lean CIAxiomGuard.lean 2>&1)" || {
+            echo "$out"
+            echo "::error::CIAxiomGuard.lean failed to elaborate."
+            exit 1
+          }
+          echo "$out"
+
+          # (a) no sorry in the trust base — robust regardless of pretty-printer wording.
+          if grep -q 'sorryAx' <<<"$out"; then
+            echo "::error::sorryAx reached a headline theorem — a sorry is in the trust base."
+            exit 1
+          fi
+
+          # (b) no axiom outside the A1–A18 ledger. Allowed = Lean core + the ledger interface
+          # declarations (blueprint/AXIOMS.md; the `axiom` declarations in Formalization/ScaleSpace).
+          allow_file="$(mktemp)"
+          cat > "$allow_file" <<'ALLOW'
+          propext
+          Classical.choice
+          Quot.sound
+          ScaleSpace.anisoLaplacianSymbol_negativeDefinite
+          ScaleSpace.fellerSymbol_negativeDefinite
+          ScaleSpace.rieszLaplacianSymbol_negativeDefinite
+          ScaleSpace.negativeDefinite_order_le_two
+          ScaleSpace.graylevel_iff_conservative
+          ScaleSpace.laplaceExponent_eq_temporalOrder
+          ScaleSpace.Temporal.laplaceDensity_powerSymbol_iff
+          ScaleSpace.Temporal.kernelContinuous_ne_endpoints
+          ScaleSpace.Temporal.rlLeftDerivSymbol_eq
+          ScaleSpace.Temporal.rlRightEigenvalue_eq
+          ScaleSpace.Temporal.isLocalEvolution_iff
+          ScaleSpace.Temporal.positiveGreen_forces_order_two
+          ALLOW
+          # strip the YAML block indentation from the heredoc lines
+          sed -i -E 's/^[[:space:]]+//' "$allow_file"
+
+          # Collect every axiom named in the `#print axioms` output (join wrapped lines first).
+          # `|| true` on the grep: an all-axiom-free run yields no match, which must not fail the step.
+          joined="$(printf '%s' "$out" | tr '\n' ' ')"
+          lists="$(grep -oE 'depends on axioms: \[[^]]*\]' <<<"$joined" || true)"
+          found="$(printf '%s' "$lists" \
+            | sed -E 's/depends on axioms: \[//; s/\]//' \
+            | tr ',' '\n' \
+            | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' \
+            | sort -u)"
+
+          bad=""
+          while IFS= read -r a; do
+            [ -z "$a" ] && continue
+            grep -qxF "$a" "$allow_file" || bad="$bad $a"
+          done <<<"$found"
+
+          if [ -n "$bad" ]; then
+            echo "::error::headline theorems depend on axioms outside the A1–A18 ledger:$bad"
+            exit 1
+          fi
+          echo "OK: trust base reduces to Lean core + A1–A18 ledger interfaces only."
