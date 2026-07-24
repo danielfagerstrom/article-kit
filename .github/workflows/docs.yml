@@ -1,0 +1,182 @@
+name: Docs CI
+
+# Cloud builds of the two PDF deliverables — the paper (paper/main.tex) and the blueprint
+# (blueprint/src/print.tex) — so a readable, current build exists without the author's
+# desktop MiKTeX. On pushes to `main` the built PDFs are force-pushed to the orphan
+# `artifacts` branch as a single fresh commit (no accumulated history); GitHub renders
+# PDFs inline in the private repo, so
+#   https://github.com/danielfagerstrom/scale-space-foundations/blob/artifacts/paper.pdf
+#   https://github.com/danielfagerstrom/scale-space-foundations/blob/artifacts/blueprint.pdf
+# are the private viewing URLs until a gated web channel exists.
+#
+# Toolchain: Tectonic — a single static binary that fetches the TeX packages it needs on
+# demand and runs bibtex automatically (the paper uses classic bibtex, not biber). Both
+# documents use a tame package set (geometry / ams* / longtable / booktabs / hyperref;
+# the blueprint's print.tex is plain LaTeX with the leanblueprint macros stubbed as
+# no-ops in macros.tex), well inside Tectonic's default bundle.
+#
+# Paths filters guard private-repo Actions minutes: nothing here runs on Lean-only
+# pushes. The paper build runs on paper/** AND blueprint/** changes (theorem statements
+# are single-sourced between the two, so a blueprint edit must rebuild the paper); the
+# blueprint build is skipped on paper-only pull requests, but always runs on `main` so
+# the artifacts branch carries a coherent pair built at one sha.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "paper/**"
+      - "blueprint/**"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "paper/**"
+      - "blueprint/**"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TECTONIC_VERSION: "0.15.0"
+
+jobs:
+  # On pull requests only: which of the two trees did this PR touch? (On `main` pushes
+  # both documents are rebuilt unconditionally, so the publish step always has a fresh
+  # pair; the filter exists to spare the blueprint build on paper-only PR iterations.)
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read # paths-filter lists the PR's files through the API
+    outputs:
+      blueprint: ${{ steps.filter.outputs.blueprint }}
+    steps:
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            blueprint:
+              - "blueprint/**"
+              - ".github/workflows/docs.yml"
+
+  paper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Tectonic caches every package it fetches under ~/.cache/Tectonic; restoring it
+      # turns the network fetches into no-ops. Keyed on the TeX sources so the cache is
+      # re-saved when a new package enters the preamble.
+      - name: Cache the Tectonic package bundle
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Tectonic
+          key: tectonic-${{ runner.os }}-${{ hashFiles('paper/**/*.tex', 'paper/references.bib') }}
+          restore-keys: |
+            tectonic-${{ runner.os }}-
+
+      - name: Install Tectonic
+        run: |
+          curl -fsSL -o tectonic.tar.gz \
+            "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          tar -xzf tectonic.tar.gz tectonic
+          sudo mv tectonic /usr/local/bin/
+
+      # Tectonic reruns TeX/bibtex to a fixed point on its own — no latexmk needed.
+      # Output lands next to the input (paper/main.pdf).
+      - name: Build the paper
+        run: tectonic paper/main.tex
+
+      - name: Upload paper.pdf (per-run artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-pdf
+          path: paper/main.pdf
+          if-no-files-found: error
+
+  blueprint:
+    needs: changes
+    # `needs: changes` + a skipped `changes` (non-PR events) would skip this job too
+    # under the default success() gate, hence the explicit !cancelled(). Net effect:
+    # always run on `main` pushes and manual dispatch; on PRs only when the PR touches
+    # blueprint/** (or this workflow).
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.blueprint == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache the Tectonic package bundle
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Tectonic
+          key: tectonic-${{ runner.os }}-${{ hashFiles('blueprint/src/**/*.tex') }}
+          restore-keys: |
+            tectonic-${{ runner.os }}-
+
+      - name: Install Tectonic
+        run: |
+          curl -fsSL -o tectonic.tar.gz \
+            "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          tar -xzf tectonic.tar.gz tectonic
+          sudo mv tectonic /usr/local/bin/
+
+      # print.tex is the standalone (non-leanblueprint) driver: plain LaTeX, \input of
+      # macros.tex + content.tex, no graphviz/dot step. Output: blueprint/src/print.pdf,
+      # renamed blueprint.pdf at publish time.
+      - name: Build the blueprint
+        run: tectonic blueprint/src/print.tex
+
+      - name: Upload blueprint.pdf (per-run artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: blueprint-pdf
+          path: blueprint/src/print.pdf
+          if-no-files-found: error
+
+  # Publish the freshly built pair to the orphan `artifacts` branch — `main` only, never
+  # on pull requests. The branch is recreated from scratch each time (a new root commit,
+  # force-pushed), so it never accumulates binary history.
+  publish:
+    needs: [paper, blueprint]
+    if: ${{ !cancelled() && needs.paper.result == 'success' && needs.blueprint.result == 'success' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download the built PDFs
+        uses: actions/download-artifact@v4
+        with:
+          path: publish
+          merge-multiple: true
+
+      - name: Assemble and force-push the orphan artifacts branch
+        working-directory: publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mv main.pdf paper.pdf
+          mv print.pdf blueprint.pdf
+          cat > README.md <<EOF
+          # CI-built PDFs
+
+          Built from \`main\` @ ${GITHUB_SHA} on $(date -u +%F) by \`.github/workflows/docs.yml\`.
+
+          - [paper.pdf](./paper.pdf) — built from \`paper/main.tex\`
+          - [blueprint.pdf](./blueprint.pdf) — built from \`blueprint/src/print.tex\`
+
+          This orphan branch is recreated (single commit, no history) on every docs
+          build of \`main\`. Do not commit to it by hand.
+          EOF
+          git init -q -b artifacts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add paper.pdf blueprint.pdf README.md
+          git commit -q -m "CI-built PDFs from main @ ${GITHUB_SHA::7} ($(date -u +%F))"
+          git push --force \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            artifacts
