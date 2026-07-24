@@ -117,10 +117,15 @@ contract as the librarian's `library.json`: **we are the single writer, the wiki
   `blueprint/**`, `Formalization/**`, or the generator re-emits the manifest and commits it into the
   hub repo (`notes-wiki`, where the file is tracked) — with a semantic diff-guard that ignores the
   stamp fields, so stamp-only regenerations produce no hub commit. CI is the single writer of the
-  hub's copy. Locally, the versioned [`.githooks/post-commit`](../.githooks/post-commit) hook still
-  re-emits into the local vault checkout after any commit touching the projected paths (activate once
-  per clone with `git config core.hooksPath .githooks`; best-effort, never fails a commit) — that
-  local copy is a preview for un-pushed work; manual `--emit-manifest` remains the fallback.
+  hub's copy — a local emit must therefore **never target the vault**: the hub tracks the file, so a
+  hand emit would dirty its tree and could be swept into a hub auto-commit, breaking the
+  CI-only-writer invariant. Instead, the versioned [`.githooks/post-commit`](../.githooks/post-commit)
+  hook re-emits after any commit touching the projected paths into the SSF-local, gitignored
+  **`.manifest-preview.json`** (activate once per clone with `git config core.hooksPath .githooks`;
+  best-effort, never fails a commit). To check un-pushed work against that preview, point the hub CLI
+  at it — `wiki lint --manifest <ssf>/.manifest-preview.json` (the flag defaults to the vault's
+  committed copy) — rather than overwriting the vault file; manual
+  `--emit-manifest .manifest-preview.json` remains the fallback.
 
 **In — demand (`demand`; the hub half shipped 2026-07-16).** The inverse is a **pull, not a file we
 receive**: when planning proofs, run `wiki demands --json` (with `$WIKI_VAULT` pointing at the Notes

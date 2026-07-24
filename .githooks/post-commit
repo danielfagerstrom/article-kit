@@ -1,8 +1,12 @@
 #!/bin/sh
-# Re-emit blueprint-manifest.json into the wiki after any commit that touches what
-# the manifest projects (blueprint labels, Lean decls, scripts/ paths). Keeps the
-# wiki's freshness stamp current without a manual step — see blueprint/LINKAGE.md
-# § "The cross-repo channel". Activate once with:
+# Re-emit the blueprint manifest after any commit that touches what it projects
+# (blueprint labels, Lean decls, scripts/ paths) — to the SSF-local, gitignored
+# PREVIEW path, not the vault. The hub's blueprint-manifest.json is a tracked file
+# written ONLY by CI (.github/workflows/manifest.yml); a local emit into the vault
+# would dirty the hub tree and could be swept up by its auto-commit sync. Check
+# un-pushed work against the preview with:
+#     wiki lint --manifest <ssf>/.manifest-preview.json
+# See blueprint/LINKAGE.md § "The cross-repo channel". Activate once with:
 #     git config core.hooksPath .githooks
 # Best-effort: never fails the commit.
 
@@ -12,7 +16,6 @@
 git diff-tree -m --first-parent --no-commit-id --name-only -r HEAD \
     | grep -qE '^(blueprint/|Formalization/|scripts/)' || exit 0
 
-WIKI_VAULT="${WIKI_VAULT:-C:/Users/danie/Documents/Notes}"
-python scripts/check_linkage.py --emit-manifest "$WIKI_VAULT/blueprint-manifest.json" \
+python scripts/check_linkage.py --emit-manifest .manifest-preview.json \
     || echo "post-commit: manifest re-emit failed (run check_linkage.py --emit-manifest by hand)"
 exit 0

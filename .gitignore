@@ -15,6 +15,10 @@ blueprint/print/
 # Python
 __pycache__/
 
+# Local manifest preview (the hub's tracked blueprint-manifest.json is written
+# only by CI — .github/workflows/manifest.yml; the post-commit hook emits here)
+.manifest-preview.json
+
 # Lean / lake
 Formalization/.lake/
 Formalization/build/
