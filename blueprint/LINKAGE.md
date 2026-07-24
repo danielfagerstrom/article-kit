@@ -112,10 +112,15 @@ contract as the librarian's `library.json`: **we are the single writer, the wiki
   motivated this — two near-verbatim mirrors drifted and were caught only by manual audit). Each
   entry also carries `uses`, the node's `\uses{}` labels in order of appearance, so the
   blueprint-internal dependency edges are verifiable vault-side rather than opaque to the hub.
-- *Regeneration* is automatic: the versioned [`.githooks/post-commit`](../.githooks/post-commit) hook
-  re-emits the manifest after any commit touching `blueprint/`, `Formalization/`, or `scripts/`
-  (everything the manifest projects). Activate once per clone with `git config core.hooksPath .githooks`;
-  best-effort, never fails a commit. Manual `--emit-manifest` remains the fallback.
+- *Regeneration & delivery (CI, 2026-07-24).* The authoritative channel is
+  [`.github/workflows/manifest.yml`](../.github/workflows/manifest.yml): every `main` push touching
+  `blueprint/**`, `Formalization/**`, or the generator re-emits the manifest and commits it into the
+  hub repo (`notes-wiki`, where the file is tracked) — with a semantic diff-guard that ignores the
+  stamp fields, so stamp-only regenerations produce no hub commit. CI is the single writer of the
+  hub's copy. Locally, the versioned [`.githooks/post-commit`](../.githooks/post-commit) hook still
+  re-emits into the local vault checkout after any commit touching the projected paths (activate once
+  per clone with `git config core.hooksPath .githooks`; best-effort, never fails a commit) — that
+  local copy is a preview for un-pushed work; manual `--emit-manifest` remains the fallback.
 
 **In — demand (`demand`; the hub half shipped 2026-07-16).** The inverse is a **pull, not a file we
 receive**: when planning proofs, run `wiki demands --json` (with `$WIKI_VAULT` pointing at the Notes

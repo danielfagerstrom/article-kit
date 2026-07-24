@@ -1,0 +1,136 @@
+name: Manifest projection
+
+# The theorem channel's "check" flow (hub ARCHITECTURE.md): on every `main` push that can
+# change the blueprint's projection, regenerate `blueprint-manifest.json` with
+# scripts/check_linkage.py and commit it into the hub (`danielfagerstrom/notes-wiki`),
+# where `wiki lint` / `wiki gate` and the eval cache's RECHECK-on-\leanok loop read it.
+# Single-writer is preserved: this workflow is the ONLY writer of that file — the hub
+# never edits it, and local SSF sessions no longer need to hand-run the emit.
+#
+# The generator is stdlib-only and works on source text alone (no lake / Lean toolchain);
+# its freshness stamp reads HEAD via `git rev-parse --short HEAD`, so the default shallow
+# checkout is fine. The stamp (generated_at / source_commit / source_dirty) changes on
+# every run, so a semantic diff-guard compares fresh vs. hub copy EXCLUDING those three
+# fields and skips the commit when the projected content is unchanged — no noise commits
+# on Lean-only refactors or paper pushes.
+#
+# On pull requests touching this file or the generator, the job runs in dry-run mode:
+# emit + a self-test of the diff-guard semantics, never touching the hub. The cross-repo
+# push needs `secrets.NOTES_WIKI_TOKEN` (a fine-grained PAT scoped to notes-wiki with
+# Contents read/write — account-side setup in CLOUD.md § "Manifest projection").
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "blueprint/**"
+      - "Formalization/**"
+      - "scripts/check_linkage.py"
+      - ".github/workflows/manifest.yml"
+  pull_request:
+    paths:
+      - "scripts/check_linkage.py"
+      - ".github/workflows/manifest.yml"
+  workflow_dispatch:
+
+# No write permission on SSF itself — the only write is to notes-wiki, via the PAT.
+permissions:
+  contents: read
+
+# Serialize projections so two close-together pushes cannot interleave their hub
+# commits; queue rather than cancel, so the newest state always lands last.
+concurrency:
+  group: manifest-projection
+  cancel-in-progress: false
+
+jobs:
+  project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Emit BEFORE the hub checkout lands in the workspace, and to $RUNNER_TEMP — the
+      # emitter's `source_dirty` flag is a whole-repo `git status --porcelain`, and an
+      # untracked notes-wiki/ directory (or the manifest itself) inside the SSF tree
+      # would falsely mark the projection dirty. The step also runs the full linkage
+      # check: a `main` state whose blueprint/Lean/ledger edges are broken fails here
+      # and is never projected.
+      - name: Emit the manifest (and run the linkage check)
+        run: python3 scripts/check_linkage.py --emit-manifest "$RUNNER_TEMP/blueprint-manifest.json"
+
+      # ---- dry-run half (pull requests): prove the guard's semantics, touch nothing ----
+      - name: "Dry run: self-test the diff-guard semantics"
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 - "$RUNNER_TEMP/blueprint-manifest.json" <<'EOF'
+          import copy, json, sys
+          STAMP = {"generated_at", "source_commit", "source_dirty"}
+          def strip(m): return {k: v for k, v in m.items() if k not in STAMP}
+          fresh = json.load(open(sys.argv[1], encoding="utf-8"))
+          stamped = copy.deepcopy(fresh)
+          stamped["generated_at"] = "1970-01-01T00:00:00Z"
+          stamped["source_commit"] = "0000000"
+          stamped["source_dirty"] = True
+          assert strip(fresh) == strip(stamped), "stamp-only difference must compare equal"
+          mutated = copy.deepcopy(fresh)
+          mutated["labels"]["thm:__probe"] = {}
+          assert strip(fresh) != strip(mutated), "content difference must compare unequal"
+          print(f"diff-guard OK: {len(fresh['labels'])} labels, "
+                f"{len(fresh['lean_decls'])} Lean decls, stamp fields excluded: {sorted(STAMP)}")
+          EOF
+
+      # ---- projection half (push to main / manual dispatch): guarded cross-repo write ----
+      - name: Require NOTES_WIKI_TOKEN
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          NOTES_WIKI_TOKEN: ${{ secrets.NOTES_WIKI_TOKEN }}
+        run: |
+          if [ -z "$NOTES_WIKI_TOKEN" ]; then
+            echo "::error::NOTES_WIKI_TOKEN is not configured. Create a fine-grained PAT scoped to danielfagerstrom/notes-wiki (Contents: read/write) and add it as an Actions secret named NOTES_WIKI_TOKEN — see CLOUD.md § 'Manifest projection'."
+            exit 1
+          fi
+
+      - name: Checkout notes-wiki (the hub)
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/checkout@v4
+        with:
+          repository: danielfagerstrom/notes-wiki
+          ref: main
+          token: ${{ secrets.NOTES_WIKI_TOKEN }}
+          path: notes-wiki
+
+      - name: Semantic diff against the hub's copy
+        id: diff
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          python3 - "$RUNNER_TEMP/blueprint-manifest.json" "notes-wiki/blueprint-manifest.json" >> "$GITHUB_OUTPUT" <<'EOF'
+          import json, sys
+          STAMP = {"generated_at", "source_commit", "source_dirty"}
+          def strip(m): return {k: v for k, v in m.items() if k not in STAMP}
+          fresh = json.load(open(sys.argv[1], encoding="utf-8"))
+          try:
+              hub = json.load(open(sys.argv[2], encoding="utf-8"))
+          except (FileNotFoundError, json.JSONDecodeError):
+              hub = None  # missing or unreadable hub copy -> seed it
+          changed = hub is None or strip(fresh) != strip(hub)
+          print(f"comparing without stamp fields {sorted(STAMP)}: "
+                f"{'CHANGED' if changed else 'unchanged'}", file=sys.stderr)
+          print(f"changed={str(changed).lower()}")
+          EOF
+
+      - name: Commit and push the projection
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.diff.outputs.changed == 'true'
+        working-directory: notes-wiki
+        run: |
+          cp "$RUNNER_TEMP/blueprint-manifest.json" blueprint-manifest.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add blueprint-manifest.json
+          git commit -m "blueprint-manifest: project from ssf@${GITHUB_SHA::7}"
+          # If a concurrent hub commit raced us, rebase once and retry.
+          git push origin HEAD:main || { git pull --rebase origin main && git push origin HEAD:main; }
+
+      - name: No content change — skipping commit
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.diff.outputs.changed == 'false'
+        run: echo "Manifest content identical to the hub's copy (stamp fields excluded); no commit."

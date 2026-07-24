@@ -93,3 +93,27 @@ tectonic blueprint/src/print.tex                      # blueprint compiles
 ```
 
 If all seven pass, the environment is live. Lean is deliberately absent from this list — see Scope.
+
+---
+
+## Manifest projection — one-time account setup
+
+[`.github/workflows/manifest.yml`](.github/workflows/manifest.yml) regenerates
+`blueprint-manifest.json` on every `main` push touching `blueprint/**`, `Formalization/**`, or the
+generator, and commits it into the hub (`danielfagerstrom/notes-wiki`) — the theorem channel's
+satellite-owned "check" projection, with a semantic diff-guard so stamp-only changes never produce a
+commit. This CI is the *only* writer of that hub file (single-writer preserved). It needs one
+account-side credential:
+
+1. **Create a fine-grained PAT** (github.com → Settings → Developer settings → Personal access
+   tokens → Fine-grained tokens): repository access **only `danielfagerstrom/notes-wiki`**,
+   repository permission **Contents: Read and write**, nothing else. Set an expiry you will
+   actually renew.
+2. **Add it as an Actions secret on this repo** named **`NOTES_WIKI_TOKEN`**
+   (scale-space-foundations → Settings → Secrets and variables → Actions → New repository secret).
+3. **Seed the first projection:** run the workflow once by hand (Actions → *Manifest projection* →
+   Run workflow) — the hub has no committed manifest until this runs.
+
+The workflow fails with an explicit error (never silently skips) if the secret is missing. For the
+security-conscious alternative: a write-enabled **deploy key** on notes-wiki (private half as an SSF
+secret, SSH-based push) scopes even tighter than a fine-grained PAT and never expires silently.
