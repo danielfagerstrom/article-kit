@@ -37,6 +37,13 @@ them, and you never edit the hub.
 4. **Never state more than the source supports** — domain boundaries especially (an axiom's
    hypothesis range must match its citation's range; when a boundary case is delicate, exclude it or
    state it as an explicit hypothesis). When in doubt, narrow.
+5. **The blueprint is the text of record (2026-07-25).** The wiki and the article transclude
+   blueprint nodes verbatim — they may not restate them. So write statements *and* proofs as
+   publication-quality human-readable mathematics at the project's register (plain, descriptive,
+   no hype): the blueprint proof is the proof of record, not a pointer — "see Lean" is not a proof
+   (stating which steps are machine-checked and which are cited interfaces is). Keep statement/proof
+   LaTeX within the render-safe macro set (the render gate beside `macros.tex` checks this) so nodes
+   transclude cleanly. See `ROADMAP.md` #7.
 
 ## Where your work comes from, and what it means
 

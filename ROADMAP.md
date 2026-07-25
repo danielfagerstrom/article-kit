@@ -19,6 +19,68 @@ the paper *prose*.**
 
 ## Now
 
+### 7. Blueprint as the single source of mathematical text — the transclusion layer  ·  🟡 decided 2026-07-25
+
+**The decision.** "Write article fragments in the wiki" failed as a workflow step: freeform prose gives
+an LLM no enforcement surface, so the mathematics kept getting smoothed and popularised despite
+instruction. In the blueprint, formality is structurally forced (environments, `\label`s, `\lean{}`, the
+ledger, `check_linkage.py`, ultimately `lake build`). So the seam moves rather than the prompt: **the
+blueprint owns the mathematical text — statements *and* human-readable proofs, at publication register —
+and the wiki and the article import nodes verbatim, never paraphrase them.** The wiki keeps what it is
+good for: ideation, pre-formal sketches, narrative, literature. The rule at the seam: **once a blueprint
+node exists, a note transcludes it; restating it in prose is a lint finding.** The inverse design (wiki
+as statement source, blueprint generated) was considered 2026-07-20 and is now rejected, not deferred —
+recorded in the hub's `ARCHITECTURE.md` § "The theorem channel". The note-leads-blueprint-follows
+mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: note-leads survives only
+*pre-node*, as the sketch → `wiki demands` phase.
+
+**Design (extends the manifest — same projection, same single writer, no new channel):**
+
+- **Dual-form, dual-hash manifest entries.** Each label gains `proof` + `proof_sha` (same normalization
+  discipline as the shipped `statement`/`statement_sha`) and a **rendered markdown form**
+  (`statement_md`, `proof_md`, `rendered_sha`). The source-side sha detects blueprint drift; the
+  rendered-side sha is what the hub's lint byte-compares. Both deterministic; `manifest_version` field
+  added so the hub can warn on an old-schema manifest.
+- **Rendering happens at emit, satellite-side.** The hub holds no format machinery (the rule that moved
+  LaTeX→md conversion to the librarian), so `wiki import` must be a pure copy. Render route: **pinned
+  pandoc** (version asserted by the emitter; installed + symlinked on the author's machines, apt in CI)
+  over the normalized statement/proof source, with blueprint-local macros from `macros.tex` expanded
+  *before* pandoc so the output contains no unknown commands. **Fallback if pinned-pandoc output proves
+  unstable across versions/platforms:** restrict statements to a small MathJax-safe macro set and ship a
+  trivial in-repo renderer — the dual-hash design is unchanged either way (that is the point of hashing
+  the rendered form separately).
+- **Fast feedback lives next to the blueprint workflow, not at import time.** A render gate — every
+  node's statement/proof renders clean (pandoc exit 0, no raw `\command` residue, no unexpanded macro) —
+  wired into both the post-commit `.manifest-preview.json` hook and the manifest CI job, so the
+  mathematician learns of a render-breaking macro at commit, not when a note imports the node weeks
+  later. The allowed-macro list lives beside `macros.tex`; adding a macro means adding its expansion,
+  and the gate keeps that honest.
+
+**Milestones** (T = this repo, H = hub; hub half tracked as `Notes/ROADMAP.md` #14):
+
+- **T0 — Policy recorded**  ·  ✅ 2026-07-25 — this item; hub `ARCHITECTURE.md` decision section;
+  mathematician charter register bar; `LINKAGE.md` planned-fields note; `/rework-chapter` interim note.
+- **T1 — Emitter: proof + rendered forms.** `check_linkage.py` `build_manifest()` per the design above.
+  Includes the macro-expansion pass and the pandoc version pin.
+- **T2 — Render gate.** The clean-render check in the post-commit hook + CI (fails the manifest job, so
+  a render-breaking node never reaches the hub).
+- **H3 — `wiki import` + lint rule** (hub-side): `wiki import <label> [--proof]` copies the rendered
+  form into a marked block (`<!-- blueprint:<label> sha:<rendered_sha> -->` … `<!-- /blueprint -->`);
+  `wiki lint` errors when a block is not byte-equal to the manifest's render (hand-edits inside markers
+  are findings) and flags a stale sha when the blueprint moved.
+- **H4 — Pilot: the temporal-behaviour note.** Fresh, and mixes proved props (`prop:ig-mode`,
+  `prop:erlang-mode` — show-proof path) with `\notready` defs (statement-only path). **Livability
+  verdict on the rendering happens here, before any migration.**
+- **H5 — Migration.** Replace the §2–§5 chapter notes' mirrored statement blocks with imports; each
+  blueprint statement that reads below register becomes a *bounded* rewrite task for the mathematician
+  (this is where "be more formal" turns into concrete per-node work). Retire `/rework-chapter` step-1
+  mirroring — the step becomes import + narrative.
+- **T6 — Paper single-sourcing.** The `LINKAGE.md` "larger, separate" item, now load-bearing: per-node
+  statement files `\input` by both blueprint and paper (LINKAGE rule 4's strong form). Decide then
+  whether article proofs are shared or article-specific.
+- **Ongoing — register sweep.** Blueprint proofs are the proofs of record; per-part editorial pass
+  against the private writing guide, delegable to the mathematician part by part.
+
 ### 1. Publication-structure template committed  ·  ✅ 2026-07-17
 [`paper/PUBLICATION-TEMPLATE.md`](paper/PUBLICATION-TEMPLATE.md) — the prose-conformance spec (formatting
 §A / section contracts §B / voice rubric §C / calibration exemplars §D / pipeline §E), the downstream
@@ -65,6 +127,70 @@ existing checker. The chat's own "highest reliability-to-effort" pick. Checks:
 Becomes a new **deterministic box** in `DRAFTING-GATE.md` (alongside item 7's `check_linkage.py`).
 
 ---
+
+### 8. Human-in-command formalization — process discipline from the 2026 field  ·  ⬜ surveyed 2026-07-25
+
+Context: with #7 the author works mainly in the blueprint and Lean, and wants back the control that
+"agents do the math as by magic" took — the mathematics should follow *his* decomposition and register.
+A 2026-07-25 survey (zhu2026leanarchitect, kung2026leap, zhang2026leanmarathon + web landscape; digest
+to be filed in the wiki) shows the field converging on exactly our architecture — a **human-owned
+blueprint as the coordination artifact, AI filling leaves** (PNT+, FLT, Carleson, Tao's Claude-Code
+workflow, Math-Inc's blueprint-seeded Gauss) — and supplies named mechanisms for the control problem.
+Adopt as process rules (cheap: charter + skill edits) before any new proving campaign:
+
+- **Frozen-statement discipline** (LeanMarathon): agents may prove a node but never silently reword
+  its statement; a statement change is an explicit review event, and when one happens, dependent
+  proofs are downgraded wholesale (never patched to fit drift). → mathematician charter invariant.
+- **Decomposition gate — the author reviews plans, not diffs** (LEAP; Tao's skeletonize-then-fill):
+  attacking a `[T]` node starts with a *compiling Lean sketch* — main argument sorry-free, `sorry`
+  only at explicitly named sub-lemmas — plus the informal plan (idea / definitions / lemmas-with-
+  purpose / outline naming Mathlib lemmas). **The author approves the decomposition before proving
+  starts.** This is where the aesthetic control re-enters: steering happens at the plan level, where
+  it is cheap. → a project skill + charter rule.
+- **Read-only faithfulness reviewer** (LeanMarathon's target-reviewer): before proving, a separate
+  read-only pass checks the triangle *intended meaning ↔ blueprint LaTeX ↔ Lean type* (hypotheses,
+  quantifiers, definitions, conclusion) — the reviewer is never the statement's author. Strengthens
+  item #4 below with a concrete protocol; natural role split: agent drafts the triangle diff, the
+  author judges.
+- **Vacuity probes** (LeanMarathon): for each statement and each `[A]` axiom, actively try junk-value
+  totalization traps (`tsum`, `Real.sqrt`, division defaults), trivial witnesses, and boundary
+  counterexamples before trusting it. Sobering datapoint: LeanMarathon's harness once *faked* missing
+  theory with dummy records that type-checked and passed CI — structural gates alone cannot catch an
+  ill-stated interface, and our `[A]` axioms are precisely such interfaces. → folds into #2 (boundary
+  harness) as new probe classes.
+- **Dependency-parity + orphan checks** (LeanArchitect; LeanMarathon CI): infer each `\leanok` decl's
+  actual dependency closure (the `#print axioms`-style constant traversal) and diff it against the
+  blueprint's `\uses{}` both ways; flag proved nodes with implausibly empty inferred uses (Tao caught
+  a wrong statement exactly this way) and lemmas feeding nothing. → extends `check_linkage.py` /#2.
+- **Recorded decision — authorship direction.** LeanArchitect (and verso-blueprint, where FLT and
+  Carleson now live) make *Lean* the source and generate the blueprint text from attributes; PNT+
+  migrated to this. We deliberately go the other way (#7): our deliverable is a LaTeX monograph and
+  the register lives in the blueprint. What we adopt is their *inference machinery as audit*
+  (auto-`\leanok` via sorryAx-closure, `\uses` inference) — not the authorship inversion. Revisit
+  (verso-blueprint port via `leanblueprint-verso-helper`) only after publication.
+
+### 9. Lean agent tooling — adoption shortlist (2026-07)  ·  ⬜ from the same survey
+
+Ranked; each independent of the others:
+
+1. **`lean-lsp-mcp`** (oOo0oOo; `claude mcp add lean-lsp uvx lean-lsp-mcp`) — MCP server over the
+   Lean LSP: live goal states, diagnostics, hover, hosted LeanSearch/Loogle/Lean Hammer. Turns the
+   agent loop from cold-`lake build`-and-pray into goal-aware editing — directly attacks this
+   machine's build-latency pain. Actively maintained; Windows caveat: some local extras want WSL2,
+   hosted variants fine. **Adopt first.**
+2. **Aristotle API** (Harmonic; free sign-up since 2026-01, `aristotlelib` on PyPI) — purpose-built
+   "close this sorry" service, documented solo-researcher workflow (arXiv 2605.20120). Use as the
+   escalation path when tactic work stalls, under #8's frozen-statement rule (it gets a sorry, never
+   authorship of a statement). Caveats: closed model; review ToS on submitted mathematics before use.
+3. **Type-dependency-cone review** (Lean Atlas / "Lean Compass", arXiv 2604.16347) — compute the
+   minimal set of project declarations whose *statements* a human must semantically vet for the
+   headline theorems (they report 94–99 % node reduction). Formalizes our "verified core, axiomatized
+   analysis" trust story: the author reviews the type-cone + the `[A]` ledger, nothing more. Adopt
+   the discipline; the tool if convenient.
+4. **Open-weight fallback provers** (Goedel-Prover-V2 32B, Kimina) — only if the closed-API route is
+   rejected; needs rented GPU. Low priority.
+5. **Reading list** for the process rules: Tao's Claude-Code formalization video (2026-03) + the
+   equational-theories write-up (arXiv 2512.07087) — the human-adjudication philosophy #8 encodes.
 
 ## Later — capture; build on real need
 

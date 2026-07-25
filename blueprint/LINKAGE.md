@@ -127,6 +127,17 @@ contract as the librarian's `library.json`: **we are the single writer, the wiki
   committed copy) — rather than overwriting the vault file; manual
   `--emit-manifest .manifest-preview.json` remains the fallback.
 
+- *Planned — transclusion fields (decided 2026-07-25; `ROADMAP.md` #7).* The manifest becomes the
+  wiki's **import source**, not only its checker: per label, `proof` + `proof_sha` (same normalization
+  discipline as `statement`) and a rendered-markdown form (`statement_md` / `proof_md` +
+  `rendered_sha`), rendered **at emit** — pinned pandoc over macro-expanded source, so the hub never
+  handles LaTeX — plus a `manifest_version` field. Hub side: `wiki import <label> [--proof]` copies the
+  rendered form into a marked block; `wiki lint` requires byte-equality against the manifest's render.
+  This implements the 2026-07-25 decision (hub `ARCHITECTURE.md` § "The theorem channel"): the
+  blueprint is the single source of the mathematical text; wiki notes transclude nodes verbatim, never
+  paraphrase. A render gate (clean pandoc output, no unexpanded macros) joins the post-commit preview
+  hook and the manifest CI job so a render-breaking node fails at commit, not at import.
+
 **In — demand (`demand`; the hub half shipped 2026-07-16).** The inverse is a **pull, not a file we
 receive**: when planning proofs, run `wiki demands --json` (with `$WIKI_VAULT` pointing at the Notes
 vault) to see which blueprint labels the wiki's claims rest on and at what confidence, **strongest
@@ -162,6 +173,10 @@ not to either projection.
 - **Larger, separate:** activate the full leanblueprint web/dep-graph build (Tier B is installed) so
   blueprint→Lean is checked by the official tool and the graph renders; and true statement
   single-sourcing via shared `\input`.
+- **Decided 2026-07-25, in build-out:** the transclusion layer — the blueprint as the single source of
+  the mathematical text for wiki and article (see the *Planned — transclusion fields* bullet above;
+  master roadmap `ROADMAP.md` #7, hub half `Notes/ROADMAP.md` #14). Promotes paper statement
+  single-sourcing from nice-to-have to a roadmap milestone (T6).
 
 ## Ownership
 
