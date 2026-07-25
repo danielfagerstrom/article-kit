@@ -50,14 +50,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # The manifest's rendered markdown fields (v2, LINKAGE.md § cross-repo channel) come
+      # from a version-PINNED pandoc — determinism of rendered_sha depends on the exact
+      # version, so install the pinned release, never `apt install pandoc`. Keep the
+      # version in sync with PANDOC_PIN in scripts/check_linkage.py.
+      - name: Install pinned pandoc
+        run: |
+          wget -q https://github.com/jgm/pandoc/releases/download/3.10/pandoc-3.10-1-amd64.deb
+          sudo dpkg -i pandoc-3.10-1-amd64.deb
+          pandoc --version | head -1
+
       # Emit BEFORE the hub checkout lands in the workspace, and to $RUNNER_TEMP — the
       # emitter's `source_dirty` flag is a whole-repo `git status --porcelain`, and an
       # untracked notes-wiki/ directory (or the manifest itself) inside the SSF tree
       # would falsely mark the projection dirty. The step also runs the full linkage
       # check: a `main` state whose blueprint/Lean/ledger edges are broken fails here
-      # and is never projected.
+      # and is never projected. --require-render: a manifest without the rendered
+      # transclusion fields (or with any label failing to render) must never reach the
+      # hub — CI is its single writer, so a silent degrade here would strand the hub
+      # on prose-only entries.
       - name: Emit the manifest (and run the linkage check)
-        run: python3 scripts/check_linkage.py --emit-manifest "$RUNNER_TEMP/blueprint-manifest.json"
+        run: python3 scripts/check_linkage.py --require-render --emit-manifest "$RUNNER_TEMP/blueprint-manifest.json"
 
       # ---- dry-run half (pull requests): prove the guard's semantics, touch nothing ----
       - name: "Dry run: self-test the diff-guard semantics"

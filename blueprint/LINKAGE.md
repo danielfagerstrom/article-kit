@@ -127,16 +127,24 @@ contract as the librarian's `library.json`: **we are the single writer, the wiki
   committed copy) — rather than overwriting the vault file; manual
   `--emit-manifest .manifest-preview.json` remains the fallback.
 
-- *Planned — transclusion fields (decided 2026-07-25; `ROADMAP.md` #7).* The manifest becomes the
-  wiki's **import source**, not only its checker: per label, `proof` + `proof_sha` (same normalization
-  discipline as `statement`) and a rendered-markdown form (`statement_md` / `proof_md` +
-  `rendered_sha`), rendered **at emit** — pinned pandoc over macro-expanded source, so the hub never
-  handles LaTeX — plus a `manifest_version` field. Hub side: `wiki import <label> [--proof]` copies the
-  rendered form into a marked block; `wiki lint` requires byte-equality against the manifest's render.
-  This implements the 2026-07-25 decision (hub `ARCHITECTURE.md` § "The theorem channel"): the
-  blueprint is the single source of the mathematical text; wiki notes transclude nodes verbatim, never
-  paraphrase. A render gate (clean pandoc output, no unexpanded macros) joins the post-commit preview
-  hook and the manifest CI job so a render-breaking node fails at commit, not at import.
+- *Transclusion fields — manifest v2 (shipped 2026-07-25; `ROADMAP.md` #7 T1).* The manifest is now
+  the wiki's **import source**, not only its checker — it implements the 2026-07-25 decision (hub
+  `ARCHITECTURE.md` § "The theorem channel"): the blueprint is the single source of the mathematical
+  text; wiki notes transclude nodes verbatim, never paraphrase. Per label, v2 adds: `env` + `title`
+  (the environment name and its optional `[human title]`, split out of the statement — presentation
+  metadata for the import's block header, so titles no longer sit in `statement`/`statement_sha`);
+  `proof` + `proof_sha` (the trailing `proof` environment, same normalization as `statement`; null
+  when absent — 14 of 48 nodes carry one today); and the rendered forms `statement_md` / `proof_md` +
+  `rendered_sha`, produced at emit by a **version-pinned pandoc** (`PANDOC_PIN = 3.10`,
+  `commonmark+tex_math_dollars`, `--wrap=none` — Obsidian's `$`/`$$` math dialect) over the
+  normalized source with `macros.tex` fed as a preamble, so custom macros expand (inside math too)
+  and `\ref{X}` renders as the code span `` `X` ``. Top-level: `manifest_version: 2` and a `render`
+  provenance block. Determinism is the point: `rendered_sha` is what the hub's `wiki import`/lint
+  byte-compares, so **the pandoc version is pinned in the emitter and installed pinned in CI** —
+  never `apt install pandoc`. Degrade path: no pandoc / wrong version → the manifest emits without
+  rendered fields and warns; `--require-render` (used by the CI job, the hub copy's single writer)
+  turns that or any per-label render failure into a hard error. The finer clean-render gate (no raw
+  `\command` residue outside math) is T2.
 
 **In — demand (`demand`; the hub half shipped 2026-07-16).** The inverse is a **pull, not a file we
 receive**: when planning proofs, run `wiki demands --json` (with `$WIKI_VAULT` pointing at the Notes

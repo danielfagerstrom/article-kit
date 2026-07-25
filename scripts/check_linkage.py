@@ -79,6 +79,46 @@ def read_blueprint() -> str:
     return expand(BLUEPRINT)
 
 
+# --- Rendering (the transclusion fields; LINKAGE.md § cross-repo channel, ROADMAP #7 T1) ---
+#
+# The manifest carries, per label, an Obsidian-flavoured markdown rendering of the
+# normalized statement/proof source, produced by a version-PINNED pandoc so the output is
+# deterministic (`wiki lint` byte-compares transcluded blocks against it; a version drift
+# would move every rendered_sha at once). Macro expansion is pandoc's own `latex_macros`
+# extension, fed blueprint/src/macros.tex as a preamble — macros expand inside math too, so
+# the output contains no unexpanded custom commands. `\ref{X}` is pre-passed to \texttt{X}
+# (a code span — the way wiki notes write labels). Rendering degrades gracefully: no pandoc,
+# or a version other than the pin, emits the manifest without rendered fields and warns;
+# --require-render (CI) turns that, or any per-label render failure, into a hard error.
+
+PANDOC_PIN = "3.10"
+PANDOC_TARGET = "commonmark+tex_math_dollars"
+MACROS = REPO / "blueprint" / "src" / "macros.tex"
+
+
+def pandoc_version() -> str | None:
+    try:
+        r = subprocess.run(["pandoc", "--version"], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=30)
+        m = re.match(r"pandoc(?:\.exe)?\s+(\S+)", r.stdout) if r.returncode == 0 else None
+        return m.group(1) if m else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def render_markdown(src: str, preamble: str) -> str:
+    """Normalized statement/proof LaTeX -> markdown with $/$$ math (Obsidian dialect)."""
+    src = re.sub(r"\\ref\{([^}]+)\}", r"\\texttt{\1}", src)
+    r = subprocess.run(
+        ["pandoc", "-f", "latex", "-t", PANDOC_TARGET, "--wrap=none"],
+        input=preamble + "\n" + src + "\n",
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip() or f"pandoc exit {r.returncode}")
+    return r.stdout.replace("\r\n", "\n").strip()
+
+
 def normalize_statement(body: str) -> str:
     """The statement text of a node body, normalized for stable hashing.
 
@@ -105,13 +145,26 @@ def normalize_statement(body: str) -> str:
     return re.sub(r"\s+", " ", body).strip()
 
 
+# a proof environment directly following a statement env (whitespace/comments between);
+# non-greedy to the first \end{proof} — the blueprint does not nest proofs
+PROOF_AHEAD = re.compile(r"(?:\s|%[^\n]*)*\\begin\{proof\}(.*?)\\end\{proof\}", re.S)
+
+
 def blueprint_nodes(tex: str):
-    """One dict per statement environment."""
+    """One dict per statement environment (plus its trailing proof, if any)."""
     nodes = []
     for m in re.finditer(
         r"\\begin\{(" + "|".join(STMT_ENVS) + r")\}(.*?)\\end\{\1\}", tex, re.S
     ):
         body = m.group(2)
+        # the environment's optional [human title] is presentation metadata, not statement
+        # content — split it out so it neither pollutes the statement text/sha nor renders
+        # as escaped brackets; the hub's import renders it in the block header instead
+        tm = re.match(r"\s*\[([^\]]*)\]", body)
+        title = tm.group(1).strip() if tm else None
+        if tm:
+            body = body[tm.end():]
+        pm = PROOF_AHEAD.match(tex, m.end())
         lab = re.search(r"\\label\{([^}]+)\}", body)
         decls = [
             d.strip()
@@ -128,12 +181,14 @@ def blueprint_nodes(tex: str):
         nodes.append(
             {
                 "env": m.group(1),
+                "title": title,
                 "label": lab.group(1) if lab else None,
                 "lean": decls,
                 "uses": uses,
                 "leanok": r"\leanok" in body,
                 "notready": r"\notready" in body,
                 "statement": normalize_statement(body),
+                "proof": normalize_statement(pm.group(1)) if pm else None,
             }
         )
     return nodes
@@ -181,7 +236,11 @@ def _git_provenance() -> dict:
             "source_dirty": bool(_git("status", "--porcelain"))}
 
 
-def build_manifest(nodes, lean_names: set[str]) -> dict:
+def _sha12(s: str) -> str:
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()[:12]
+
+
+def build_manifest(nodes, lean_names: set[str], require_render: bool = False) -> dict:
     """Projection of the blueprint the wiki reads to resolve `claim/…` proof-refs.
 
     Same role as the librarian's library.json (citekeys): a generated, single-writer
@@ -198,23 +257,64 @@ def build_manifest(nodes, lean_names: set[str]) -> dict:
     short sha256 of it) — the wiki's lint diffs mirrored statement blocks against the hash to
     catch silent drift. The normalization (`normalize_statement`) is deterministic, so the sha
     changes exactly when the statement's mathematical content does.
+
+    Manifest v2 (ROADMAP #7 T1) adds the transclusion fields: per label, the normalized `proof`
+    source + `proof_sha` (null when the node has no proof environment), and — when the pinned
+    pandoc is available — `statement_md` / `proof_md` (Obsidian-dialect markdown, custom macros
+    expanded) + `rendered_sha` over both, which is what the hub's `wiki import`/lint will
+    byte-compare. Top-level `render` records the renderer provenance (null when rendering was
+    skipped); `manifest_version` lets the hub detect the schema.
     """
+    ver = pandoc_version()
+    rendering = ver == PANDOC_PIN
+    render_errors: list[str] = []
+    if not rendering:
+        msg = (f"pandoc {ver} found but pin is {PANDOC_PIN}" if ver
+               else "pandoc not found on PATH")
+        if require_render:
+            raise RuntimeError(f"--require-render: {msg}")
+        print(f"  warning: {msg} — manifest emitted without rendered fields", file=sys.stderr)
+    preamble = read(MACROS) if rendering else ""
+
     labels: dict[str, dict] = {}
     for n in nodes:
         lab = n["label"]
         if not lab:
             continue
-        labels[lab] = {
+        entry = {
             "kind": lab.split(":", 1)[0],
+            "env": n["env"],
+            "title": n["title"],
             "leanok": n["leanok"],
             "notready": n["notready"],
             "lean": n["lean"],
             "uses": n["uses"],
             "statement": n["statement"],
-            "statement_sha": hashlib.sha256(
-                n["statement"].encode("utf-8")
-            ).hexdigest()[:12],
+            "statement_sha": _sha12(n["statement"]),
+            "proof": n["proof"],
+            "proof_sha": _sha12(n["proof"]) if n["proof"] is not None else None,
+            "statement_md": None,
+            "proof_md": None,
+            "rendered_sha": None,
         }
+        if rendering:
+            try:
+                entry["statement_md"] = render_markdown(n["statement"], preamble)
+                if n["proof"] is not None:
+                    entry["proof_md"] = render_markdown(n["proof"], preamble)
+                entry["rendered_sha"] = _sha12(
+                    entry["statement_md"] + "\x00" + (entry["proof_md"] or "")
+                )
+            except RuntimeError as e:
+                render_errors.append(f"{lab}: {e}")
+        labels[lab] = entry
+    if render_errors:
+        for e in render_errors:
+            print(f"  warning: render failed for {e}", file=sys.stderr)
+        if require_render:
+            raise RuntimeError(
+                f"--require-render: {len(render_errors)} label(s) failed to render"
+            )
     scripts = (
         sorted(p.relative_to(REPO).as_posix() for p in (REPO / "scripts").glob("*.py"))
         if (REPO / "scripts").is_dir()
@@ -223,8 +323,14 @@ def build_manifest(nodes, lean_names: set[str]) -> dict:
     return {
         "generated_by": "scripts/check_linkage.py",
         "note": "Projection of blueprint/src/content.tex — generated, do not hand-edit.",
+        "manifest_version": 2,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         **_git_provenance(),
+        "render": (
+            {"renderer": "pandoc", "version": PANDOC_PIN,
+             "target": PANDOC_TARGET, "wrap": "none"}
+            if rendering else None
+        ),
         "labels": labels,
         "lean_decls": sorted(lean_names),
         "scripts": scripts,
@@ -257,6 +363,12 @@ def main() -> int:
         help="Write the blueprint manifest (labels + leanok + Lean decls + uses + statement hashes) the wiki reads "
         "to resolve claim proof-refs, e.g. --emit-manifest ~/Documents/Notes/blueprint-manifest.json",
     )
+    ap.add_argument(
+        "--require-render",
+        action="store_true",
+        help="Fail (exit 2) unless the pinned pandoc renders every label's markdown fields — "
+        "for CI, where a manifest without transclusion fields must never reach the hub.",
+    )
     args = ap.parse_args()
 
     if hasattr(sys.stdout, "reconfigure"):
@@ -269,12 +381,20 @@ def main() -> int:
     axk = ledger_keys()
 
     if args.emit_manifest:
+        try:
+            manifest = build_manifest(nodes, lean_names, require_render=args.require_render)
+        except RuntimeError as e:
+            print(f"MANIFEST EMIT FAILED: {e}", file=sys.stderr)
+            return 2
         args.emit_manifest.write_text(
-            json.dumps(build_manifest(nodes, lean_names), indent=2, ensure_ascii=False) + "\n",
+            json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
         n_lab = sum(1 for n in nodes if n["label"])
-        print(f"Wrote manifest ({n_lab} labels, {len(lean_names)} Lean decls) → {args.emit_manifest}")
+        n_proof = sum(1 for n in nodes if n["label"] and n["proof"] is not None)
+        rendered = "rendered" if manifest["render"] else "NOT rendered"
+        print(f"Wrote manifest v2 ({n_lab} labels, {n_proof} proofs, {len(lean_names)} Lean decls, "
+              f"markdown {rendered}) → {args.emit_manifest}")
 
     fatal: list[str] = []
     advisory: list[str] = []

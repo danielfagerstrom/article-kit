@@ -60,10 +60,19 @@ mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: not
 
 - **T0 — Policy recorded**  ·  ✅ 2026-07-25 — this item; hub `ARCHITECTURE.md` decision section;
   mathematician charter register bar; `LINKAGE.md` planned-fields note; `/rework-chapter` interim note.
-- **T1 — Emitter: proof + rendered forms.** `check_linkage.py` `build_manifest()` per the design above.
-  Includes the macro-expansion pass and the pandoc version pin.
-- **T2 — Render gate.** The clean-render check in the post-commit hook + CI (fails the manifest job, so
-  a render-breaking node never reaches the hub).
+- **T1 — Emitter: proof + rendered forms.**  ·  ✅ 2026-07-25 — manifest v2 (spec now in
+  `LINKAGE.md` § cross-repo channel): per-label `env`/`title` (split out of the statement, so
+  statement shas moved once), `proof`/`proof_sha`, `statement_md`/`proof_md`/`rendered_sha`;
+  pandoc pinned at 3.10 (`commonmark+tex_math_dollars`), macro expansion via pandoc's
+  `latex_macros` fed `macros.tex`, `\ref{X}` → `` `X` `` code spans; `--require-render` wired
+  into the CI manifest job (pinned deb install). Verified: 48/48 labels + 14 proofs render, no
+  raw-LaTeX residue outside math, byte-deterministic across runs, hub `wiki lint` reads the v2
+  preview cleanly (~11 s per emit).
+- **T2 — Render gate.** The clean-render check as a standing gate (no raw `\command` residue outside
+  math — T1's verification did this as a one-off scan): fails the CI manifest job and warns from the
+  post-commit hook, so a render-breaking node never reaches the hub. (`--require-render` already
+  hard-fails on pandoc absence/mismatch and per-label pandoc errors; the residue check is the
+  remaining piece.)
 - **H3 — `wiki import` + lint rule** (hub-side): `wiki import <label> [--proof]` copies the rendered
   form into a marked block (`<!-- blueprint:<label> sha:<rendered_sha> -->` … `<!-- /blueprint -->`);
   `wiki lint` errors when a block is not byte-equal to the manifest's render (hand-edits inside markers
