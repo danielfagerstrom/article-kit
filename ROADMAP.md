@@ -83,9 +83,13 @@ mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: not
   tests, suite green. Side find: the CI pandoc install was dirtying the workspace → every projected
   manifest stamped `source_dirty` → hub freshness warning; fixed (deb → `$RUNNER_TEMP`) and
   `source_dirty` promoted from stamp-noise to semantic in the diff-guard so the flip projects.
-- **H4 — Pilot: the temporal-behaviour note.** Fresh, and mixes proved props (`prop:ig-mode`,
-  `prop:erlang-mode` — show-proof path) with `\notready` defs (statement-only path). **Livability
-  verdict on the rendering happens here, before any migration.**
+- **H4 — Pilot: the temporal-behaviour note.**  ·  ✅ 2026-07-25 — four mirrors replaced with
+  imports; verdict: **livable, adopt** (the blueprint statements were richer than the drifted
+  mirrors — the mechanism catching exactly what it was built for). Frictions found and fixed
+  hub-side: definition status lines must say "formalized", not "proved"; `blueprint:` frontmatter
+  now derives from claims ∪ imports. **Register-sweep input:** part 05 embeds proposition
+  arguments inside statements — no `proof` environments — so the sweep should split argument from
+  statement there (then imported blocks can show/hide the proof properly).
 - **H5 — Migration.** Replace the §2–§5 chapter notes' mirrored statement blocks with imports; each
   blueprint statement that reads below register becomes a *bounded* rewrite task for the mathematician
   (this is where "be more formal" turns into concrete per-node work). Retire `/rework-chapter` step-1
