@@ -371,9 +371,23 @@ def build_manifest(nodes, lean_names: set[str], require_render: bool = False) ->
                 entry["statement_md"] = render_markdown(n["statement_render_src"], preamble)
                 if n["proof"] is not None:
                     entry["proof_md"] = render_markdown(n["proof_render_src"], preamble)
-                entry["rendered_sha"] = _sha12(
-                    entry["statement_md"] + "\x00" + (entry["proof_md"] or "")
+                # titles are block-header text too — render them when they carry LaTeX
+                # (accents, em-dashes); plain titles pass through without a pandoc call
+                title = n["title"]
+                entry["title_md"] = (
+                    render_markdown(title, preamble)
+                    if title and re.search(r"[\\{}]|--", title) else title
                 )
+                # rendered_sha covers EVERY input of the hub's block derivation (header,
+                # status line, statement, proof) — so any change that alters the derived
+                # block moves the sha, and the hub's lint reads it as *stale* (mechanical
+                # refresh) rather than misclassifying it as a hand-edit. A leanok flip or
+                # a title fix must never look like a violation.
+                entry["rendered_sha"] = _sha12(json.dumps(
+                    [entry["env"], entry["title_md"], entry["status"], entry["ledger"],
+                     entry["lean"], entry["leanok"], entry["notready"],
+                     entry["statement_md"], entry["proof_md"]],
+                    ensure_ascii=False))
                 residue = render_residue(
                     entry["statement_md"] + "\n" + (entry["proof_md"] or "")
                 )
