@@ -20,6 +20,12 @@ name: Docs CI
 # are single-sourced between the two, so a blueprint edit must rebuild the paper); the
 # blueprint build is skipped on paper-only pull requests, but always runs on `main` so
 # the artifacts branch carries a coherent pair built at one sha.
+#
+# The `deploy` job additionally publishes the pair to the Cloudflare Pages project
+# `ssf-docs` (behind Cloudflare Access — one login shared with the hub's Quartz wiki;
+# account-side setup in CLOUD.md § "Private docs site"). On pull requests it runs a
+# dry run only: assemble dist/ and validate it, never deploy. On `main` it FAILS
+# LOUDLY if the Cloudflare secrets are missing (the build/publish jobs stay green).
 
 on:
   push:
@@ -180,3 +186,95 @@ jobs:
           git push --force \
             "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             artifacts
+
+  # Deploy the pair to the gated Cloudflare Pages project `ssf-docs` — the phase-6
+  # private-view channel, one Access login alongside the hub's Quartz wiki. Same
+  # mechanism as the hub's quartz-deploy.yml (npx wrangler@3, same secret names, so the
+  # same values transfer). The job runs on PRs too, but only as a DRY RUN: assemble
+  # dist/ and validate it, never deploy (manifest.yml's philosophy). On `main`, a
+  # missing secret fails this job loudly — designed red until the account-side setup in
+  # CLOUD.md § "Private docs site" is done — while paper/blueprint/publish stay green.
+  deploy:
+    needs: [paper, blueprint]
+    if: ${{ !cancelled() && needs.paper.result == 'success' && needs.blueprint.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the built PDFs
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Assemble dist/ (PDFs + index.html)
+        run: |
+          cd dist
+          mv main.pdf paper.pdf
+          mv print.pdf blueprint.pdf
+          BUILD_DATE="$(date -u +%F)"
+          cat > index.html <<EOF
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta name="robots" content="noindex">
+          <title>Scale-Space Foundations — documents</title>
+          <style>body{font-family:system-ui,sans-serif;max-width:36rem;margin:3rem auto;padding:0 1rem;line-height:1.5}footer{margin-top:2rem;color:#666;font-size:.85rem}</style>
+          </head>
+          <body>
+          <h1>Scale-Space Foundations</h1>
+          <p>CI-built PDFs, latest <code>main</code>:</p>
+          <ul>
+          <li><a href="paper.pdf">paper.pdf</a> — the article (<code>paper/main.tex</code>)</li>
+          <li><a href="blueprint.pdf">blueprint.pdf</a> — the blueprint (<code>blueprint/src/print.tex</code>)</li>
+          </ul>
+          <footer>Built from main @ ${GITHUB_SHA} on ${BUILD_DATE} UTC by docs.yml.</footer>
+          </body>
+          </html>
+          EOF
+
+      - name: Validate dist/
+        run: |
+          for f in dist/paper.pdf dist/blueprint.pdf dist/index.html; do
+            [ -s "$f" ] || { echo "::error::$f is missing or empty"; exit 1; }
+          done
+          for f in dist/paper.pdf dist/blueprint.pdf; do
+            head -c 5 "$f" | grep -q "%PDF-" || { echo "::error::$f does not start with %PDF- — not a PDF"; exit 1; }
+          done
+          grep -q 'href="paper.pdf"' dist/index.html || { echo "::error::index.html lacks the paper.pdf link"; exit 1; }
+          grep -q 'href="blueprint.pdf"' dist/index.html || { echo "::error::index.html lacks the blueprint.pdf link"; exit 1; }
+          grep -q "$GITHUB_SHA" dist/index.html || { echo "::error::index.html lacks the build provenance sha"; exit 1; }
+          echo "dist/ validated:"
+          ls -l dist
+
+      - name: "Dry run complete — not deploying (pull request)"
+        if: github.event_name == 'pull_request'
+        run: echo "dist/ assembled and validated; the deploy itself happens only on main pushes / manual dispatch."
+
+      - name: Require Cloudflare secrets
+        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not configured — cannot deploy the gated docs site. Account-side steps (CLOUD.md § 'Private docs site'): (1) copy the hub's two Cloudflare repo secrets (notes-wiki → Settings → Secrets → Actions; same names, same values, same Cloudflare account) into this repo's Actions secrets; (2) re-run — the first deploy auto-creates the 'ssf-docs' Pages project; (3) IMMEDIATELY gate the assigned pages.dev domain (production AND *.preview subdomains) with a Cloudflare Access application, one-time-PIN policy, same as the wiki app."
+            exit 1
+          fi
+          echo "Cloudflare secrets present."
+
+      - name: Set up Node
+        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Deploy to Cloudflare Pages (ssf-docs)
+        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # idempotent: creates the project on first run, no-op afterwards (hub pattern)
+          npx wrangler@3 pages project create ssf-docs --production-branch=main || true
+          npx wrangler@3 pages deploy dist --project-name=ssf-docs --branch=main --commit-dirty=true

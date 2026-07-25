@@ -117,3 +117,46 @@ account-side credential:
 The workflow fails with an explicit error (never silently skips) if the secret is missing. For the
 security-conscious alternative: a write-enabled **deploy key** on notes-wiki (private half as an SSF
 secret, SSH-based push) scopes even tighter than a fine-grained PAT and never expires silently.
+
+---
+
+## Private docs site — one-time account setup
+
+The `deploy` job in [`.github/workflows/docs.yml`](.github/workflows/docs.yml) publishes the
+CI-built `paper.pdf` + `blueprint.pdf` (plus a minimal `index.html` with build provenance) to the
+**Cloudflare Pages project `ssf-docs`, behind Cloudflare Access** — the same one-login private-view
+channel as the hub's Quartz wiki (`notes-wiki-3go.pages.dev`), same Cloudflare account, same
+mechanism (`npx wrangler@3`). The orphan `artifacts` branch stays as the zero-cost fallback view.
+On pull requests the job only assembles and validates `dist/` (dry run); on `main` pushes and
+manual dispatch it deploys — and **fails loudly until the secrets below exist** (the paper /
+blueprint / artifacts-publish jobs stay green regardless).
+
+**Account-side checklist (I can't do these):**
+
+1. **Repo secrets** (scale-space-foundations → Settings → Secrets and variables → Actions): add
+   **`CLOUDFLARE_API_TOKEN`** and **`CLOUDFLARE_ACCOUNT_ID`** — the *same names and same values*
+   as the hub's (`notes-wiki` repo secrets, created for `quartz-deploy.yml`; see the hub's
+   `CLOUD.md` § "Optional — a gated web read-view": the token has *Cloudflare Pages : Edit*, the
+   Account ID is in the Workers & Pages sidebar). Just copy the two values across.
+2. **Pages project**: the first deploy auto-creates it
+   (`wrangler pages project create ssf-docs --production-branch=main || true`, idempotent — the
+   hub's pattern). If that ever misbehaves, create it by hand: Cloudflare dashboard → Workers &
+   Pages → Create → Pages ("Direct Upload"), name `ssf-docs`, or run the `project create` command
+   locally with the token in the environment. Note the **assigned `pages.dev` subdomain** — it may
+   carry a random suffix if `ssf-docs.pages.dev` is taken (the hub's project got `notes-wiki-3go`).
+3. **Gate it — do this immediately** ⚠️: until Access is on, the site is **public**. In Cloudflare
+   **Zero Trust → Access → Applications**, add a **self-hosted application** covering **both** the
+   production domain and the preview-deployment subdomains of the assigned domain — two entries on
+   the one application:
+   - `<assigned-subdomain>.pages.dev` (production), and
+   - `*.<assigned-subdomain>.pages.dev` (previews — wrangler deploys from any non-`main` branch
+     land on per-deploy subdomains, and an app on the apex alone leaves them open).
+
+   Policy: **allow only your email**, one-time-PIN — identical to the wiki app's policy (you can
+   reuse the same policy/group in Zero Trust rather than re-creating it). Don't share the URL
+   before this is in place.
+
+**Verify:** Actions → *Docs CI* → Run workflow (on `main`) → the `deploy` job passes the secrets
+guard and finishes green → visit `https://<assigned-subdomain>.pages.dev` → Cloudflare Access
+prompts for the email OTP → the index page shows the build sha/date and both `paper.pdf` and
+`blueprint.pdf` links render in the browser (phone included).
