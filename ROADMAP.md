@@ -98,7 +98,12 @@ mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: not
   statement files `\input` by both blueprint and paper (LINKAGE rule 4's strong form). Decide then
   whether article proofs are shared or article-specific.
 - **Ongoing — register sweep.** Blueprint proofs are the proofs of record; per-part editorial pass
-  against the private writing guide, delegable to the mathematician part by part.
+  against the private writing guide, delegable to the mathematician part by part. **Progress:**
+  part 05 ✅ (`14dd291` — proofs split out of statements); parts 02–04 ✅ (`b264205` — statements
+  self-contained, status-annotation content moved into proofs, `\statusA` lines normalized to
+  `\ledger`-first). **Citations:** venue-style prose citations ("IJCV 2005") converted blueprint-wide
+  to the new `\sscite{citekey}` macro (renders `@citekey` in PDF and transcluded blocks — the hub's
+  claim-ref convention, librarian-checkable). Remaining: parts 01, 06–08.
 
 ### 1. Publication-structure template committed  ·  ✅ 2026-07-17
 [`paper/PUBLICATION-TEMPLATE.md`](paper/PUBLICATION-TEMPLATE.md) — the prose-conformance spec (formatting
