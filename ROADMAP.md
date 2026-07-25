@@ -96,8 +96,12 @@ mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: not
   in-prose `\ledger` refs were deleted from rendered text leaving dangling punctuation
   (`normalize_for_render` now expands them; statement shas unmoved by design), and `[A]` nodes'
   generated status lines claimed "proved in Lean" for accepted axioms (manifest now projects
-  `status`/`ledger`; the hub renders "cited interface (ledger …)"). §6–§7 fillers migrate after
-  the parts 06–08 sweep. `/rework-chapter` step-1 mirroring is retired for migrated notes.
+  `status`/`ledger`; the hub renders "cited interface (ledger …)"). **Completed 2026-07-26**: the
+  §6–§7 fillers migrated (family 2 blocks, classification 5; finite-domain a judged no-op — analysis
+  register, drift channel documented note-side) — **30 transcluded blocks across 6 notes** vault-wide.
+  Two further render fixes en route: `title_md` (raw-LaTeX titles) and `rendered_sha` rebased over all
+  block-derivation inputs (a `leanok` flip now reads as stale, never as a hand-edit violation).
+  `/rework-chapter` step-1 mirroring is retired for migrated notes.
 - **T6 — Paper single-sourcing.** The `LINKAGE.md` "larger, separate" item, now load-bearing: per-node
   statement files `\input` by both blueprint and paper (LINKAGE rule 4's strong form). Decide then
   whether article proofs are shared or article-specific.
