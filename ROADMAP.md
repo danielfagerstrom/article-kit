@@ -75,10 +75,14 @@ mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: not
   `blueprint/render-allowlist.txt` (seeded from the full 97-command inventory, all standard).
   Fatal on every `check_linkage.py` run (mathematician ritual, post-commit hook, CI manifest job);
   negative-tested end-to-end. An output-residue scan stays as a belt under `--require-render`.
-- **H3 — `wiki import` + lint rule** (hub-side): `wiki import <label> [--proof]` copies the rendered
-  form into a marked block (`<!-- blueprint:<label> sha:<rendered_sha> -->` … `<!-- /blueprint -->`);
-  `wiki lint` errors when a block is not byte-equal to the manifest's render (hand-edits inside markers
-  are findings) and flags a stale sha when the blueprint moved.
+- **H3 — `wiki import` + lint rule** (hub-side)  ·  ✅ 2026-07-25 — `curator/transclude.py` +
+  lint pass 3c + the `wiki import` verb (print / `--into` replace-or-append / `--refresh` a whole
+  note; marker grammar `<!-- blueprint:<label> v<N> [proof] sha:<12hex> -->`, format-versioned).
+  Lint: hand-edit inside markers = ERROR ("imported mathematics is read-only"), blueprint moved =
+  stale WARNING with the mechanical fix named, unknown label/malformed/unclosed = errors. 17 new
+  tests, suite green. Side find: the CI pandoc install was dirtying the workspace → every projected
+  manifest stamped `source_dirty` → hub freshness warning; fixed (deb → `$RUNNER_TEMP`) and
+  `source_dirty` promoted from stamp-noise to semantic in the diff-guard so the flip projects.
 - **H4 — Pilot: the temporal-behaviour note.** Fresh, and mixes proved props (`prop:ig-mode`,
   `prop:erlang-mode` — show-proof path) with `\notready` defs (statement-only path). **Livability
   verdict on the rendering happens here, before any migration.**
