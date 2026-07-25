@@ -107,7 +107,14 @@ mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: not
   self-contained, status-annotation content moved into proofs, `\statusA` lines normalized to
   `\ledger`-first). **Citations:** venue-style prose citations ("IJCV 2005") converted blueprint-wide
   to the new `\sscite{citekey}` macro (renders `@citekey` in PDF and transcluded blocks — the hub's
-  claim-ref convention, librarian-checkable). Remaining: parts 01, 06–08.
+  claim-ref convention, librarian-checkable). **Parts 01, 06–08 ✅ (`53370ec`)** — 3 new proof
+  environments (`prop:limit-kernel-gaussian` deliberately without proof-`\leanok`: partially-checked
+  node, honesty call; `prop:bessel-kernel`; `thm:receptive-field`), [A] status lines normalized,
+  A11–A14 ledger prose macro-ized. **The sweep is complete — all 8 parts.** Open content findings
+  (frozen-content rule deferred them, recorded in the 2026-07-25 sweep report): `def:point-measurement`
+  references an undefined $M$ (faithfulness gap — needs a content pass); `def:lie-wedge`'s weak-bracket
+  wording is below the standard tangent-cone condition; proof-`\leanok` semantics for partially-checked
+  nodes worth a convention decision.
 
 ### 1. Publication-structure template committed  ·  ✅ 2026-07-17
 [`paper/PUBLICATION-TEMPLATE.md`](paper/PUBLICATION-TEMPLATE.md) — the prose-conformance spec (formatting
