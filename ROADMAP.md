@@ -90,10 +90,14 @@ mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: not
   now derives from claims ∪ imports. **Register-sweep input:** part 05 embeds proposition
   arguments inside statements — no `proof` environments — so the sweep should split argument from
   statement there (then imported blocks can show/hide the proof properly).
-- **H5 — Migration.** Replace the §2–§5 chapter notes' mirrored statement blocks with imports; each
-  blueprint statement that reads below register becomes a *bounded* rewrite task for the mathematician
-  (this is where "be more formal" turns into concrete per-node work). Retire `/rework-chapter` step-1
-  mirroring — the step becomes import + narrative.
+- **H5 — Migration.**  ·  ✅ 2026-07-25 (swept-part scope) — the three §2–§4 chapter notes migrated
+  (19 blocks; with the pilot, 23 transcluded blocks vault-wide); mirrors that had silently drifted
+  or lagged the sweep were replaced wholesale. Surfaced two render defects, both fixed same-day:
+  in-prose `\ledger` refs were deleted from rendered text leaving dangling punctuation
+  (`normalize_for_render` now expands them; statement shas unmoved by design), and `[A]` nodes'
+  generated status lines claimed "proved in Lean" for accepted axioms (manifest now projects
+  `status`/`ledger`; the hub renders "cited interface (ledger …)"). §6–§7 fillers migrate after
+  the parts 06–08 sweep. `/rework-chapter` step-1 mirroring is retired for migrated notes.
 - **T6 — Paper single-sourcing.** The `LINKAGE.md` "larger, separate" item, now load-bearing: per-node
   statement files `\input` by both blueprint and paper (LINKAGE rule 4's strong form). Decide then
   whether article proofs are shared or article-specific.
