@@ -181,6 +181,29 @@ def normalize_statement(body: str) -> str:
     return re.sub(r"\s+", " ", body).strip()
 
 
+def normalize_for_render(body: str) -> str:
+    """The statement/proof source handed to pandoc — normalize_statement's sibling.
+
+    Differs in exactly one way: an *in-prose* ``\\ledger{A2}`` renders as the text
+    "ledger A2" (its PDF macro expansion) instead of being deleted — deletion leaves
+    dangling punctuation in rendered proofs ("taken as an interface (, the Lean …)",
+    found by the H5 migration). Ledger refs on the *status line* still vanish with it
+    (the status-strip below tolerates \\ledger tokens between the \\quads). The sha
+    fields keep using normalize_statement, so this changes rendered output only.
+    """
+    body = re.sub(r"(?<!\\)%[^\n]*", "", body)
+    body = re.sub(r"\\(?:label|lean|uses|notes)\{[^}]*\}", "", body)
+    body = re.sub(
+        r"\\status[TA]\b(?:\s|\\quad\b|\\qquad\b|\\ledger\{[^}]*\})*"
+        r"(?:\\emph\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})?",
+        "",
+        body,
+    )
+    body = re.sub(r"\\(?:statusT|statusA|notready|leanok)\b", "", body)
+    body = re.sub(r"\\ledger\{([^}]*)\}", r"ledger \1", body)
+    return re.sub(r"\s+", " ", body).strip()
+
+
 # a proof environment directly following a statement env (whitespace/comments between);
 # non-greedy to the first \end{proof} — the blueprint does not nest proofs
 PROOF_AHEAD = re.compile(r"(?:\s|%[^\n]*)*\\begin\{proof\}(.*?)\\end\{proof\}", re.S)
@@ -223,8 +246,16 @@ def blueprint_nodes(tex: str):
                 "uses": uses,
                 "leanok": r"\leanok" in body,
                 "notready": r"\notready" in body,
+                # [T]/[A] and the node's ledger refs — projected so the hub's generated
+                # status line can say "cited interface (ledger A3)" instead of the
+                # misleading "proved in Lean" on an accepted axiom (H5 finding)
+                "status": ("T" if r"\statusT" in body
+                           else "A" if r"\statusA" in body else None),
+                "ledger": re.findall(r"\\ledger\{([^}]*)\}", body),
                 "statement": normalize_statement(body),
                 "proof": normalize_statement(pm.group(1)) if pm else None,
+                "statement_render_src": normalize_for_render(body),
+                "proof_render_src": normalize_for_render(pm.group(1)) if pm else None,
             }
         )
     return nodes
@@ -321,6 +352,8 @@ def build_manifest(nodes, lean_names: set[str], require_render: bool = False) ->
             "kind": lab.split(":", 1)[0],
             "env": n["env"],
             "title": n["title"],
+            "status": n["status"],
+            "ledger": n["ledger"],
             "leanok": n["leanok"],
             "notready": n["notready"],
             "lean": n["lean"],
@@ -335,9 +368,9 @@ def build_manifest(nodes, lean_names: set[str], require_render: bool = False) ->
         }
         if rendering:
             try:
-                entry["statement_md"] = render_markdown(n["statement"], preamble)
+                entry["statement_md"] = render_markdown(n["statement_render_src"], preamble)
                 if n["proof"] is not None:
-                    entry["proof_md"] = render_markdown(n["proof"], preamble)
+                    entry["proof_md"] = render_markdown(n["proof_render_src"], preamble)
                 entry["rendered_sha"] = _sha12(
                     entry["statement_md"] + "\x00" + (entry["proof_md"] or "")
                 )
