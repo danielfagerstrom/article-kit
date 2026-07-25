@@ -1,0 +1,112 @@
+# Render-safe LaTeX commands for blueprint statements and proofs (ROADMAP #7 T2).
+#
+# The transclusion pipeline (LINKAGE.md § cross-repo channel) renders statement/proof
+# source to markdown with a pinned pandoc. Pandoc SILENTLY DROPS unknown commands
+# outside math — argument and all — and unknown commands inside math reach the reader
+# as MathJax errors. So the clean-render gate is source-side: every \command used in a
+# statement or proof must be either defined in macros.tex (expanded at render) or
+# listed here (vetted standard LaTeX that pandoc/MathJax handle natively).
+# check_linkage.py enforces this on every run; it fails the check, the manifest CI,
+# and the mathematician's pre-report ritual.
+#
+# To use a new command: prefer adding a \newcommand to macros.tex (it will expand);
+# only vet it here if it is standard LaTeX/AMS that pandoc and MathJax both know.
+# One command per line, no backslash. Seeded 2026-07-25 from the full blueprint
+# inventory (97 commands, all standard).
+Bigl
+Bigr
+Delta
+Gamma
+Lambda
+Leftrightarrow
+Longleftrightarrow
+Omega
+Phi
+Pr
+Psi
+Rightarrow
+S
+Sigma
+alpha
+ast
+begin
+beta
+bigl
+bigr
+cdot
+circ
+cosh
+cup
+delta
+dots
+ell
+emph
+end
+exp
+frac
+gamma
+ge
+in
+infty
+int
+item
+lambda
+langle
+le
+leftrightarrow
+lim
+log
+mapsto
+mathbb
+mathbf
+mathcal
+mathfrak
+mathrm
+mathsf
+max
+min
+mu
+nabla
+ne
+neq
+ni
+nu
+omega
+operatorname
+oplus
+overline
+partial
+phi
+pi
+prod
+propto
+psi
+qquad
+quad
+rangle
+ref
+sigma
+sim
+sin
+sinh
+sqrt
+stackrel
+subset
+subseteq
+sum
+tau
+text
+textbf
+textstyle
+texttt
+tfrac
+theta
+tilde
+times
+to
+varphi
+verb
+widehat
+widetilde
+xi
+xrightarrow

@@ -68,11 +68,13 @@ mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: not
   into the CI manifest job (pinned deb install). Verified: 48/48 labels + 14 proofs render, no
   raw-LaTeX residue outside math, byte-deterministic across runs, hub `wiki lint` reads the v2
   preview cleanly (~11 s per emit).
-- **T2 — Render gate.** The clean-render check as a standing gate (no raw `\command` residue outside
-  math — T1's verification did this as a one-off scan): fails the CI manifest job and warns from the
-  post-commit hook, so a render-breaking node never reaches the hub. (`--require-render` already
-  hard-fails on pandoc absence/mismatch and per-label pandoc errors; the residue check is the
-  remaining piece.)
+- **T2 — Render gate.**  ·  ✅ 2026-07-25 — redesigned **source-side** during the build: pandoc
+  turned out to *silently drop* unknown commands (argument and all), so output-residue checking
+  cannot catch them — the failure mode is invisible content loss. The shipped gate is checker
+  check 4: every `\command` in a statement/proof must be in `macros.tex` or vetted in
+  `blueprint/render-allowlist.txt` (seeded from the full 97-command inventory, all standard).
+  Fatal on every `check_linkage.py` run (mathematician ritual, post-commit hook, CI manifest job);
+  negative-tested end-to-end. An output-residue scan stays as a belt under `--require-render`.
 - **H3 — `wiki import` + lint rule** (hub-side): `wiki import <label> [--proof]` copies the rendered
   form into a marked block (`<!-- blueprint:<label> sha:<rendered_sha> -->` … `<!-- /blueprint -->`);
   `wiki lint` errors when a block is not byte-equal to the manifest's render (hand-edits inside markers

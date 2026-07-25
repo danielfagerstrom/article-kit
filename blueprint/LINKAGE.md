@@ -143,8 +143,15 @@ contract as the librarian's `library.json`: **we are the single writer, the wiki
   byte-compares, so **the pandoc version is pinned in the emitter and installed pinned in CI** —
   never `apt install pandoc`. Degrade path: no pandoc / wrong version → the manifest emits without
   rendered fields and warns; `--require-render` (used by the CI job, the hub copy's single writer)
-  turns that or any per-label render failure into a hard error. The finer clean-render gate (no raw
-  `\command` residue outside math) is T2.
+  turns that or any per-label render failure into a hard error. The **clean-render gate** (T2,
+  shipped same day) is *source-side* — check 4 of the checker, run on every invocation: each
+  `\command` in a statement/proof must be defined in `macros.tex` (it expands at render) or vetted in
+  [`render-allowlist.txt`](render-allowlist.txt) (standard LaTeX pandoc/MathJax know natively).
+  Source-side because pandoc **silently drops** unknown commands — argument and all — so output-side
+  residue checking cannot catch them; an output residue scan remains as a belt under
+  `--require-render`. The gate fails the plain check (the mathematician's pre-report ritual), the
+  post-commit preview hook (warning), and the CI manifest job — a render-breaking node fails at
+  commit, never at import.
 
 **In — demand (`demand`; the hub half shipped 2026-07-16).** The inverse is a **pull, not a file we
 receive**: when planning proofs, run `wiki demands --json` (with `$WIKI_VAULT` pointing at the Notes

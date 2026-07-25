@@ -10,6 +10,9 @@ script verifies the edges that live *inside this repository*:
     1. every \\leanok node's \\lean{Decl} names a declaration that exists in Formalization/
     2. every \\ledger{AXX} (and legacy "ledger AXX" prose) resolves to an AXIOMS.md entry
     3. every paper "% shared with blueprint <label>" names a real blueprint statement label
+    4. every \\command in a statement/proof is render-safe: defined in macros.tex or vetted
+       in blueprint/render-allowlist.txt (the clean-render gate — pandoc silently DROPS
+       unknown commands, argument and all, so this must be caught source-side)
 
   ADVISORY (reported, non-fatal)
     - a *labelled* paper statement that shares a blueprint node but uses a different label
@@ -104,6 +107,39 @@ def pandoc_version() -> str | None:
         return m.group(1) if m else None
     except (OSError, subprocess.SubprocessError):
         return None
+
+
+ALLOWLIST = REPO / "blueprint" / "render-allowlist.txt"
+
+
+def render_safe_commands() -> set[str]:
+    """Commands the render pipeline handles: macros.tex definitions + the vetted allowlist."""
+    defined = set(re.findall(r"\\(?:new|provide|renew)command\{?\\([A-Za-z]+)", read(MACROS)))
+    vetted = {
+        line.strip()
+        for line in read(ALLOWLIST).splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    return defined | vetted
+
+
+def unknown_commands(src: str, known: set[str]) -> list[str]:
+    """Commands in normalized statement/proof source the pipeline cannot render (gate 4)."""
+    return sorted(set(re.findall(r"\\([A-Za-z]+)", src)) - known)
+
+
+# math ($$…$$ then $…$) and code spans — regions where backslash commands are legitimate
+_MATH_OR_CODE = re.compile(r"\$\$.*?\$\$|\$[^$\n]*?\$|`[^`\n]*`", re.S)
+
+
+def render_residue(md: str) -> list[str]:
+    """Raw LaTeX commands surviving outside math/code spans — the clean-render gate (T2).
+
+    The preamble expands every custom macro and pandoc converts every standard construct,
+    so a `\\command` in rendered prose means a node uses something the pipeline does not
+    handle — it must fail CI (via --require-render) rather than reach the hub, where the
+    transcluded block would show literal LaTeX to a reader."""
+    return sorted(set(re.findall(r"\\[A-Za-z]+", _MATH_OR_CODE.sub(" ", md))))
 
 
 def render_markdown(src: str, preamble: str) -> str:
@@ -305,6 +341,13 @@ def build_manifest(nodes, lean_names: set[str], require_render: bool = False) ->
                 entry["rendered_sha"] = _sha12(
                     entry["statement_md"] + "\x00" + (entry["proof_md"] or "")
                 )
+                residue = render_residue(
+                    entry["statement_md"] + "\n" + (entry["proof_md"] or "")
+                )
+                if residue:
+                    render_errors.append(
+                        f"{lab}: raw LaTeX outside math/code: {', '.join(residue)}"
+                    )
             except RuntimeError as e:
                 render_errors.append(f"{lab}: {e}")
         labels[lab] = entry
@@ -412,6 +455,18 @@ def main() -> int:
             if last not in lean_names:
                 fatal.append(
                     f"[lean]   {n['label']}: \\lean{{{d}}} not declared in {LEAN_DIR.name}/"
+                )
+
+    # 4. the clean-render gate: every command in a statement/proof is render-safe
+    known = render_safe_commands()
+    for n in nodes:
+        for part, src in (("statement", n["statement"]), ("proof", n["proof"])):
+            if not src:
+                continue
+            for c in unknown_commands(src, known):
+                fatal.append(
+                    f"[render] {n['label'] or n['env']}: \\{c} in {part} is not render-safe "
+                    f"— add a \\newcommand to macros.tex or vet it in {ALLOWLIST.name}"
                 )
 
     # 2. ledger refs resolve
