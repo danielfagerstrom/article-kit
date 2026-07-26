@@ -114,11 +114,9 @@ mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: not
   claim-ref convention, librarian-checkable). **Parts 01, 06–08 ✅ (`53370ec`)** — 3 new proof
   environments (`prop:limit-kernel-gaussian` deliberately without proof-`\leanok`: partially-checked
   node, honesty call; `prop:bessel-kernel`; `thm:receptive-field`), [A] status lines normalized,
-  A11–A14 ledger prose macro-ized. **The sweep is complete — all 8 parts.** Open content findings
-  (frozen-content rule deferred them, recorded in the 2026-07-25 sweep report): `def:point-measurement`
-  references an undefined $M$ (faithfulness gap — needs a content pass); `def:lie-wedge`'s weak-bracket
-  wording is below the standard tangent-cone condition; proof-`\leanok` semantics for partially-checked
-  nodes worth a convention decision.
+  A11–A14 ledger prose macro-ized. **The sweep is complete — all 8 parts.** The content findings the
+  frozen-content rule deferred (undefined $M$ in `def:point-measurement`, `def:lie-wedge` wording,
+  proof-`\leanok` semantics, …) are now filed as inbound requests in [`WISHLIST.md`](WISHLIST.md).
 
 ### 1. Publication-structure template committed  ·  ✅ 2026-07-17
 [`paper/PUBLICATION-TEMPLATE.md`](paper/PUBLICATION-TEMPLATE.md) — the prose-conformance spec (formatting
@@ -254,6 +252,12 @@ category deliberately (`eess.IV` / `cs.CV` / `math.NA`). `sn-jnl.cls` alignment 
 submission actually follows the preprint.
 
 ---
+
+## Wishes from other members
+
+See [`WISHLIST.md`](WISHLIST.md) for blueprint/Lean/manifest requests other constellation members
+have filed *to this repo*; triage into the tiers above (infrastructure) or the proof/blueprint
+backlog (content). Same pattern as the hub's and the librarian's wishlists.
 
 ## The LLM ceiling lives partly elsewhere
 
