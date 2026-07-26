@@ -27,25 +27,39 @@ A section may be drafted as prose only when every applicable box is checked.
 *owner: `blueprint/src/content.tex` + `blueprint/AXIOMS.md`*
 - [ ] Every theorem/definition the section will assert is a blueprint node, tagged **[T]** or **[A]**.
 - [ ] Each **[T]** node is `\leanok` (proved), or explicitly listed as frontier (item 6).
-- [ ] Each **[A]** node is grounded in `AXIOMS.md` (named theorem + page), or flagged un-pinned.
+- [ ] Each **[A]** node is grounded in `AXIOMS.md` (named theorem, page anchor, citekey), or flagged
+      un-pinned. That entry is what the hub's `cited` grade rests on (item 3).
 
 ### 3. Content — the knowledge is grounded and mature
 *owner: the wiki content note (e.g. `Notes/wiki/covariant-memory-evolution.md`) + its quality axes*
 - [ ] A content note carries the actual argument (the "what"), with references and Lean pointers.
-- [ ] The note clears the **gate triple `(maturity: evergreen, confidence: verified, lifecycle: active)`**
+- [ ] The note clears the **gate triple `(maturity: evergreen, confidence: ≥ cited, lifecycle: active)`**
       — or the shortfall *is* the section's declared frontier (item 6).
 - [ ] Open questions / contradictions in the note are resolved or explicitly parked.
 
 > **On the triple.** Earlier drafts of this gate asked for "maturity at or above `grounded`". There is
 > no such level: `grounded` was this repo's invention, and it collapsed three independent things into
 > one word. The wiki's schema is deliberately **three orthogonal axes** — `maturity` (seed → budding →
-> evergreen) is how worked-out the prose is, `confidence` (speculative → probable → verified) is how
-> sure it is correct, `lifecycle` (active → stale → superseded) is freshness. A note can honestly be
-> `evergreen` yet only `probable`; that is a finished write-up of an open question, not a defect, and a
-> single "grounded" reading cannot express it. The hub owns this schema
+> evergreen) is how worked-out the prose is, `confidence` (speculative → probable → cited → verified)
+> is how sure it is correct, `lifecycle` (active → stale → superseded) is freshness. A note can
+> honestly be `evergreen` yet only `probable`; that is a finished write-up of an open question, not a
+> defect, and a single "grounded" reading cannot express it. The hub owns this schema
 > ([`Notes/CLAIMS.md`](file:///C:/Users/danie/Documents/Notes/CLAIMS.md)); this gate consumes it and
 > must not mint levels of its own. `wiki rollup` already aggregates each slot's notes weakest-link
 > against exactly this triple.
+>
+> **On the confidence floor.** The confidence leg is a **floor, not an equality** (hub ROADMAP #16,
+> 2026-07-26): a `cited` note clears the gate and a `verified` note exceeds it. `cited` is the grade
+> for a claim resting on an **[A]** interface — a classical result this repo pins in `AXIOMS.md` with
+> a page anchor and a citekey, and that Lean *accepts* rather than proves. Checking such a result
+> against the literature is **this repo's** job and `AXIOMS.md` is the record of it; once an entry is
+> approved there the hub does not second-guess it, and there is nothing it could do to fix it if it
+> did. Ranking `cited` below `verified` keeps [A] and [T] visibly different — they are genuinely
+> different things — while accepting it at the gate stops an approved axiom from blocking a section
+> that legitimately depends on classical analysis. Note that `\leanok`/`\notready` are **not**
+> consulted on an [A] node: there `\notready` means "never a Lean target", which is the expected state
+> for a cited classical result, not a shortfall. An **un-pinned** [A] is the different case — no ledger
+> entry, so nothing to trust — and it stays frontier (item 6).
 
 ### 4. Illustration & numerics — the story is visible and checked
 *owner: `scripts/` + the content note*
