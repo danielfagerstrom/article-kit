@@ -13,6 +13,10 @@ script verifies the edges that live *inside this repository*:
     4. every \\command in a statement/proof is render-safe: defined in macros.tex or vetted
        in blueprint/render-allowlist.txt (the clean-render gate — pandoc silently DROPS
        unknown commands, argument and all, so this must be caught source-side)
+    5. every statement node declares \\statusT or \\statusA (the hub's confidence grading
+       keys on the projected status; WISHLIST 2026-07-26)
+    6. every \\ledger-referenced AXIOMS.md entry carries a **Cite:** line (the manifest
+       projects each entry's primary citekey + page anchor; WISHLIST 2026-07-26)
 
   ADVISORY (reported, non-fatal)
     - a *labelled* paper statement that shares a blueprint node but uses a different label
@@ -284,6 +288,27 @@ def ledger_keys() -> set[str]:
     return set(re.findall(r"(?m)^##\s*(A\d+)\b", read(AXIOMS)))
 
 
+def ledger_cites() -> dict[str, dict | None]:
+    """AXX -> {citekey, anchor} from each entry's ``**Cite:**`` line.
+
+    The line's grammar (AXIOMS.md, backfilled 2026-07-26): ``**Cite:** @citekey — anchor``,
+    optionally more ``·``-separated segments (corroborations); the FIRST segment is the
+    primary and is what the manifest projects. ``**Cite:** — pending (…)`` yields null
+    citekey/anchor; a missing line yields None (fatal check 6 flags it)."""
+    out: dict[str, dict | None] = {}
+    for m in re.finditer(r"(?ms)^##\s*(A\d+)\b(.*?)(?=^##\s*A\d+\b|\Z)", read(AXIOMS)):
+        aid, body = m.group(1), m.group(2)
+        cm = re.search(r"\*\*Cite:\*\*\s*(.+)", body)
+        if not cm:
+            out[aid] = None
+            continue
+        first = cm.group(1).split("·")[0].strip()
+        km = re.match(r"@([\w:-]+)\s*[—–-]+\s*(.+)", first)
+        out[aid] = ({"citekey": km.group(1), "anchor": km.group(2).strip()} if km
+                    else {"citekey": None, "anchor": None})
+    return out
+
+
 def _git_provenance() -> dict:
     """The freshness stamp for the manifest: the short HEAD SHA and whether the working tree was
     dirty at emit time. Best-effort — degrades to a null commit if git is unavailable, so a
@@ -342,6 +367,7 @@ def build_manifest(nodes, lean_names: set[str], require_render: bool = False) ->
             raise RuntimeError(f"--require-render: {msg}")
         print(f"  warning: {msg} — manifest emitted without rendered fields", file=sys.stderr)
     preamble = read(MACROS) if rendering else ""
+    cites = ledger_cites()
 
     labels: dict[str, dict] = {}
     for n in nodes:
@@ -353,7 +379,13 @@ def build_manifest(nodes, lean_names: set[str], require_render: bool = False) ->
             "env": n["env"],
             "title": n["title"],
             "status": n["status"],
-            "ledger": n["ledger"],
+            # each ledger ref carries the entry's primary citation (WISHLIST 2026-07-26),
+            # so the hub can cross-check the citekey against library.json and show the
+            # source in claim chips / block status lines
+            "ledger": [
+                {"id": a, **(cites.get(a) or {"citekey": None, "anchor": None})}
+                for a in n["ledger"]
+            ],
             "leanok": n["leanok"],
             "notready": n["notready"],
             "lean": n["lean"],
@@ -517,9 +549,21 @@ def main() -> int:
                 )
 
     # 2. ledger refs resolve
+    cites = ledger_cites()
     for a in sorted(ledger_refs(tex)):
         if a not in axk:
             fatal.append(f"[ledger] {a}: no '## {a}' entry in AXIOMS.md")
+        elif cites.get(a) is None:
+            # 6. the manifest projects each entry's primary citation — a referenced entry
+            # without a **Cite:** line would emit an unverifiable bare id (WISHLIST 2026-07-26)
+            fatal.append(f"[ledger] {a}: no '**Cite:**' line in AXIOMS.md "
+                         "(format: '**Cite:** @citekey — anchor')")
+
+    # 5. every node declares its [T]/[A] status — the hub's grading keys on it
+    for n in nodes:
+        if n["label"] and n["status"] is None:
+            fatal.append(f"[status] {n['label']}: no \\statusT/\\statusA — every statement "
+                         "node must declare one (WISHLIST 2026-07-26)")
 
     # 3. paper shared statements
     for fn, key, nearest in paper_shared():
