@@ -50,6 +50,7 @@ in
 infty
 int
 item
+kappa
 lambda
 langle
 le
