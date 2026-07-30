@@ -73,9 +73,10 @@ the kickoff prompt below to start; the rest is a suggested tour and what to scru
   Is that faithful? Note the *uniqueness* claims (Hille–Phillips abstract Cauchy problem) are **not**
   formalised — deferred with `thm:generation`.
 - **Are the `[A]` axioms faithful to the cited sources?** `AXIOMS.md` ties each to a named
-  theorem/page (A5→Feller §XIII.4 p.440; A6/A9→Samko §7.2; A7→Samko §2 (2.29); A8→Feller §XV.3 as the
-  local case of A1; A10→Samko §9.3 tables). Two flagged residuals: **A10**'s exponential-eigenvalue
-  formula is OCR-garbled in the scan (location + `Re λ > 0` confirmed, `λ^β` glyph not); and A3's
+  theorem/page (A5→Feller §XIII.4 p.440; A6/A9→Samko §7.2; A7→Samko §2 (2.29); A8→Feller §VI.1
+  pp. 170–171 as the local case of A1; A10→Samko §9.3 tables). Two flagged residuals: **A10**'s
+  exponential-eigenvalue formula is OCR-garbled in the scan (location + `Re λ > 0` confirmed,
+  `λ^β` glyph not); and A3's
   asymmetric range.
 - **Are the theorem *statements* faithful to the paper**, not just the proofs? Cross-check against the
   blueprint (`../blueprint/src/content.tex`, the `\lean{}` tags — `thm:galilean-nonexistence` and
