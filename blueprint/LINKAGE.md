@@ -57,6 +57,28 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script.)
+6. **Every statement node declares `\statusT` or `\statusA`.** The hub's confidence grading keys on the
+   projected status, so a node without one is a node the hub cannot grade.
+7. **Every `[A]` node declares its assignment** (ADR-0011, 2026-07-30): a `\textbf{Assignment.}` clause
+   inside the node's status annotation, saying **which ledger entry is answerable for which clause of this
+   statement** and **what it does not carry** — the parts held as `[T]`, and the parts deliberately outside
+   the trust base. The clause must name at least one entry. It lives in the status annotation because
+   `normalize_statement` strips that region, so writing or revising a declaration never moves a
+   `statement_sha` and never disturbs a transcluded block.
+
+   Two conventions make the projection honest. Inside the clause, use `\ledger{AXX}` only for an entry that
+   genuinely carries part of *this* node's statement — the manifest projects every `\ledger{}` in the node
+   body as one of its sources (de-duplicated, first-mention order), so a macro'd cross-reference to an entry
+   the node merely mentions would show up in the hub as a source it does not have. Name such an entry in
+   plain text ("A18's", "not A1"). And a part carried as `[T]` needs a **proof of record in the blueprint**,
+   not a promise: the blueprint is the text of record, so "elementary, not formalised" is a proof debt only
+   when the elementary proof is written down.
+
+   The rationale is ADR-0010's: an `[A]` statement may say more than its citation, provided every part is
+   either cited with a page anchor or carried as `[T]`; what is forbidden is an *unassigned* part, ours and
+   unproved, riding on the `[A]` grade. Three such parts were found by hand in 2026-07 and none by any
+   automated control. A checker can require that the judgement be written; it cannot make it, and it cannot
+   tell a wrong declaration from a right one. What it removes is the silent case.
 
 ## The checker
 
@@ -65,8 +87,11 @@ It reads `content.tex` and inlines its `\input{parts/...}` includes, so the spli
 It enforces the **in-repo** edges and fails (exit 1) on:
 
 - a `\leanok` node whose `\lean{Decl}` is not declared in `Formalization/`;
-- a `\ledger{AXX}` / "ledger AXX" with no `## AXX` entry in `AXIOMS.md`;
-- a paper `% shared with blueprint <label>` naming a label the blueprint does not have.
+- a `\ledger{AXX}` / "ledger AXX" with no `## AXX` entry in `AXIOMS.md`, or an entry with no `**Cite:**` line;
+- a paper `% shared with blueprint <label>` naming a label the blueprint does not have;
+- a `\command` in a statement or proof that the render pipeline cannot handle (the clean-render gate);
+- a statement node with no `\statusT` / `\statusA`;
+- a `\statusA` node with no `\textbf{Assignment.}` clause, or whose clause names no ledger entry (rule 7).
 
 It also prints **advisories** (non-fatal): a paper shared statement whose own label differs from the
 blueprint key; a `\leanok` node with no `\lean{}`; a node marked both `\leanok` and `\notready`.

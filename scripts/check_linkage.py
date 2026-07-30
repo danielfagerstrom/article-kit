@@ -17,6 +17,8 @@ script verifies the edges that live *inside this repository*:
        keys on the projected status; WISHLIST 2026-07-26)
     6. every \\ledger-referenced AXIOMS.md entry carries a **Cite:** line (the manifest
        projects each entry's primary citekey + page anchor; WISHLIST 2026-07-26)
+    7. every \\statusA node declares its assignment -- a "\\textbf{Assignment.}" clause in
+       its status annotation naming at least one ledger entry (ADR-0011, 2026-07-30)
 
   ADVISORY (reported, non-fatal)
     - a *labelled* paper statement that shares a blueprint node but uses a different label
@@ -208,6 +210,25 @@ def normalize_for_render(body: str) -> str:
     return re.sub(r"\s+", " ", body).strip()
 
 
+# The status annotation itself -- the `\emph{...}` that follows \statusT/\statusA (with
+# \quad spacing and \ledger{} refs tolerated between). normalize_statement DELETES this
+# region, so a status edit never moves a statement sha; check 7 needs it kept, because
+# ADR-0011 puts the assignment declaration here. Same brace balancing as the strip.
+STATUS_ANNOTATION_RE = re.compile(
+    r"\\status[TA]\b(?:\s|\\quad\b|\\qquad\b|\\ledger\{[^}]*\})*"
+    r"(\\emph\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})?"
+)
+# ADR-0011: an [A] node declares, in that annotation, what its citation carries and what
+# it does not. The marker is fixed so the checker can find it; the clause after it must
+# name at least one ledger entry, since a declaration that names nothing declares nothing.
+ASSIGNMENT_MARKER = r"\textbf{Assignment.}"
+
+
+def status_annotation(body: str) -> str:
+    m = STATUS_ANNOTATION_RE.search(body)
+    return (m.group(1) or "") if m else ""
+
+
 # a proof environment directly following a statement env (whitespace/comments between);
 # non-greedy to the first \end{proof} — the blueprint does not nest proofs
 PROOF_AHEAD = re.compile(r"(?:\s|%[^\n]*)*\\begin\{proof\}(.*?)\\end\{proof\}", re.S)
@@ -255,9 +276,11 @@ def blueprint_nodes(tex: str):
                 # misleading "proved in Lean" on an accepted axiom (H5 finding)
                 "status": ("T" if r"\statusT" in body
                            else "A" if r"\statusA" in body else None),
-                # de-duplicated, first-mention order: a node's \ledger{} now appears twice
-                # when the Assignment clause names the entry it is talking about, and the
-                # hub projects this list as the node's sources, where a repeat is noise.
+                "status_note": status_annotation(body),
+                # de-duplicated, first-mention order: a node's \ledger{} may now appear
+                # twice — once on the status line, once inside the Assignment clause that
+                # says what that entry carries (LINKAGE.md rule 7) — and the hub projects
+                # this list as the node's sources, where a repeat is noise.
                 "ledger": list(dict.fromkeys(re.findall(r"\\ledger\{([^}]*)\}", body))),
                 "statement": normalize_statement(body),
                 "proof": normalize_statement(pm.group(1)) if pm else None,
@@ -567,6 +590,28 @@ def main() -> int:
         if n["label"] and n["status"] is None:
             fatal.append(f"[status] {n['label']}: no \\statusT/\\statusA — every statement "
                          "node must declare one (WISHLIST 2026-07-26)")
+
+    # 7. every [A] node declares its assignment (ADR-0011, hub adr/0011). The checker can
+    # require that the judgement be written; it cannot make it, and it cannot tell a wrong
+    # declaration from a right one. What it removes is the silent case -- an [A] statement
+    # whose split between citation and [T] exists only in someone's head, which is how all
+    # three defects of the 2026-07 ledger passes survived.
+    for n in nodes:
+        if n["status"] != "A" or not n["label"]:
+            continue
+        note = n["status_note"]
+        head, _, clause = note.partition(ASSIGNMENT_MARKER)
+        if not _:
+            fatal.append(
+                f"[assign] {n['label']}: [A] node with no '{ASSIGNMENT_MARKER}' clause in its "
+                "status annotation -- say what the citation carries and what it does not "
+                "(ADR-0011; blueprint/LINKAGE.md rule 7)"
+            )
+        elif not re.search(r"A\d+", clause):
+            fatal.append(
+                f"[assign] {n['label']}: the Assignment clause names no ledger entry -- it must "
+                "say which entry carries which part of this statement (ADR-0011)"
+            )
 
     # 3. paper shared statements
     for fn, key, nearest in paper_shared():
