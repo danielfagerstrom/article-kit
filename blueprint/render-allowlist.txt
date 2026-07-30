@@ -35,6 +35,7 @@ bigl
 bigr
 cdot
 circ
+cos
 cosh
 cup
 delta
