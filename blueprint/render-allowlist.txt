@@ -79,6 +79,7 @@ overline
 partial
 phi
 pi
+pm
 prod
 propto
 psi

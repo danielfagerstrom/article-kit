@@ -255,7 +255,10 @@ def blueprint_nodes(tex: str):
                 # misleading "proved in Lean" on an accepted axiom (H5 finding)
                 "status": ("T" if r"\statusT" in body
                            else "A" if r"\statusA" in body else None),
-                "ledger": re.findall(r"\\ledger\{([^}]*)\}", body),
+                # de-duplicated, first-mention order: a node's \ledger{} now appears twice
+                # when the Assignment clause names the entry it is talking about, and the
+                # hub projects this list as the node's sources, where a repeat is noise.
+                "ledger": list(dict.fromkeys(re.findall(r"\\ledger\{([^}]*)\}", body))),
                 "statement": normalize_statement(body),
                 "proof": normalize_statement(pm.group(1)) if pm else None,
                 "statement_render_src": normalize_for_render(body),
