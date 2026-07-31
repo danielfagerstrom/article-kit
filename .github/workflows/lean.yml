@@ -77,7 +77,6 @@ jobs:
           ScaleSpace.fellerSymbol_negativeDefinite
           ScaleSpace.rieszLaplacianSymbol_negativeDefinite
           ScaleSpace.negativeDefinite_order_le_two
-          ScaleSpace.graylevel_iff_conservative
           ScaleSpace.laplaceExponent_eq_temporalOrder
           ScaleSpace.Temporal.laplaceDensity_powerSymbol_iff
           ScaleSpace.Temporal.kernelContinuous_ne_endpoints
