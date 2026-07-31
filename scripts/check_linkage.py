@@ -21,7 +21,9 @@ script verifies the edges that live *inside this repository*:
        its status annotation naming at least one ledger entry (ADR-0011, 2026-07-30)
     8. no \\leanok node reaches, through the transitive \\uses closure, a [T] statement node
        that is proved nowhere -- neither \\leanok nor carrying a blueprint proof of record
-       (the dependency invariant; [A] nodes and definitions are exempt)
+       (the dependency invariant; [A] nodes and definitions are exempt as targets, but the
+       fatal walk does traverse *through* [A] nodes: an [A] node's own statement may not be
+       phrased in terms of an unproved one either)
 
   ADVISORY (reported, non-fatal)
     - a *labelled* paper statement that shares a blueprint node but uses a different label
@@ -31,7 +33,9 @@ script verifies the edges that live *inside this repository*:
     - a \\leanok node with no \\lean{}, or a node marked both \\leanok and \\notready
     - a statement reached by a \\leanok node that is proved on paper but not in Lean: a
       formalisation debt (permitted -- ADR-0010 rule 2), and the list to read when choosing
-      what to formalise next
+      what to formalise next. Its dependent count stops at [A] nodes, unlike the fatal walk
+      above -- a node that reaches the statement only through a cited interface would gain
+      nothing from formalising it -- and both counts are printed
 
 The wiki edge (\\notes{slug} <-> a Notes content note) is cross-repo; it is checked
 only when --wiki PATH is given.
@@ -323,6 +327,20 @@ def blueprint_nodes(tex: str):
 # What the checker cannot do is judge whether a proof of record is a real proof; that is the
 # blueprint's register rule ("see Lean" is not a proof), enforced by review. It prints the
 # proof's size so a stub is visible in the advisory.
+#
+# The two walks differ, on purpose (2026-07-31). The FATAL walk traverses *through* [A] nodes:
+# it is the strictly stronger reading, and it catches the case where an [A] node's own
+# STATEMENT is phrased in terms of an unproved node. Not hypothetical -- [A] nodes do \uses our
+# own nodes (pre-split thm:covariant-lamperti: \uses{def:covariant-memory,thm:memory-family}),
+# and the A15 split happened because that node had absorbed an unproved clause of ours.
+# The ADVISORY walk stops at [A]. It answers a different question -- "which proved nodes would
+# gain if this statement were formalised?" -- and a node that reaches the statement only
+# through an [A] interface would gain nothing: its trust already passes through the ledger at
+# that point, and whether that is sound is AXIOMS.md's review, not a formalisation task. So
+# counting it inflates the number and points formalisation effort at the wrong place. Today:
+# 10 direct dependents on prop:conservative, 16 through [A] -- six of them reach it only behind
+# prop:memory-positivity-cone (\ledger{A18}). Both numbers are printed, because the gap is
+# itself informative: it says how much of the debt is already covered by an axiom.
 
 STMT_KINDS = ("thm", "prop", "lem", "cor")
 
@@ -360,17 +378,28 @@ def is_paper_proved_statement(label: str, node: dict) -> bool:
     )
 
 
-def uses_paths(start: str, by_label: dict[str, dict]) -> dict[str, list[str]]:
+def uses_paths(
+    start: str, by_label: dict[str, dict], stop_at_axiom: bool = False
+) -> dict[str, list[str]]:
     """Shortest \\uses path from `start` to each label transitively reachable from it.
 
     Breadth-first, so the reported path is a shortest one; the visited set makes the walk
     terminate whatever the edges do. The blueprint DAG has no cycles today, but a naive
-    recursion would hang rather than fail on the day one is introduced by mistake."""
+    recursion would hang rather than fail on the day one is introduced by mistake.
+
+    `stop_at_axiom` closes the walk at the trust boundary: an `[A]` node reached along the
+    way is recorded but not expanded, so the result holds exactly what `start` depends on
+    *ahead of* the ledger. `start` itself is expanded whatever its status — an `[A]` node's
+    own `\\uses` are the labels its statement is phrased in terms of, which is a real
+    dependency of that node even though nothing above it inherits it. See the two-walk note
+    at the check-8 block below, and blueprint/LINKAGE.md rule 8."""
     paths: dict[str, list[str]] = {}
     seen = {start}
     queue = deque([start])
     while queue:
         cur = queue.popleft()
+        if stop_at_axiom and cur != start and by_label.get(cur, {}).get("status") == "A":
+            continue
         for nxt in by_label.get(cur, {}).get("uses", []):
             if nxt in seen:
                 continue
@@ -711,9 +740,12 @@ def main() -> int:
     by_label = {n["label"]: n for n in nodes if n["label"]}
     unproved = {lab for lab, n in by_label.items() if is_unproved_statement(lab, n)}
     on_paper = {lab for lab, n in by_label.items() if is_paper_proved_statement(lab, n)}
-    # target -> the \leanok nodes reaching it, and a shortest path to it
+    # target -> the \leanok nodes reaching it, and a shortest path to it. The fatal buckets
+    # come from the through-[A] walk; `direct_on_paper` repeats the walk with the trust
+    # boundary closed, giving the advisory's headline count (see the two-walk note above).
     reached_unproved: dict[str, tuple[list[str], list[str]]] = {}
     reached_on_paper: dict[str, tuple[list[str], list[str]]] = {}
+    direct_on_paper: dict[str, list[str]] = {}
     for n in sorted(nodes, key=lambda n: n["label"] or ""):
         if not n["leanok"] or not n["label"]:
             continue
@@ -727,6 +759,9 @@ def main() -> int:
             reachers.append(n["label"])
             if len(path) < len(best):
                 bucket[tgt] = (reachers, path)
+        for tgt in uses_paths(n["label"], by_label, stop_at_axiom=True):
+            if tgt in on_paper:
+                direct_on_paper.setdefault(tgt, []).append(n["label"])
 
     def _who(reachers: list[str]) -> str:
         shown = ", ".join(reachers[:4])
@@ -740,10 +775,20 @@ def main() -> int:
             f"or drop the \\uses edge (blueprint/LINKAGE.md rule 8)"
         )
     for tgt, (reachers, _) in sorted(reached_on_paper.items()):
-        advisory.append(
+        direct = sorted(direct_on_paper.get(tgt, []))
+        head = (
             f"[depend] {tgt}: proved on paper only ({len(proof_of_record(by_label[tgt]))}-char "
-            f"proof, not \\leanok), reached by {len(reachers)} \\leanok node(s): "
-            f"{_who(reachers)} -- a formalisation debt (permitted, ADR-0010 rule 2), not a defect"
+            f"proof, not \\leanok), reached by "
+            f"{len(direct) if direct else 'no'} \\leanok node(s) ahead of the trust boundary "
+            f"({len(reachers)} counting paths through an [A] interface)"
+        )
+        advisory.append(
+            f"{head}: {_who(direct)} -- a formalisation debt (permitted, ADR-0010 rule 2), not a "
+            f"defect; formalising it would discharge the debt for those {len(direct)}"
+            if direct else
+            f"{head}: {_who(sorted(reachers))} -- every dependent reaches it behind a cited "
+            "interface, so formalising it discharges no debt today; whether the interface is "
+            "sound is AXIOMS.md's review (permitted, ADR-0010 rule 2)"
         )
 
     # 3. paper shared statements
@@ -774,6 +819,10 @@ def main() -> int:
         f"\\leanok node, {len(reached_on_paper)} proved on paper only; "
         f"{len(unproved)} [T] statement(s) proved nowhere in all "
         f"({', '.join(sorted(unproved)) or 'none'})."
+    )
+    print(
+        "  (the fatal walk traverses [A] nodes; the advisory's dependent counts stop at them "
+        "-- blueprint/LINKAGE.md rule 8)"
     )
     for a in advisory:
         print("  advisory " + a)
