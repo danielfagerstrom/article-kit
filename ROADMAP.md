@@ -129,6 +129,23 @@ draft?"*; the template asks *"does the drafted prose meet publication structure 
 
 ## Next
 
+### 10. `thm:affine-line` at `α = 1` — widen, or keep the narrowing?  ·  ⬜ open, raised 2026-07-31
+The range sweep (hub `ROADMAP.md` #21, Check C finding 1) closed A3's asymmetry residual by deriving
+`|θ| ≤ min(α, 2−α)` from Feller §XVII.3 (3.17)–(3.18) plus an elementary change of variables, now
+written out in the blueprint proof. It also established that **the `α ≠ 1` puncture is a narrowing we
+choose, not one positivity forces**: on that line the pure powers are a symmetric Cauchy generator
+plus a drift, admissible for the whole of `|θ| ≤ 1 = min(1, 2−1)`, so the theorem currently
+*under-claims*. Fagerström's paper states the range without the puncture.
+
+The decision is a package, and that is why it was not taken in passing: widening means widening the
+Lean axiom's hypotheses (`fellerSymbol_negativeDefinite`, drop `h3 : α ≠ 1`), `prop:feller-negdef`'s
+statement, ledger A3's *Statement as used*, and `feller_isScaleSpaceWedge`'s signature together —
+and it means deciding whether a generator with a drift admixture counts as a *Feller derivative* at
+all, since on that line `θ` indexes drift rather than asymmetry and the one-sided
+Riemann–Liouville representation degenerates (`1/sin(απ)`). Keeping the narrowing is defensible;
+what is no longer acceptable is leaving it undeclared, and it is now declared in three places —
+the blueprint proof, A3's hygiene note, and the Lean docstring.
+
 ### 2. Boundary harness — lock the Lean trust base as a regression test
 Adopt the axiom-footprint **lock** as committed CI, systematising what `Scratch.lean` + `AXIOMS.md` do
 today as a manual ritual. Draft to adapt: `C:\Users\danie\Downloads\BoundaryHarness.lean` (opaque
