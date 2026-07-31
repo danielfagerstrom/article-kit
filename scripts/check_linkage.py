@@ -19,6 +19,9 @@ script verifies the edges that live *inside this repository*:
        projects each entry's primary citekey + page anchor; WISHLIST 2026-07-26)
     7. every \\statusA node declares its assignment -- a "\\textbf{Assignment.}" clause in
        its status annotation naming at least one ledger entry (ADR-0011, 2026-07-30)
+    8. no \\leanok node reaches, through the transitive \\uses closure, a [T] statement node
+       that is proved nowhere -- neither \\leanok nor carrying a blueprint proof of record
+       (the dependency invariant; [A] nodes and definitions are exempt)
 
   ADVISORY (reported, non-fatal)
     - a *labelled* paper statement that shares a blueprint node but uses a different label
@@ -26,6 +29,9 @@ script verifies the edges that live *inside this repository*:
       blueprint node -- nearest preceding label is a section, not a statement -- is a valid
       weaker link and is not advised.
     - a \\leanok node with no \\lean{}, or a node marked both \\leanok and \\notready
+    - a statement reached by a \\leanok node that is proved on paper but not in Lean: a
+      formalisation debt (permitted -- ADR-0010 rule 2), and the list to read when choosing
+      what to formalise next
 
 The wiki edge (\\notes{slug} <-> a Notes content note) is cross-repo; it is checked
 only when --wiki PATH is given.
@@ -44,6 +50,7 @@ import json
 import re
 import subprocess
 import sys
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -289,6 +296,88 @@ def blueprint_nodes(tex: str):
             }
         )
     return nodes
+
+
+# --- The dependency invariant (check 8; LINKAGE.md rule 8) ------------------------------
+#
+# What a \leanok node means to a reader -- and to the hub, which grades a note
+# `confidence: verified` off the projected flag -- is "this is proved". That claim is only
+# as good as what the node rests on, so the structural property behind it is: nothing a
+# proved node depends on may be *ours and unproved*, i.e. a statement of our own with no
+# argument anywhere.
+#
+# Two exemptions, both principled rather than pragmatic. **[A] nodes** are the trust
+# boundary itself: they are accepted on a page-anchored citation, reviewed in AXIOMS.md,
+# and depending on one is the whole point of the "verified core, axiomatized analysis"
+# split. **Definitions** are vocabulary, not claims; a proved node legitimately names an
+# unformalised definition.
+#
+# And one distinction the naive form of this check gets wrong -- it produced sixteen false
+# hits when prop:conservative went [A] \leanok -> [T] \notready while *gaining* a proof of
+# record. "Not \leanok" is not "unproved": ADR-0010 rule 2 permits a node whose blueprint
+# proof is complete but which Lean does not state (Lean models symbols where the proof needs
+# operators, or formalisation is simply pending). Depending on such a node is a *proof debt*,
+# reported as an advisory, not a defect. Only a node with no argument anywhere -- no \leanok,
+# no proof environment -- is a violation.
+#
+# What the checker cannot do is judge whether a proof of record is a real proof; that is the
+# blueprint's register rule ("see Lean" is not a proof), enforced by review. It prints the
+# proof's size so a stub is visible in the advisory.
+
+STMT_KINDS = ("thm", "prop", "lem", "cor")
+
+
+def label_kind(label: str) -> str:
+    """The canonical kind of a label -- its prefix, exactly as the manifest projects it.
+
+    The label, not the environment: `thm:receptive-field` is stated in a `proposition`
+    environment, and the label is what every other artifact references."""
+    return label.split(":", 1)[0]
+
+
+def proof_of_record(node: dict) -> str:
+    """The node's blueprint proof, or "" -- a proof environment with content in it."""
+    return (node.get("proof") or "").strip()
+
+
+def is_unproved_statement(label: str, node: dict) -> bool:
+    """Ours and unproved: a [T] statement with no Lean proof and no proof of record."""
+    return (
+        label_kind(label) in STMT_KINDS
+        and node["status"] == "T"
+        and not node["leanok"]
+        and not proof_of_record(node)
+    )
+
+
+def is_paper_proved_statement(label: str, node: dict) -> bool:
+    """Ours and proved on paper: a [T] statement Lean does not prove but the blueprint does."""
+    return (
+        label_kind(label) in STMT_KINDS
+        and node["status"] == "T"
+        and not node["leanok"]
+        and bool(proof_of_record(node))
+    )
+
+
+def uses_paths(start: str, by_label: dict[str, dict]) -> dict[str, list[str]]:
+    """Shortest \\uses path from `start` to each label transitively reachable from it.
+
+    Breadth-first, so the reported path is a shortest one; the visited set makes the walk
+    terminate whatever the edges do. The blueprint DAG has no cycles today, but a naive
+    recursion would hang rather than fail on the day one is introduced by mistake."""
+    paths: dict[str, list[str]] = {}
+    seen = {start}
+    queue = deque([start])
+    while queue:
+        cur = queue.popleft()
+        for nxt in by_label.get(cur, {}).get("uses", []):
+            if nxt in seen:
+                continue
+            seen.add(nxt)
+            paths[nxt] = paths.get(cur, [start]) + [nxt]
+            queue.append(nxt)
+    return paths
 
 
 def ledger_refs(tex: str) -> set[str]:
@@ -613,6 +702,50 @@ def main() -> int:
                 "say which entry carries which part of this statement (ADR-0011)"
             )
 
+    # 8. the dependency invariant: no proved node rests on a statement proved nowhere.
+    # Held by hand all through July 2026 and by no control; this is that control. Fatal
+    # because it is the one structural property the trust story rests on -- and because a
+    # violation is non-local: adding a \uses edge in one node can break the guarantee of a
+    # \leanok node nobody touched, which is precisely the kind of defect a person does not
+    # re-derive by reading a diff.
+    by_label = {n["label"]: n for n in nodes if n["label"]}
+    unproved = {lab for lab, n in by_label.items() if is_unproved_statement(lab, n)}
+    on_paper = {lab for lab, n in by_label.items() if is_paper_proved_statement(lab, n)}
+    # target -> the \leanok nodes reaching it, and a shortest path to it
+    reached_unproved: dict[str, tuple[list[str], list[str]]] = {}
+    reached_on_paper: dict[str, tuple[list[str], list[str]]] = {}
+    for n in sorted(nodes, key=lambda n: n["label"] or ""):
+        if not n["leanok"] or not n["label"]:
+            continue
+        paths = uses_paths(n["label"], by_label)
+        for tgt, path in paths.items():
+            bucket = (reached_unproved if tgt in unproved
+                      else reached_on_paper if tgt in on_paper else None)
+            if bucket is None:
+                continue
+            reachers, best = bucket.setdefault(tgt, ([], path))
+            reachers.append(n["label"])
+            if len(path) < len(best):
+                bucket[tgt] = (reachers, path)
+
+    def _who(reachers: list[str]) -> str:
+        shown = ", ".join(reachers[:4])
+        return shown + (f", +{len(reachers) - 4} more" if len(reachers) > 4 else "")
+
+    for tgt, (reachers, path) in sorted(reached_unproved.items()):
+        fatal.append(
+            f"[depend] {tgt} is proved nowhere ([T], no \\leanok, no proof of record) but "
+            f"{len(reachers)} \\leanok node(s) depend on it: {_who(reachers)} "
+            f"(path: {' -> '.join(path)}) -- prove it, write its blueprint proof of record, "
+            f"or drop the \\uses edge (blueprint/LINKAGE.md rule 8)"
+        )
+    for tgt, (reachers, _) in sorted(reached_on_paper.items()):
+        advisory.append(
+            f"[depend] {tgt}: proved on paper only ({len(proof_of_record(by_label[tgt]))}-char "
+            f"proof, not \\leanok), reached by {len(reachers)} \\leanok node(s): "
+            f"{_who(reachers)} -- a formalisation debt (permitted, ADR-0010 rule 2), not a defect"
+        )
+
     # 3. paper shared statements
     for fn, key, nearest in paper_shared():
         if key not in labels:
@@ -635,6 +768,12 @@ def main() -> int:
     print(
         f"Blueprint: {len(nodes)} statement nodes ({n_lean} \\leanok), "
         f"{len(ledger_refs(tex))} ledger refs, {len(paper_shared())} paper shared-statements."
+    )
+    print(
+        f"Dependency closure: {len(reached_unproved)} statement(s) proved nowhere reached by a "
+        f"\\leanok node, {len(reached_on_paper)} proved on paper only; "
+        f"{len(unproved)} [T] statement(s) proved nowhere in all "
+        f"({', '.join(sorted(unproved)) or 'none'})."
     )
     for a in advisory:
         print("  advisory " + a)
