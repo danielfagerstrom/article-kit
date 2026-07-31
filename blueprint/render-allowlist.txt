@@ -88,6 +88,7 @@ qquad
 quad
 rangle
 ref
+rho
 sigma
 sim
 sin
@@ -97,6 +98,7 @@ stackrel
 subset
 subseteq
 sum
+tan
 tau
 text
 textbf
