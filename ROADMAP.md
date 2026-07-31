@@ -216,6 +216,9 @@ Adopt as process rules (cheap: charter + skill edits) before any new proving cam
   actual dependency closure (the `#print axioms`-style constant traversal) and diff it against the
   blueprint's `\uses{}` both ways; flag proved nodes with implausibly empty inferred uses (Tao caught
   a wrong statement exactly this way) and lemmas feeding nothing. → extends `check_linkage.py` /#2.
+  (The *declared* side landed 2026-07-31 as check 8 — no `\leanok` node may reach a `[T]` statement
+  proved nowhere through `\uses`; LINKAGE.md rule 8. Still missing: the inferred closure, and the diff
+  between the two.)
 - **Recorded decision — authorship direction.** LeanArchitect (and verso-blueprint, where FLT and
   Carleson now live) make *Lean* the source and generate the blueprint text from attributes; PNT+
   migrated to this. We deliberately go the other way (#7): our deliverable is a LaTeX monograph and

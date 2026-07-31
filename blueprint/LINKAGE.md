@@ -56,7 +56,8 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    advisories; align them opportunistically.
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
-   the `AXIOMS.md` contract, verified by Lean, not re-checked by this script.)
+   the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no
+   numbered check, and the checker's numbering runs one behind the rules' from here on.)
 6. **Every statement node declares `\statusT` or `\statusA`.** The hub's confidence grading keys on the
    projected status, so a node without one is a node the hub cannot grade.
 7. **Every `[A]` node declares its assignment** (ADR-0011, 2026-07-30): a `\textbf{Assignment.}` clause
@@ -80,21 +81,50 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    automated control. A checker can require that the judgement be written; it cannot make it, and it cannot
    tell a wrong declaration from a right one. What it removes is the silent case.
 
+8. **A proved node rests only on proved or written-down mathematics** (2026-07-31). No `\leanok` node may
+   reach, through the transitive `\uses` closure, a `[T]` statement node (`thm`/`prop`/`lem`/`cor`) that is
+   proved nowhere — neither `\leanok` nor carrying a proof environment in the blueprint. This is the
+   structural property behind what `\leanok` means to a reader, and to the hub, which grades a note
+   `confidence: verified` off the projected flag.
+
+   Two exemptions, both principled. **`[A]` nodes** are the trust boundary itself (rule 5): they are
+   accepted on a page-anchored citation and reviewed in `AXIOMS.md`, and resting on one is the
+   verified-core/axiomatized-analysis split working as designed. **Definitions** are vocabulary rather than
+   claims; a proved node may legitimately name an unformalised one.
+
+   And one distinction the naive form of the rule gets wrong: *not `\leanok`* is not *unproved*. ADR-0010
+   rule 2 permits a node whose blueprint proof is complete but which Lean does not state — Lean models
+   symbols where the proof needs operators, or formalisation is simply pending. Resting on such a node is a
+   **proof debt**, reported as an advisory with the proof's size, not a defect. `prop:conservative` is the
+   current instance: the naive form scored its sixteen dependents as violations on the day it went `[A]
+   \leanok` → `[T] \notready` *while gaining* a proof of record — a strict improvement read as sixteen
+   regressions. Only a statement with no argument anywhere is a violation. What the checker cannot judge is
+   whether a proof of record is a *proof* — "see Lean" is not one (`ROADMAP.md` #7); that stays review's
+   job, and the advisory prints the size so a stub is visible.
+
 ## The checker
 
 `scripts/check_linkage.py` — no dependencies; run `python scripts/check_linkage.py` from the repo root.
 It reads `content.tex` and inlines its `\input{parts/...}` includes, so the split is transparent to it.
 It enforces the **in-repo** edges and fails (exit 1) on:
 
-- a `\leanok` node whose `\lean{Decl}` is not declared in `Formalization/`;
-- a `\ledger{AXX}` / "ledger AXX" with no `## AXX` entry in `AXIOMS.md`, or an entry with no `**Cite:**` line;
-- a paper `% shared with blueprint <label>` naming a label the blueprint does not have;
+- a `\leanok` node whose `\lean{Decl}` is not declared in `Formalization/` (rule 3);
+- a `\ledger{AXX}` / "ledger AXX" with no `## AXX` entry in `AXIOMS.md`, or an entry with no `**Cite:**` line (rule 2);
+- a paper `% shared with blueprint <label>` naming a label the blueprint does not have (rule 4);
 - a `\command` in a statement or proof that the render pipeline cannot handle (the clean-render gate);
-- a statement node with no `\statusT` / `\statusA`;
-- a `\statusA` node with no `\textbf{Assignment.}` clause, or whose clause names no ledger entry (rule 7).
+- a statement node with no `\statusT` / `\statusA` (rule 6);
+- a `\statusA` node with no `\textbf{Assignment.}` clause, or whose clause names no ledger entry (rule 7);
+- a `\leanok` node whose transitive `\uses` closure contains a `[T]` statement proved nowhere (rule 8) —
+  reported once per reached statement, naming the dependents and a shortest path to it. The walk is
+  breadth-first with a visited set, so it terminates whatever the edges do (a `\uses` cycle is a modelling
+  error, not something this check should hang on).
 
 It also prints **advisories** (non-fatal): a paper shared statement whose own label differs from the
-blueprint key; a `\leanok` node with no `\lean{}`; a node marked both `\leanok` and `\notready`.
+blueprint key; a `\leanok` node with no `\lean{}`; a node marked both `\leanok` and `\notready`; and — the
+formalisation worklist — each statement a `\leanok` node reaches that is proved on paper but not in Lean,
+with its proof size and dependent count (rule 8). Its summary line reports the whole dependency picture,
+including `[T]` statements proved nowhere that nothing proved reaches: those are our open conjectures, and
+naming them keeps the difference between "open" and "leaned on while open" visible.
 
 The **wiki edge** is cross-repo: pass `--wiki <path-to-Notes>` to also check that every `\notes{slug}`
 resolves to a `slug.md` under the wiki.
@@ -204,8 +234,9 @@ not to either projection.
 
 ## Status (2026-07)
 
-- **Enforced now, checker green:** blueprint→Lean, blueprint→ledger, paper→blueprint (existence), and
-  blueprint→wiki (with `--wiki`).
+- **Enforced now, checker green:** blueprint→Lean, blueprint→ledger, paper→blueprint (existence),
+  blueprint→wiki (with `--wiki`), and blueprint→blueprint (the dependency invariant, rule 8 — clean, with
+  `prop:conservative` the one advisory formalisation debt).
 - **Incremental rollout:** migrate the remaining "ledger AXX" prose to `\ledger{}`; add `\notes{}` to the
   rest of the nodes; add reciprocal `blueprint:` frontmatter to the wiki content notes. (Paper
   same-labelling is settled: the non-existence theorem uses `thm:galilean-nonexistence`; the affine result
