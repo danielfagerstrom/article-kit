@@ -92,6 +92,14 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    verified-core/axiomatized-analysis split working as designed. **Definitions** are vocabulary rather than
    claims; a proved node may legitimately name an unformalised one.
 
+   The exemption is for `[A]` nodes as *targets*, and the fatal walk still traverses **through** them: an
+   `[A]` node's own statement may not be phrased in terms of a statement proved nowhere either. That is the
+   stronger reading and it costs nothing here. It is not hypothetical: `[A]` nodes do `\uses` our own nodes —
+   the pre-split `thm:covariant-lamperti` carried `\uses{def:covariant-memory,thm:memory-family}` — and the
+   A15 split exists because that node had absorbed an unproved clause of ours into the ledger once already.
+   A cited interface earns its trust from a page anchor, not from what it happens to `\uses`; but a reader
+   cannot even *read* the statement if the labels it is phrased in terms of stand for nothing.
+
    And one distinction the naive form of the rule gets wrong: *not `\leanok`* is not *unproved*. ADR-0010
    rule 2 permits a node whose blueprint proof is complete but which Lean does not state — Lean models
    symbols where the proof needs operators, or formalisation is simply pending. Resting on such a node is a
@@ -101,6 +109,19 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    regressions. Only a statement with no argument anywhere is a violation. What the checker cannot judge is
    whether a proof of record is a *proof* — "see Lean" is not one (`ROADMAP.md` #7); that stays review's
    job, and the advisory prints the size so a stub is visible.
+
+   **The two walks are deliberately asymmetric** (2026-07-31): the fatal walk goes through `[A]` nodes, the
+   advisory's dependent count **stops at** them. They ask different questions. The fatal one asks *is
+   anything a proved node rests on missing an argument altogether* — where a longer reach is strictly safer.
+   The advisory one is the formalisation worklist: *which proved nodes would gain if this statement were
+   formalised?* A node that reaches the statement only through an `[A]` interface would gain nothing — its
+   trust already passes through the ledger at that point, and whether *that* is sound is `AXIOMS.md`'s
+   review, not a formalisation task. Counting it inflates the number and points effort at the wrong node.
+   Today `prop:conservative` has **10** dependents ahead of the boundary and **16** counting through it; the
+   six that differ all reach it behind `prop:memory-positivity-cone` (`\ledger{A18}`). Both numbers are
+   printed, because the gap says how much of the debt an axiom already covers. A `\leanok` `[A]` node that
+   `\uses` the statement *itself* still counts as a dependent — the labels in its own statement are its own
+   dependency, even though nothing above it inherits them; that is why `prop:feller-negdef` is among the ten.
 
 ## The checker
 
@@ -122,7 +143,9 @@ It enforces the **in-repo** edges and fails (exit 1) on:
 It also prints **advisories** (non-fatal): a paper shared statement whose own label differs from the
 blueprint key; a `\leanok` node with no `\lean{}`; a node marked both `\leanok` and `\notready`; and — the
 formalisation worklist — each statement a `\leanok` node reaches that is proved on paper but not in Lean,
-with its proof size and dependent count (rule 8). Its summary line reports the whole dependency picture,
+with its proof size and **both** dependent counts, those ahead of the trust boundary and those counting
+paths through an `[A]` interface (rule 8; the first is the headline, since it is the number formalising the
+statement would actually discharge). Its summary line reports the whole dependency picture,
 including `[T]` statements proved nowhere that nothing proved reaches: those are our open conjectures, and
 naming them keeps the difference between "open" and "leaned on while open" visible.
 
