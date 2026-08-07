@@ -19,6 +19,25 @@ proving stays local (fast language server).
 
 ---
 
+## Private framework repos and CI (`ARTICLE_KIT_TOKEN`)
+
+While `article-kit` and any shared Lean library are private, CI on an article repo needs a
+token to reach them — allowing reusable-workflow *calls* (article-kit → Settings → Actions →
+General → Access → "Accessible from repositories owned by the user") is a **separate**
+permission from reading either repo's source.
+
+Create one fine-grained PAT with **Contents: Read-only** on *every* private repo the article
+depends on — today `article-kit` and `scale-space-lean` — and add it to each article repo as
+the secret `ARTICLE_KIT_TOKEN`:
+
+```bash
+gh secret set ARTICLE_KIT_TOKEN --repo danielfagerstrom/<article-repo>
+```
+
+It is used twice: to install the `linkage` CLI, and to configure git so `lake build` can
+fetch a private `require ... git` dependency (Lake fetches those itself, so `actions/checkout`
+credentials do not cover them).
+
 ## One-time: create the cloud environment
 
 At [claude.ai/code](https://claude.ai/code), connect the article repo you are working on and

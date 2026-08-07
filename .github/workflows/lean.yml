@@ -60,6 +60,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # A Lake `require ... git` on a PRIVATE repo (e.g. a shared core library) is fetched by
+      # lake itself, not by actions/checkout, so it needs ambient git credentials. Same token
+      # as the framework install — which therefore needs Contents:read on every private repo
+      # this article depends on, not just article-kit.
+      - name: Authenticate git for private Lake dependencies
+        if: env.KIT_TOKEN != ''
+        env:
+          KIT_TOKEN: ${{ secrets.ARTICLE_KIT_TOKEN }}
+        run: |
+          git config --global url."https://x-access-token:${KIT_TOKEN}@github.com/".insteadOf "https://github.com/"
+          echo "git configured to authenticate github.com clones"
+
       # elan/lean/lake setup + `lake exe cache get` (auto, Mathlib detected) + `lake build`.
       # A lakefile whose lean_lib uses `globs = ["Lib.*"]` compiles *every* module under the
       # library, so a broken proof in a module reachable only from a scratch file still turns
