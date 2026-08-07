@@ -64,11 +64,18 @@ jobs:
       # lake itself, not by actions/checkout, so it needs ambient git credentials. Same token
       # as the framework install — which therefore needs Contents:read on every private repo
       # this article depends on, not just article-kit.
+      # No `if:` on this step. A step's own `env:` is NOT in scope for its own `if:`, so
+      # `if: env.KIT_TOKEN != ''` is always false and the step silently never runs — which is
+      # exactly how the first real run failed, with lake reporting a bare `error: 403`.
+      # The guard lives in the script instead, where the variable actually exists.
       - name: Authenticate git for private Lake dependencies
-        if: env.KIT_TOKEN != ''
         env:
           KIT_TOKEN: ${{ secrets.ARTICLE_KIT_TOKEN }}
         run: |
+          if [ -z "$KIT_TOKEN" ]; then
+            echo "no ARTICLE_KIT_TOKEN — assuming all Lake dependencies are public"
+            exit 0
+          fi
           git config --global url."https://x-access-token:${KIT_TOKEN}@github.com/".insteadOf "https://github.com/"
           echo "git configured to authenticate github.com clones"
 
