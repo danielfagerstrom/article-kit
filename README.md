@@ -33,7 +33,7 @@ manifest without transclusion fields a hard failure, so one can never reach the 
 | `linkage/` | the Python package — see below |
 | `scaffold/blueprint/` | the LaTeX scaffolding a new article copies: theorem envs, plasTeX config, the framework's linkage macros, the render allowlist |
 | `.github/workflows/` | reusable workflows (`workflow_call`) that article repos call |
-| `agents/mathematician.md` | the shared sub-agent, installed by the hub's `sync-agents.sh` |
+| `.claude/agents/mathematician.md` | the shared sub-agent; the hub's `sync-agents.sh` installs it from here (it expects `<repo>/.claude/agents/<name>.md`) |
 | `docs/` | `LINKAGE.md` (the spec these checks enforce), the drafting gate, the publication template, the Lean review tour, the cloud setup guide |
 
 ## The package
