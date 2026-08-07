@@ -8,3 +8,6 @@ __pycache__/
 .venv/
 dist/
 build/
+
+# tooling scratch (uv run --with ... regenerates this)
+uv.lock
