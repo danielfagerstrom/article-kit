@@ -19,8 +19,15 @@ def read(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
-def read_blueprint(entry: Path) -> str:
-    """The blueprint entry file, with `\\input{...}` includes inlined (nodes live in parts/)."""
+def expand_inputs(entry: Path) -> str:
+    """A LaTeX file with its `\\input{...}` includes inlined, recursively.
+
+    Used for two things, and the second is easy to overlook: the blueprint entry file
+    (whose nodes live in parts/), and the *macros* file. The macros file is handed to
+    pandoc as the render preamble, and pandoc does not follow `\\input` — so once an
+    article splits its macros into framework + notation, feeding the unexpanded file
+    would silently drop half the definitions and move every rendered_sha at once.
+    """
     inp = re.compile(r"^\s*\\input\{([^}]+)\}")
 
     def expand(path: Path) -> str:
@@ -37,6 +44,11 @@ def read_blueprint(entry: Path) -> str:
         return "".join(out)
 
     return expand(entry)
+
+
+def read_blueprint(entry: Path) -> str:
+    """The blueprint entry file, with its parts inlined."""
+    return expand_inputs(entry)
 
 
 def normalize_statement(body: str) -> str:

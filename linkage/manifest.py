@@ -16,7 +16,8 @@ import json
 import re
 from datetime import datetime, timezone
 
-from .artifacts import git_provenance, read
+from .artifacts import git_provenance
+from .parse_latex import expand_inputs
 from .config import Config
 from .model import Blueprint, LedgerEntry
 from .render import check_pin, render_markdown, render_residue
@@ -70,7 +71,7 @@ def build(
         if require_render:
             raise ManifestError(f"--require-render: {why_not}")
         warn(f"{why_not} — manifest emitted without rendered fields")
-    preamble = read(cfg.macros) if rendering else ""
+    preamble = expand_inputs(cfg.macros) if rendering else ""
 
     labels: dict[str, dict] = {}
     for n in bp.nodes:

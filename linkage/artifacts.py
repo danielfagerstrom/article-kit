@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .config import Config
 from .model import LedgerEntry, PaperMarker
+from .parse_latex import expand_inputs
 
 # a Lean declaration keyword, allowing leading attributes / modifiers
 DECL_RE = re.compile(
@@ -65,7 +66,8 @@ def ledger_entries(cfg: Config) -> dict[str, LedgerEntry]:
 
 def render_safe_commands(cfg: Config) -> set[str]:
     """Commands the render pipeline handles: macros.tex definitions + the vetted allowlist."""
-    defined = set(re.findall(r"\\(?:new|provide|renew)command\{?\\([A-Za-z]+)", read(cfg.macros)))
+    defined = set(re.findall(r"\\(?:new|provide|renew)command\{?\\([A-Za-z]+)",
+                             expand_inputs(cfg.macros)))
     vetted = {
         line.strip()
         for line in read(cfg.allowlist).splitlines()

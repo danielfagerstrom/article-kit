@@ -35,6 +35,11 @@ FRAMEWORK_OWNED = {
 
 # seeded once, then the article's
 SEEDED = {
+    # cloud-setup.sh is the BOOTSTRAP: it is what finds the sibling checkouts and installs
+    # the CLIs, so it cannot itself be fetched through the framework it installs. Each
+    # article therefore carries its own copy, seeded here.
+    "claude/cloud-setup.sh": ".claude/cloud-setup.sh",
+    "claude/settings.json": ".claude/settings.json",
     "blueprint/plastex.cfg": "blueprint/src/plastex.cfg",
     "blueprint/extra_styles.css": "blueprint/src/extra_styles.css",
     "blueprint/render-allowlist.txt": "blueprint/render-allowlist.txt",
