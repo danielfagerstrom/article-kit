@@ -1,0 +1,16 @@
+% Theorem-like environments, shared by the pdf build (print.tex) and the web build
+% (web.tex) so the two cannot drift.
+%
+% The four names below are exactly the ones plastexdepgraph puts in the dependency
+% graph by default (definition+lemma+proposition+theorem+corollary); adding another
+% kind here means also listing it in web.tex's `thms=` option, or it will carry
+% \uses/\leanok annotations that the graph silently ignores.
+%
+% Numbering follows the pdf convention this project already used: one counter for all
+% four, mastered by `definition`, reset per chapter.
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[chapter]
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{theorem}[definition]{Theorem}

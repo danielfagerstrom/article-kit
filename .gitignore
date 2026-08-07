@@ -12,6 +12,11 @@
 blueprint/web/
 blueprint/print/
 
+# plasTeX (web build): aux file, and the Lean declaration list the leanblueprint
+# plugin emits from \lean{...} for `lake exe checkdecls` — both regenerated per build.
+*.paux
+blueprint/lean_decls
+
 # Python
 __pycache__/
 

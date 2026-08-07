@@ -1,0 +1,12 @@
+# latexmk configuration for the pdf build of the blueprint.
+#
+# pdflatex, not the xelatex/unicode-math default of the leanblueprint template: this
+# project's print.tex is plain pdflatex (see the note at its top), and CI compiles the
+# same source with Tectonic (.github/workflows/docs.yml).
+#
+# Running `latexmk` bare in blueprint/src leaves print.pdf in blueprint/src, which is
+# where the docs workflow and the tracked build both expect it. Pass
+# `-output-directory=../print` if you want the leanblueprint CLI's layout instead.
+$pdf_mode = 1;
+$pdflatex = 'pdflatex -synctex=1 %O %S';
+@default_files = ('print.tex');
