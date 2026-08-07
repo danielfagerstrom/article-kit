@@ -21,7 +21,7 @@ proving stays local (fast language server).
 
 ## One-time: create the cloud environment
 
-At [claude.ai/code](https://claude.ai/code), connect `danielfagerstrom/scale-space-foundations` and
+At [claude.ai/code](https://claude.ai/code), connect the article repo you are working on and
 create/edit its environment.
 
 ### 1. Attach the sibling repos — required
@@ -99,7 +99,7 @@ If all seven pass, the environment is live. Lean is deliberately absent from thi
 ## Manifest projection — one-time account setup
 
 [`.github/workflows/manifest.yml`](.github/workflows/manifest.yml) regenerates
-`blueprint-manifest.json` on every `main` push touching `blueprint/**`, `Formalization/**`, or the
+`blueprint-manifest-<slug>.json` on every `main` push touching `blueprint/**`, `Formalization/**`, or the
 generator, and commits it into the hub (`danielfagerstrom/notes-wiki`) — the theorem channel's
 satellite-owned "check" projection, with a semantic diff-guard so stamp-only changes never produce a
 commit. This CI is the *only* writer of that hub file (single-writer preserved). It needs one
@@ -110,7 +110,7 @@ account-side credential:
    repository permission **Contents: Read and write**, nothing else. Set an expiry you will
    actually renew.
 2. **Add it as an Actions secret on this repo** named **`NOTES_WIKI_TOKEN`**
-   (scale-space-foundations → Settings → Secrets and variables → Actions → New repository secret).
+   (the article repo → Settings → Secrets and variables → Actions → New repository secret).
 3. **Seed the first projection:** run the workflow once by hand (Actions → *Manifest projection* →
    Run workflow) — the hub has no committed manifest until this runs.
 
@@ -133,7 +133,7 @@ blueprint / artifacts-publish jobs stay green regardless).
 
 **Account-side checklist (I can't do these):**
 
-1. **Repo secrets** (scale-space-foundations → Settings → Secrets and variables → Actions): add
+1. **Repo secrets** (the article repo → Settings → Secrets and variables → Actions): add
    **`CLOUDFLARE_API_TOKEN`** and **`CLOUDFLARE_ACCOUNT_ID`** — the *same names and same values*
    as the hub's (`notes-wiki` repo secrets, created for `quartz-deploy.yml`; see the hub's
    `CLOUD.md` § "Optional — a gated web read-view": the token has *Cloudflare Pages : Edit*, the

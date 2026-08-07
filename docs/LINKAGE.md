@@ -1,7 +1,7 @@
 # Blueprint ↔ Lean ↔ ledger ↔ paper linkage
 
 How the four artifacts of this project reference one another, and how those references are kept from
-drifting. This file is the spec; [`scripts/check_linkage.py`](../scripts/check_linkage.py) enforces the
+drifting. This file is the spec; [`linkage check`](../linkage/checks.py) enforces the
 in-repo part of it.
 
 ## The hub and the canonical ID
@@ -28,8 +28,8 @@ manifest.
 | paper → blueprint | `% shared with blueprint <label>` + the paper statement's own `\label` | shared statements |
 | ledger → blueprint / Lean | `**Blueprint:**` / `**Lean:**` lines in each `AXIOMS.md` entry | reciprocal back-pointer |
 | wiki note → blueprint | `blueprint: [labels]` frontmatter *(incremental)* | reciprocal back-pointer |
-| blueprint → wiki *(projection)* | `check_linkage.py --emit-manifest` → `blueprint-manifest.json` | the wiki reads proved-status to validate a note ("check") |
-| wiki → blueprint *(pull)* | `wiki demands --json` → `scripts/proof_demand.py` | the wiki's proof requests, incl. not-yet-existing nodes ("demand") |
+| blueprint → wiki *(projection)* | `linkage manifest` → `blueprint-manifest-<slug>.json` | the wiki reads proved-status to validate a note ("check") |
+| wiki → blueprint *(pull)* | `wiki demands --json` → `linkage demand` | the wiki's proof requests, incl. not-yet-existing nodes ("demand") |
 
 The first seven rows are **reference** edges — pointer syntax inside one artifact. The last two are the
 cross-repo **workflow** channel and are documented under [The cross-repo channel](#the-cross-repo-channel--manifest-out-demand-in) below.
@@ -125,7 +125,7 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
 
 ## The checker
 
-`scripts/check_linkage.py` — no dependencies; run `python scripts/check_linkage.py` from the repo root.
+`linkage check` (linkage/checks.py) — no dependencies; run `linkage check` from the repo root.
 It reads `content.tex` and inlines its `\input{parts/...}` includes, so the split is transparent to it.
 It enforces the **in-repo** edges and fails (exit 1) on:
 
@@ -163,8 +163,8 @@ why the two directions are not mirror images) is the wiki's to state — see its
 [`ARCHITECTURE.md`](file:///C:/Users/danie/Documents/Notes/ARCHITECTURE.md) § "The theorem channel".
 This is the satellite side of that contract.
 
-**Out — the manifest (`check`).** `check_linkage.py --emit-manifest <path>` writes
-`blueprint-manifest.json` into the wiki: a projection of every label with `kind`, `leanok`, `notready`,
+**Out — the manifest (`check`).** `linkage manifest <path>` writes
+`blueprint-manifest-<slug>.json` into the wiki: a projection of every label with `kind`, `leanok`, `notready`,
 its `\lean{}` decls, its `uses` dependency labels, and its normalized statement text (`statement`) with
 a short hash (`statement_sha`), plus the flat Lean-decl set and this repo's `scripts/` paths. The wiki
 reads it to answer "is the theorem this note claims actually proved?" — it never parses our LaTeX. Same
@@ -243,7 +243,7 @@ blueprint yet** (the hub flags it `⚠ NOT a blueprint node yet`) — that is th
 theorem; the right response is to add the node (or push back), exactly as one would triage a
 `library acquire request` for a source not yet held.
 
-- *The join (shipped 2026-07-16).* [`scripts/proof_demand.py`](../scripts/proof_demand.py) is the
+- *The join (shipped 2026-07-16).* `linkage demand` is the
   consumer: it runs `wiki demands --json`, joins against the **live** blueprint parse (not the emitted
   manifest — that is our output and can lag; `\leanok` in `content.tex` never does), and prints the
   unproved demand in the hub's order. Proved labels drop off; `\notready` / no-decl / not-in-blueprint
@@ -275,5 +275,5 @@ not to either projection.
 ## Ownership
 
 This file is the spec. `blueprint/src/content.tex` is the source of truth for the graph; `AXIOMS.md`
-owns the `[A]` grounding; `scripts/check_linkage.py` enforces consistency. The linkage is gate item 7 in
+owns the `[A]` grounding; `linkage check` (linkage/checks.py) enforces consistency. The linkage is gate item 7 in
 `paper/DRAFTING-GATE.md`.

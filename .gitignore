@@ -1,31 +1,10 @@
-# LaTeX build artifacts
-*.aux
-*.log
-*.out
-*.toc
-*.pdf
-*.fls
-*.fdb_latexmk
-*.synctex.gz
-*.bbl
-*.blg
-blueprint/web/
-blueprint/print/
-
-# plasTeX (web build): aux file, and the Lean declaration list the leanblueprint
-# plugin emits from \lean{...} for `lake exe checkdecls` — both regenerated per build.
-*.paux
-blueprint/lean_decls
+# The framework repo builds no documents and holds no Lean package — the LaTeX/Lean
+# ignores that used to live here belong in the article repos, and are seeded there by
+# `linkage init` writing scaffold/gitignore.article into a new article's .gitignore.
 
 # Python
 __pycache__/
-
-# Local manifest preview (the hub's tracked blueprint-manifest.json is written
-# only by CI — .github/workflows/manifest.yml; the post-commit hook emits here)
-.manifest-preview.json
-
-# Lean / lake
-Formalization/.lake/
-Formalization/build/
-Formalization/lake-packages/
-*.olean
+*.egg-info/
+.venv/
+dist/
+build/

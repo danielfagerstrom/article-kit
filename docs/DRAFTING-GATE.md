@@ -78,10 +78,10 @@ A section may be drafted as prose only when every applicable box is checked.
       in the text, never narrated with a theorem's confidence.
 
 ### 7. Single-sourcing — statements can't drift
-*owner: [`blueprint/LINKAGE.md`](../blueprint/LINKAGE.md) + `scripts/check_linkage.py`*
+*owner: [`LINKAGE.md`](LINKAGE.md) + `linkage check` (linkage/checks.py)*
 - [ ] Each theorem the prose shares with the blueprint carries `% shared with blueprint <label>` naming a
       real blueprint label (target: the identical `\label`).
-- [ ] `python scripts/check_linkage.py` passes (exit 0).
+- [ ] `linkage check` passes (exit 0).
 
 ---
 
@@ -89,7 +89,7 @@ A section may be drafted as prose only when every applicable box is checked.
 
 - Draft prose only when **items 1–3, 5, 6** pass.
 - Item 4 should precede, but figures may be drafted alongside the prose.
-- Item 7 is enforced by `scripts/check_linkage.py` (run it before drafting/publishing).
+- Item 7 is enforced by `linkage check` (linkage/checks.py) (run it before drafting/publishing).
 
 **Meta-rule:** when a box fails, **fix the upstream artifact — do not compensate in the prose.**
 Compensating in prose is the exact failure this gate prevents.

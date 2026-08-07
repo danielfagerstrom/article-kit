@@ -1,73 +1,79 @@
-name: Docs CI
+name: Docs CI (reusable)
 
-# Cloud builds of the two PDF deliverables — the paper (paper/main.tex) and the blueprint
-# (blueprint/src/print.tex) — so a readable, current build exists without the author's
-# desktop MiKTeX. On pushes to `main` the built PDFs are force-pushed to the orphan
-# `artifacts` branch as a single fresh commit (no accumulated history); GitHub renders
-# PDFs inline in the private repo, so
-#   https://github.com/danielfagerstrom/scale-space-foundations/blob/artifacts/paper.pdf
-#   https://github.com/danielfagerstrom/scale-space-foundations/blob/artifacts/blueprint.pdf
+# Cloud builds of an article's two PDF deliverables — the paper and the blueprint — so a
+# readable, current build exists without the author's desktop MiKTeX. On pushes to `main`
+# the built PDFs are force-pushed to the orphan `artifacts` branch as a single fresh commit
+# (no accumulated history); GitHub renders PDFs inline in a private repo, so
+#   https://github.com/<owner>/<repo>/blob/artifacts/paper.pdf
+#   https://github.com/<owner>/<repo>/blob/artifacts/blueprint.pdf
 # are the private viewing URLs until a gated web channel exists.
 #
 # Toolchain: Tectonic — a single static binary that fetches the TeX packages it needs on
-# demand and runs bibtex automatically (the paper uses classic bibtex, not biber). Both
-# documents use a tame package set (geometry / ams* / longtable / booktabs / hyperref;
-# the blueprint's print.tex is plain LaTeX with the leanblueprint macros stubbed as
-# no-ops in macros.tex), well inside Tectonic's default bundle.
+# demand and runs bibtex automatically (classic bibtex, not biber). Both documents are
+# expected to use a tame package set (geometry / ams* / longtable / booktabs / hyperref;
+# print.tex is plain LaTeX with the leanblueprint macros stubbed as no-ops in
+# linkage-macros.tex), well inside Tectonic's default bundle.
 #
-# Paths filters guard private-repo Actions minutes: nothing here runs on Lean-only
-# pushes. The paper build runs on paper/** AND blueprint/** changes (theorem statements
-# are single-sourced between the two, so a blueprint edit must rebuild the paper); the
-# blueprint build is skipped on paper-only pull requests, but always runs on `main` so
-# the artifacts branch carries a coherent pair built at one sha.
+# The CALLER owns the trigger and its paths filter — that is what guards private-repo
+# Actions minutes, and it is article-specific. The paper build should run on paper AND
+# blueprint changes: theorem statements are single-sourced between the two, so a blueprint
+# edit must rebuild the paper.
 #
-# The `deploy` job additionally publishes the pair to the Cloudflare Pages project
-# `ssf-docs` (behind Cloudflare Access — one login shared with the hub's Quartz wiki;
-# account-side setup in CLOUD.md § "Private docs site"). On pull requests it runs a
-# dry run only: assemble dist/ and validate it, never deploy. On `main` it FAILS
-# LOUDLY if the Cloudflare secrets are missing (the build/publish jobs stay green).
+# The `deploy` job additionally publishes the pair to a Cloudflare Pages project, one per
+# article (behind Cloudflare Access — account-side setup in docs/CLOUD.md § "Private docs
+# site"). On pull requests pass dry_run: true — assemble dist/ and validate it, never
+# deploy. Otherwise it FAILS LOUDLY if the Cloudflare secrets are missing (the build and
+# publish jobs stay green).
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "paper/**"
-      - "blueprint/**"
-      - ".github/workflows/docs.yml"
-  pull_request:
-    paths:
-      - "paper/**"
-      - "blueprint/**"
-      - ".github/workflows/docs.yml"
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      pages_project:
+        description: "Cloudflare Pages project for this article, e.g. 'ssf-docs'. One per article."
+        required: true
+        type: string
+      dry_run:
+        description: "Assemble and validate dist/, but never deploy or push the artifacts branch."
+        required: false
+        default: false
+        type: boolean
+      build_blueprint:
+        description: "Build the blueprint PDF. Callers may skip it on paper-only pull requests."
+        required: false
+        default: true
+        type: boolean
+      paper_tex:
+        description: "Entry point of the paper."
+        required: false
+        default: paper/main.tex
+        type: string
+      blueprint_tex:
+        description: "Entry point of the blueprint's print build."
+        required: false
+        default: blueprint/src/print.tex
+        type: string
+      tectonic_version:
+        description: >-
+          Pinned Tectonic. Keep in lockstep with the version .claude/cloud-setup.sh installs,
+          so a cloud session and CI build the same bytes.
+        required: false
+        default: "0.15.0"
+        type: string
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: false
+      CLOUDFLARE_ACCOUNT_ID:
+        required: false
 
 permissions:
   contents: read
 
 env:
-  TECTONIC_VERSION: "0.15.0"
+  TECTONIC_VERSION: ${{ inputs.tectonic_version }}
+  PAPER_TEX: ${{ inputs.paper_tex }}
+  BLUEPRINT_TEX: ${{ inputs.blueprint_tex }}
 
 jobs:
-  # On pull requests only: which of the two trees did this PR touch? (On `main` pushes
-  # both documents are rebuilt unconditionally, so the publish step always has a fresh
-  # pair; the filter exists to spare the blueprint build on paper-only PR iterations.)
-  changes:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: read # paths-filter lists the PR's files through the API
-    outputs:
-      blueprint: ${{ steps.filter.outputs.blueprint }}
-    steps:
-      - name: Detect changed paths
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            blueprint:
-              - "blueprint/**"
-              - ".github/workflows/docs.yml"
-
   paper:
     runs-on: ubuntu-latest
     steps:
@@ -93,24 +99,22 @@ jobs:
           sudo mv tectonic /usr/local/bin/
 
       # Tectonic reruns TeX/bibtex to a fixed point on its own — no latexmk needed.
-      # Output lands next to the input (paper/main.pdf).
+      # Output lands next to the input; rename to the canonical name here so the publish
+      # job never has to know the article's entry-point filenames.
       - name: Build the paper
-        run: tectonic paper/main.tex
+        run: |
+          tectonic "$PAPER_TEX"
+          cp "${PAPER_TEX%.tex}.pdf" paper.pdf
 
       - name: Upload paper.pdf (per-run artifact)
         uses: actions/upload-artifact@v4
         with:
           name: paper-pdf
-          path: paper/main.pdf
+          path: paper.pdf
           if-no-files-found: error
 
   blueprint:
-    needs: changes
-    # `needs: changes` + a skipped `changes` (non-PR events) would skip this job too
-    # under the default success() gate, hence the explicit !cancelled(). Net effect:
-    # always run on `main` pushes and manual dispatch; on PRs only when the PR touches
-    # blueprint/** (or this workflow).
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.blueprint == 'true') }}
+    if: inputs.build_blueprint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -132,24 +136,25 @@ jobs:
           sudo mv tectonic /usr/local/bin/
 
       # print.tex is the standalone (non-leanblueprint) driver: plain LaTeX, \input of
-      # macros.tex + content.tex, no graphviz/dot step. Output: blueprint/src/print.pdf,
-      # renamed blueprint.pdf at publish time.
+      # macros.tex + content.tex, no graphviz/dot step.
       - name: Build the blueprint
-        run: tectonic blueprint/src/print.tex
+        run: |
+          tectonic "$BLUEPRINT_TEX"
+          cp "${BLUEPRINT_TEX%.tex}.pdf" blueprint.pdf
 
       - name: Upload blueprint.pdf (per-run artifact)
         uses: actions/upload-artifact@v4
         with:
           name: blueprint-pdf
-          path: blueprint/src/print.pdf
+          path: blueprint.pdf
           if-no-files-found: error
 
-  # Publish the freshly built pair to the orphan `artifacts` branch — `main` only, never
-  # on pull requests. The branch is recreated from scratch each time (a new root commit,
-  # force-pushed), so it never accumulates binary history.
+  # Publish the freshly built pair to the orphan `artifacts` branch — never on a dry run.
+  # The branch is recreated from scratch each time (a new root commit, force-pushed), so it
+  # never accumulates binary history.
   publish:
     needs: [paper, blueprint]
-    if: ${{ !cancelled() && needs.paper.result == 'success' && needs.blueprint.result == 'success' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    if: ${{ !cancelled() && !inputs.dry_run && needs.paper.result == 'success' && needs.blueprint.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -165,15 +170,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mv main.pdf paper.pdf
-          mv print.pdf blueprint.pdf
           cat > README.md <<EOF
           # CI-built PDFs
 
-          Built from \`main\` @ ${GITHUB_SHA} on $(date -u +%F) by \`.github/workflows/docs.yml\`.
+          Built from \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA} on $(date -u +%F) by the shared
+          \`linkage\` docs workflow.
 
-          - [paper.pdf](./paper.pdf) — built from \`paper/main.tex\`
-          - [blueprint.pdf](./blueprint.pdf) — built from \`blueprint/src/print.tex\`
+          - [paper.pdf](./paper.pdf) — built from \`${{ inputs.paper_tex }}\`
+          - [blueprint.pdf](./blueprint.pdf) — built from \`${{ inputs.blueprint_tex }}\`
 
           This orphan branch is recreated (single commit, no history) on every docs
           build of \`main\`. Do not commit to it by hand.
@@ -182,18 +186,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add paper.pdf blueprint.pdf README.md
-          git commit -q -m "CI-built PDFs from main @ ${GITHUB_SHA::7} ($(date -u +%F))"
+          git commit -q -m "CI-built PDFs from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7} ($(date -u +%F))"
           git push --force \
             "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             artifacts
 
-  # Deploy the pair to the gated Cloudflare Pages project `ssf-docs` — the phase-6
-  # private-view channel, one Access login alongside the hub's Quartz wiki. Same
-  # mechanism as the hub's quartz-deploy.yml (npx wrangler@3, same secret names, so the
-  # same values transfer). The job runs on PRs too, but only as a DRY RUN: assemble
-  # dist/ and validate it, never deploy (manifest.yml's philosophy). On `main`, a
-  # missing secret fails this job loudly — designed red until the account-side setup in
-  # CLOUD.md § "Private docs site" is done — while paper/blueprint/publish stay green.
+  # Deploy the pair to this article's gated Cloudflare Pages project — the private-view
+  # channel, one Access login alongside the hub's Quartz wiki. Same mechanism as the hub's
+  # quartz-deploy.yml (npx wrangler@3, same secret names, so the same values transfer).
+  # A dry run assembles dist/ and validates it but never deploys. Otherwise a missing
+  # secret fails this job loudly — designed red until the account-side setup in
+  # docs/CLOUD.md § "Private docs site" is done — while paper/blueprint/publish stay green.
+  # Each article needs its OWN Pages project and its own Access application.
   deploy:
     needs: [paper, blueprint]
     if: ${{ !cancelled() && needs.paper.result == 'success' && needs.blueprint.result == 'success' }}
@@ -208,8 +212,6 @@ jobs:
       - name: Assemble dist/ (PDFs + index.html)
         run: |
           cd dist
-          mv main.pdf paper.pdf
-          mv print.pdf blueprint.pdf
           BUILD_DATE="$(date -u +%F)"
           cat > index.html <<EOF
           <!doctype html>
@@ -218,17 +220,17 @@ jobs:
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <meta name="robots" content="noindex">
-          <title>Scale-Space Foundations — documents</title>
+          <title>${GITHUB_REPOSITORY##*/} — documents</title>
           <style>body{font-family:system-ui,sans-serif;max-width:36rem;margin:3rem auto;padding:0 1rem;line-height:1.5}footer{margin-top:2rem;color:#666;font-size:.85rem}</style>
           </head>
           <body>
-          <h1>Scale-Space Foundations</h1>
-          <p>CI-built PDFs, latest <code>main</code>:</p>
+          <h1>${GITHUB_REPOSITORY##*/}</h1>
+          <p>CI-built PDFs, latest <code>${GITHUB_REF_NAME}</code>:</p>
           <ul>
-          <li><a href="paper.pdf">paper.pdf</a> — the article (<code>paper/main.tex</code>)</li>
-          <li><a href="blueprint.pdf">blueprint.pdf</a> — the blueprint (<code>blueprint/src/print.tex</code>)</li>
+          <li><a href="paper.pdf">paper.pdf</a> — the article (<code>${{ inputs.paper_tex }}</code>)</li>
+          <li><a href="blueprint.pdf">blueprint.pdf</a> — the blueprint (<code>${{ inputs.blueprint_tex }}</code>)</li>
           </ul>
-          <footer>Built from main @ ${GITHUB_SHA} on ${BUILD_DATE} UTC by docs.yml.</footer>
+          <footer>Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA} on ${BUILD_DATE} UTC by the shared linkage docs workflow.</footer>
           </body>
           </html>
           EOF
@@ -247,34 +249,35 @@ jobs:
           echo "dist/ validated:"
           ls -l dist
 
-      - name: "Dry run complete — not deploying (pull request)"
-        if: github.event_name == 'pull_request'
-        run: echo "dist/ assembled and validated; the deploy itself happens only on main pushes / manual dispatch."
+      - name: "Dry run complete — not deploying"
+        if: inputs.dry_run
+        run: echo "dist/ assembled and validated; the deploy itself is skipped on a dry run."
 
       - name: Require Cloudflare secrets
-        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        if: ${{ !inputs.dry_run }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not configured — cannot deploy the gated docs site. Account-side steps (CLOUD.md § 'Private docs site'): (1) copy the hub's two Cloudflare repo secrets (notes-wiki → Settings → Secrets → Actions; same names, same values, same Cloudflare account) into this repo's Actions secrets; (2) re-run — the first deploy auto-creates the 'ssf-docs' Pages project; (3) IMMEDIATELY gate the assigned pages.dev domain (production AND *.preview subdomains) with a Cloudflare Access application, one-time-PIN policy, same as the wiki app."
+            echo "::error::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not configured — cannot deploy the gated docs site. Account-side steps (docs/CLOUD.md § 'Private docs site'): (1) copy the hub's two Cloudflare repo secrets (notes-wiki → Settings → Secrets → Actions; same names, same values, same Cloudflare account) into this repo's Actions secrets; (2) re-run — the first deploy auto-creates the '${{ inputs.pages_project }}' Pages project; (3) IMMEDIATELY gate the assigned pages.dev domain (production AND *.preview subdomains) with a Cloudflare Access application, one-time-PIN policy, same as the wiki app."
             exit 1
           fi
           echo "Cloudflare secrets present."
 
       - name: Set up Node
-        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        if: ${{ !inputs.dry_run }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Deploy to Cloudflare Pages (ssf-docs)
-        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+      - name: Deploy to Cloudflare Pages
+        if: ${{ !inputs.dry_run }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PAGES_PROJECT: ${{ inputs.pages_project }}
         run: |
           # idempotent: creates the project on first run, no-op afterwards (hub pattern)
-          npx wrangler@3 pages project create ssf-docs --production-branch=main || true
-          npx wrangler@3 pages deploy dist --project-name=ssf-docs --branch=main --commit-dirty=true
+          npx wrangler@3 pages project create "$PAGES_PROJECT" --production-branch=main || true
+          npx wrangler@3 pages deploy dist --project-name="$PAGES_PROJECT" --branch=main --commit-dirty=true

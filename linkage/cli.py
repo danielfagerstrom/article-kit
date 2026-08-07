@@ -106,6 +106,29 @@ def cmd_demand(args) -> int:
     return demand.main(args)
 
 
+def cmd_axioms(args) -> int:
+    """Print the trust-boundary allowlist; verify each entry is grounded in the ledger."""
+    from . import trust
+    cfg = config.load(args.root)
+    names = trust.declared(cfg)
+    if not names:
+        print(f"no {trust.trust_file(cfg).name} — the trust-boundary guard has nothing to "
+              "check; create it naming this article's interface axioms", file=sys.stderr)
+        return 0 if not args.check else 1
+    if bad := trust.ungrounded(cfg):
+        print(f"TRUST BOUNDARY: {len(bad)} declared axiom(s) that no {cfg.axioms.name} entry "
+              f"mentions in a **Lean:** segment — declared but never reviewed:", file=sys.stderr)
+        for b in bad:
+            print(f"  {b}", file=sys.stderr)
+        return 1
+    if args.check:
+        print(f"trust boundary OK: {len(names)} interface axiom(s), all grounded in "
+              f"{cfg.axioms.name}.", file=sys.stderr)
+    for n in trust.allowlist(cfg):
+        print(n)
+    return 0
+
+
 def cmd_init(args) -> int:
     from . import scaffold
     root = args.root or Path.cwd()
@@ -147,6 +170,12 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--wiki", type=Path, help="path to the Notes wiki")
     d.add_argument("--json", action="store_true", help="machine-readable output")
     d.set_defaults(func=cmd_demand)
+
+    x = sub.add_parser("axioms", help="the trust-boundary allowlist (Lean core + interfaces)")
+    x.add_argument("--check", action="store_true",
+                   help="also report the grounding verdict on stderr; fail if the "
+                        "declaration file is missing")
+    x.set_defaults(func=cmd_axioms)
 
     i = sub.add_parser("init", help="scaffold linkage.toml + blueprint skeleton here")
     i.add_argument("--slug", help="satellite id, e.g. 'hcs' (omit with --sync)")

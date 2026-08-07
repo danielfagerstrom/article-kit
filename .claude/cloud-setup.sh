@@ -51,9 +51,9 @@ warn() { printf '\n\033[1;33m[cloud-setup] WARN:\033[0m %s\n' "$*" >&2; }
 # This repo's checkout: prefer the hook's $CLAUDE_PROJECT_DIR, else resolve from
 # this script's own location (.claude/cloud-setup.sh).
 if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
-  SSF_DIR="$CLAUDE_PROJECT_DIR"
+  ARTICLE_DIR="$CLAUDE_PROJECT_DIR"
 else
-  SSF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  ARTICLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
 
 TECTONIC_VERSION="0.15.0"   # keep in lockstep with .github/workflows/docs.yml
@@ -65,9 +65,9 @@ TECTONIC_VERSION="0.15.0"   # keep in lockstep with .github/workflows/docs.yml
 # wiki/); the librarian is the directory holding librarian/cli.py.
 find_by_marker() {  # find_by_marker MARKER-RELPATH → first match on stdout
   local marker="$1" cand
-  for cand in /workspace/*/ "$(dirname "$SSF_DIR")"/*/ "$HOME"/dev/*/; do
+  for cand in /workspace/*/ "$(dirname "$ARTICLE_DIR")"/*/ "$HOME"/dev/*/; do
     [ -e "$cand$marker" ] || continue
-    [ "${cand%/}" = "$SSF_DIR" ] && continue
+    [ "${cand%/}" = "$ARTICLE_DIR" ] && continue
     printf '%s' "${cand%/}"
     return 0
   done
@@ -83,6 +83,15 @@ if [ -n "${LIBRARY_DIR:-}" ]; then
   LIB_DIR="$LIBRARY_DIR"
 else
   LIB_DIR="$(find_by_marker librarian/cli.py || true)"
+fi
+# The linkage framework. If this session IS the framework repo, use it directly —
+# otherwise look for an attached sibling, and fall back to installing from git.
+if [ -n "${LINKAGE_DIR:-}" ]; then
+  LNK_DIR="$LINKAGE_DIR"
+elif [ -f "$ARTICLE_DIR/linkage/cli.py" ]; then
+  LNK_DIR="$ARTICLE_DIR"
+else
+  LNK_DIR="$(find_by_marker linkage/cli.py || true)"
 fi
 
 # Clone fallbacks — these only work if the proxy has credentials for the repo,
@@ -119,11 +128,11 @@ smoke_test() {
   wiki --version
   WIKI_VAULT="${VAULT_DIR:-}" wiki config
   library config
-  library resolve fagerstrom2007spatiotemporal --json
+  linkage --help >/dev/null && echo 'linkage: ok'
   tectonic --version
   set -e
-  log "done. If 'library resolve' returned artifacts with no G:\\ mount, the Drive"
-  log "fallback is live. Compile check when needed: tectonic $SSF_DIR/paper/main.tex"
+  log "done. Resolve a source with: library resolve <citekey> --json (no G: mount"
+  log "means the Drive fallback is live). In an article repo: linkage check."
 }
 
 persist_env() {
@@ -136,6 +145,7 @@ persist_env() {
 # Fast path: on a resumed session everything may already be installed. Skip the
 # heavy work (SessionStart hooks aren't cached, so this keeps warm restarts quick).
 if command -v wiki >/dev/null 2>&1 && command -v library >/dev/null 2>&1 \
+   && command -v linkage >/dev/null 2>&1 \
    && command -v tectonic >/dev/null 2>&1 && [ -f "$CFG_DIR/config.json" ]; then
   log "already provisioned — skipping install."
   persist_env
@@ -185,6 +195,16 @@ fi
 if [ -n "$VAULT_DIR" ] && [ -d "$VAULT_DIR" ]; then
   log "installing wiki (from the Notes-vault checkout)"
   uv tool install --editable "$VAULT_DIR" --python "$PYTHON313" --force
+fi
+# linkage: editable from a checkout when one is attached (so a `git pull` updates it),
+# else straight from git — it is stdlib-only, so this always works when the network does.
+if [ -n "$LNK_DIR" ] && [ -d "$LNK_DIR" ]; then
+  log "installing linkage (editable, from $LNK_DIR)"
+  uv tool install --editable "$LNK_DIR" --python "$PYTHON313" --force
+else
+  log "no linkage checkout found — installing from git"
+  uv tool install "git+https://github.com/danielfagerstrom/linkage" --python "$PYTHON313" --force \
+    || warn "could not install linkage — \`linkage check\` unavailable this session."
 fi
 
 # ── 3. Materialise librarian config + service account from env (schema-agnostic) ──
