@@ -26,13 +26,35 @@ def read(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
+class MissingLeanPackage(RuntimeError):
+    pass
+
+
 def lean_declared_names(cfg: Config) -> set[str]:
-    """Every declaration name in the article's Lean sources (build artifacts excluded)."""
+    r"""Every declaration name this article may point a `\lean{}` tag at.
+
+    Its own sources, plus any shared Lake package named in `lean_packages` — a result that
+    moved to a shared library is still proved, and the blueprint node that points at it is
+    still correct. Build artifacts under the article's own `.lake` are excluded; the shared
+    packages live there, so they are scanned by explicit path instead.
+    """
     names: set[str] = set()
     for f in cfg.lean.rglob("*.lean"):
         if ".lake" in f.parts:
             continue
         names |= set(DECL_RE.findall(read(f)))
+
+    for pkg in cfg.lean_packages:
+        root = cfg.lean / ".lake" / "packages" / pkg
+        if not root.is_dir():
+            raise MissingLeanPackage(
+                f"lean_packages names '{pkg}', but {root} does not exist — run `lake build` "
+                f"in {cfg.lean.name}/ first. (Failing loudly on purpose: skipping it would "
+                rf"make every \lean{{}} tag pointing into that package look undeclared.)")
+        for f in root.rglob("*.lean"):
+            if any(part == ".lake" for part in f.relative_to(root).parts):
+                continue
+            names |= set(DECL_RE.findall(read(f)))
     return names
 
 

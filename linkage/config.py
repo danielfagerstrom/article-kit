@@ -48,6 +48,13 @@ class Config:
     allowlist: Path
     lean: Path
     paper: Path
+    lean_packages: tuple[str, ...] = ()
+    r"""Lake packages whose sources also count as "declared here".
+
+    A shared library holds results this article's blueprint legitimately points `\lean{}` at.
+    Named explicitly rather than scanning every dependency: scanning Mathlib would make any
+    Mathlib name satisfy check 1, and would read thousands of files on every run.
+    """
 
     statement_envs: tuple[str, ...] = DEFAULT_STATEMENT_ENVS
     label_prefixes: tuple[str, ...] = DEFAULT_LABEL_PREFIXES
@@ -115,6 +122,7 @@ def load(root: Path | None = None) -> Config:
         allowlist=p("allowlist", "blueprint/render-allowlist.txt"),
         lean=p("lean", "Formalization"),
         paper=p("paper", "paper"),
+        lean_packages=tuple(paths.get("lean_packages", ())),
         statement_envs=tuple(bp.get("statement_envs", DEFAULT_STATEMENT_ENVS)),
         label_prefixes=tuple(bp.get("statement_label_prefixes", DEFAULT_LABEL_PREFIXES)),
         statement_kinds=tuple(bp.get("statement_kinds", DEFAULT_STATEMENT_KINDS)),

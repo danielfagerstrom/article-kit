@@ -199,6 +199,9 @@ def main(argv: list[str] | None = None) -> int:
     except config.ConfigError as e:
         print(f"CONFIG ERROR: {e}", file=sys.stderr)
         return 2
+    except artifacts.MissingLeanPackage as e:
+        print(f"CONFIG ERROR: {e}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":
