@@ -46,6 +46,10 @@ on:
         default: main
         type: string
 
+    secrets:
+      ARTICLE_KIT_TOKEN:
+        required: false
+
 permissions:
   contents: read
 
@@ -79,9 +83,33 @@ jobs:
           fi
           echo "OK: no 'sorry' in $SCAN_DIR."
 
+      # article-kit may be private, in which case the runner's GITHUB_TOKEN cannot read it
+      # (allowing reusable-workflow *calls* is a separate permission from repo read). A
+      # fine-grained PAT with Contents:read on article-kit, passed as ARTICLE_KIT_TOKEN,
+      # covers that; without one this falls back to an anonymous clone, which is what a
+      # public article-kit needs.
+      #
+      # Clone to $RUNNER_TEMP, never into the workspace: the manifest emitter's
+      # `source_dirty` flag is a whole-repo `git status --porcelain`, so an untracked
+      # directory inside the article tree would falsely stamp the projection dirty.
       - name: Install the linkage framework
         if: inputs.axiom_guard_file != ''
-        run: pipx install "git+https://github.com/danielfagerstrom/article-kit@${{ inputs.linkage_ref }}"
+        env:
+          KIT_TOKEN: ${{ secrets.ARTICLE_KIT_TOKEN }}
+        run: |
+          kit="$RUNNER_TEMP/article-kit"
+          if [ -n "$KIT_TOKEN" ]; then
+            auth="https://x-access-token:${KIT_TOKEN}@github.com/danielfagerstrom/article-kit"
+          else
+            auth="https://github.com/danielfagerstrom/article-kit"
+          fi
+          if ! git clone --depth 1 --branch "${{ inputs.linkage_ref }}" "$auth" "$kit" 2>/dev/null; then
+            echo "::error::could not clone danielfagerstrom/article-kit@${{ inputs.linkage_ref }}. If it is private, add a fine-grained PAT with Contents:read on article-kit as the ARTICLE_KIT_TOKEN secret on this repo and pass it through in the caller workflow."
+            exit 1
+          fi
+          pipx install "$kit"
+          linkage --help > /dev/null
+          echo "linkage installed from article-kit@${{ inputs.linkage_ref }}"
 
       # The allowlist is the article's declared trust boundary, and `--check` fails when any
       # declared name is not mentioned by a ledger entry — a name added to CI without review

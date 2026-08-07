@@ -56,6 +56,8 @@ on:
     secrets:
       NOTES_WIKI_TOKEN:
         required: false
+      ARTICLE_KIT_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -85,10 +87,32 @@ jobs:
           sudo dpkg -i "$RUNNER_TEMP/pandoc.deb"
           pandoc --version | head -1
 
+      # article-kit may be private, in which case the runner's GITHUB_TOKEN cannot read it
+      # (allowing reusable-workflow *calls* is a separate permission from repo read). A
+      # fine-grained PAT with Contents:read on article-kit, passed as ARTICLE_KIT_TOKEN,
+      # covers that; without one this falls back to an anonymous clone, which is what a
+      # public article-kit needs.
+      #
+      # Clone to $RUNNER_TEMP, never into the workspace: the manifest emitter's
+      # `source_dirty` flag is a whole-repo `git status --porcelain`, so an untracked
+      # directory inside the article tree would falsely stamp the projection dirty.
       - name: Install the linkage framework
+        env:
+          KIT_TOKEN: ${{ secrets.ARTICLE_KIT_TOKEN }}
         run: |
-          pipx install "git+https://github.com/danielfagerstrom/article-kit@${{ inputs.linkage_ref }}"
+          kit="$RUNNER_TEMP/article-kit"
+          if [ -n "$KIT_TOKEN" ]; then
+            auth="https://x-access-token:${KIT_TOKEN}@github.com/danielfagerstrom/article-kit"
+          else
+            auth="https://github.com/danielfagerstrom/article-kit"
+          fi
+          if ! git clone --depth 1 --branch "${{ inputs.linkage_ref }}" "$auth" "$kit" 2>/dev/null; then
+            echo "::error::could not clone danielfagerstrom/article-kit@${{ inputs.linkage_ref }}. If it is private, add a fine-grained PAT with Contents:read on article-kit as the ARTICLE_KIT_TOKEN secret on this repo and pass it through in the caller workflow."
+            exit 1
+          fi
+          pipx install "$kit"
           linkage --help > /dev/null
+          echo "linkage installed from article-kit@${{ inputs.linkage_ref }}"
 
       # Emit BEFORE the hub checkout lands in the workspace, and to $RUNNER_TEMP — the
       # emitter's `source_dirty` flag is a whole-repo `git status --porcelain`, and an
