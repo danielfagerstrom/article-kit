@@ -1,12 +1,18 @@
-# Roadmap — scale-space-foundations (project infrastructure)
+# Roadmap — article-kit (the shared framework)
 
-The tooling/infrastructure backlog for this repo, the article **satellite**. Prioritised by what raises
-the trustworthiness and publication-readiness of the two deliverables (Lean + monograph).
+The backlog for the **shared framework** — the machinery every article repo consumes: the `linkage`
+checks and manifest, the blueprint scaffolding, the reusable CI, the shared agent and the process docs.
+Prioritised by what raises the trustworthiness and publication-readiness of the deliverables it serves
+(Lean + monograph, per article).
 
-**This is not the research backlog** (that lives in the wiki hub's outline page,
-`Notes/wiki/outlines/spatio-temporal-scale-space.md`, and `RESEARCH.md`) **nor the write-up status**
-(that is `README.md` § "Manuscript status"). Like the hub's `Notes/ROADMAP.md`, this file is *work*, not
-knowledge — the split keeps work-planning out of the blueprint/paper content.
+**This is not any one article's backlog.** A specific theorem, ledger entry or proof belongs in that
+article's own `ROADMAP.md` — this file was forked from `scale-space-foundations`' when the framework
+split out, and its article-mathematical items stayed there. **Nor is it the research backlog** (the wiki
+hub's outline pages) **nor a write-up status** (each article's `README.md`). Like the hub's
+`Notes/ROADMAP.md`, this file is *work*, not knowledge.
+
+A test for whether an item belongs here: *would a second article need it too?* If it names a theorem,
+it does not.
 
 Much of the below is validated and sharpened by a 2026-07-17 brainstorm on AI-supported (author-side)
 journal review. The recurring lesson is the constellation's own: **separate a deterministic core that
@@ -24,7 +30,7 @@ the paper *prose*.**
 **The decision.** "Write article fragments in the wiki" failed as a workflow step: freeform prose gives
 an LLM no enforcement surface, so the mathematics kept getting smoothed and popularised despite
 instruction. In the blueprint, formality is structurally forced (environments, `\label`s, `\lean{}`, the
-ledger, `check_linkage.py`, ultimately `lake build`). So the seam moves rather than the prompt: **the
+ledger, `linkage check`, ultimately `lake build`). So the seam moves rather than the prompt: **the
 blueprint owns the mathematical text — statements *and* human-readable proofs, at publication register —
 and the wiki and the article import nodes verbatim, never paraphrase them.** The wiki keeps what it is
 good for: ideation, pre-formal sketches, narrative, literature. The rule at the seam: **once a blueprint
@@ -105,23 +111,17 @@ mirroring compromise (`/rework-chapter` step 1) becomes interim scaffolding: not
 - **T6 — Paper single-sourcing.** The `LINKAGE.md` "larger, separate" item, now load-bearing: per-node
   statement files `\input` by both blueprint and paper (LINKAGE rule 4's strong form). Decide then
   whether article proofs are shared or article-specific.
-- **Ongoing — register sweep.** Blueprint proofs are the proofs of record; per-part editorial pass
-  against the private writing guide, delegable to the mathematician part by part. **Progress:**
-  part 05 ✅ (`14dd291` — proofs split out of statements); parts 02–04 ✅ (`b264205` — statements
-  self-contained, status-annotation content moved into proofs, `\statusA` lines normalized to
-  `\ledger`-first). **Citations:** venue-style prose citations ("IJCV 2005") converted blueprint-wide
-  to the new `\sscite{citekey}` macro (renders `@citekey` in PDF and transcluded blocks — the hub's
-  claim-ref convention, librarian-checkable). **Parts 01, 06–08 ✅ (`53370ec`)** — 3 new proof
-  environments (`prop:limit-kernel-gaussian` deliberately without proof-`\leanok`: partially-checked
-  node, honesty call; `prop:bessel-kernel`; `thm:receptive-field`), [A] status lines normalized,
-  A11–A14 ledger prose macro-ized. **The sweep is complete — all 8 parts.** The content findings the
-  frozen-content rule deferred (undefined $M$ in `def:point-measurement`, `def:lie-wedge` wording,
-  proof-`\leanok` semantics, …) are now filed as inbound requests in [`WISHLIST.md`](WISHLIST.md).
+- **Ongoing — register sweep.** Blueprint proofs are the proofs of record, so each article needs a
+  per-part editorial pass against the private writing guide, delegable to the mathematician part by
+  part. The framework's contribution is what makes the pass checkable: the render gate, `\sscite{}`
+  for librarian-checkable citekeys, and `\statusA` + `\textbf{Assignment.}` as fatal checks. The
+  per-article execution record belongs in that article's own `ROADMAP.md` — `scale-space-foundations`
+  completed its eight-part sweep there.
 
 ### 1. Publication-structure template committed  ·  ✅ 2026-07-17
-[`paper/PUBLICATION-TEMPLATE.md`](paper/PUBLICATION-TEMPLATE.md) — the prose-conformance spec (formatting
+[`docs/PUBLICATION-TEMPLATE.md`](docs/PUBLICATION-TEMPLATE.md) — the prose-conformance spec (formatting
 §A / section contracts §B / voice rubric §C / calibration exemplars §D / pipeline §E), the downstream
-companion to [`paper/DRAFTING-GATE.md`](paper/DRAFTING-GATE.md). The gate asks *"is this section ready to
+companion to [`docs/DRAFTING-GATE.md`](docs/DRAFTING-GATE.md). The gate asks *"is this section ready to
 draft?"*; the template asks *"does the drafted prose meet publication structure and voice?"*. A spec, like
 `CLAIMS.md` — the deterministic and LLM halves below implement it.
 
@@ -129,36 +129,23 @@ draft?"*; the template asks *"does the drafted prose meet publication structure 
 
 ## Next
 
-### 10. `thm:affine-line` at `α = 1` — widen, or keep the narrowing?  ·  ⬜ open, raised 2026-07-31
-The range sweep (hub `ROADMAP.md` #21, Check C finding 1) closed A3's asymmetry residual by deriving
-`|θ| ≤ min(α, 2−α)` from Feller §XVII.3 (3.17)–(3.18) plus an elementary change of variables, now
-written out in the blueprint proof. It also established that **the `α ≠ 1` puncture is a narrowing we
-choose, not one positivity forces**: on that line the pure powers are a symmetric Cauchy generator
-plus a drift, admissible for the whole of `|θ| ≤ 1 = min(1, 2−1)`, so the theorem currently
-*under-claims*. Fagerström's paper states the range without the puncture.
-
-The decision is a package, and that is why it was not taken in passing: widening means widening the
-Lean axiom's hypotheses (`fellerSymbol_negativeDefinite`, drop `h3 : α ≠ 1`), `prop:feller-negdef`'s
-statement, ledger A3's *Statement as used*, and `feller_isScaleSpaceWedge`'s signature together —
-and it means deciding whether a generator with a drift admixture counts as a *Feller derivative* at
-all, since on that line `θ` indexes drift rather than asymmetry and the one-sided
-Riemann–Liouville representation degenerates (`1/sin(απ)`). Keeping the narrowing is defensible;
-what is no longer acceptable is leaving it undeclared, and it is now declared in three places —
-the blueprint proof, A3's hygiene note, and the Lean docstring.
 
 ### 2. Boundary harness — lock the Lean trust base as a regression test
-Adopt the axiom-footprint **lock** as committed CI, systematising what `Scratch.lean` + `AXIOMS.md` do
-today as a manual ritual. Draft to adapt: `C:\Users\danie\Downloads\BoundaryHarness.lean` (opaque
-placeholders → swap in the real headline theorems; this repo has real defs, not stand-ins). Pieces:
+Adopt the axiom-footprint **lock** as committed CI, systematising what a scratch file + `AXIOMS.md` do
+as a manual ritual. Draft to adapt: `BoundaryHarness.lean` (opaque
+placeholders → swap in a given article's real headline theorems). Pieces:
 
-- **[A] Axiom-footprint lock** — `#print axioms <thm>` wrapped in `#guard_msgs` for each headline result
-  (`no_time_causal_galilean_scale_space_on_spacetime`, `causal_galilean_evolution`, `galilean_kernel_solves`,
-  the affine/Euclidean wedges). A new axiom sneaking in, or a `sorryAx` leaking, then changes the printed
-  message and **breaks the build** — the trust base becomes a tripwire, not a thing you remember to check.
+- **[A] Axiom-footprint lock** — `#print axioms <thm>` wrapped in `#guard_msgs` for each of an
+  article's headline results. A new axiom sneaking in, or a `sorryAx` leaking, then changes the printed
+  message and **breaks the build**: the trust base becomes a tripwire rather than a thing you remember
+  to check. *Partly shipped by the split:* `blueprint/trust-boundary.txt` + `linkage axioms --check`
+  + the shared Lean workflow already fail CI on any axiom outside the declared boundary, and refuse a
+  declared name no ledger entry backs. What `#guard_msgs` would add is per-theorem granularity — which
+  theorem gained the axiom, not merely that one did.
 - **[A] Sorry-freeness** via the footprint (already true project-wide; make it enforced).
 - **[A] Positive probes** — cheap "should-hold" consequences the kernel verifies.
 - **[C] Adversarial goals** — known-false in-domain statements kept as isolated `sorry`s that must **never**
-  become provable (a consistency tripwire for the injected literature axioms A1–A16). Isolated so they
+  become provable (a consistency tripwire for an article's injected literature axioms). Isolated so they
   never contaminate the real theorems' footprint; never `import`ed into the main development.
 - **[C] Definition scrutiny** — `unfold` / `#reduce` / `pp.all` for terms sharing a name with a standard
   notion (guards "you can define what you should prove").
@@ -167,8 +154,8 @@ placeholders → swap in the real headline theorems; this repo has real defs, no
 
 High *value* (turns the `#print axioms` discipline into a real CI gate); bounded effort (harness is drafted).
 
-### 3. `scripts/check_paper.py` — deterministic paper lint
-The sibling to `check_linkage.py`, over the paper `.tex` + `references.bib`. Stdlib, reports/fails like the
+### 3. `linkage paper` — deterministic paper lint
+The sibling to `linkage check`, over the paper `.tex` + `references.bib`. Stdlib, reports/fails like the
 existing checker. The chat's own "highest reliability-to-effort" pick. Checks:
 - **Declarations present** — the four Springer statements (author contributions, competing interests, data
   availability, funding).
@@ -178,7 +165,7 @@ existing checker. The chat's own "highest reliability-to-effort" pick. Checks:
 - **Citation integrity** — every `\cite` key resolves in `references.bib`; flag entries missing a DOI.
 - **Contribution↔section map** — a contributions passage exists and each item maps to a later section.
 
-Becomes a new **deterministic box** in `DRAFTING-GATE.md` (alongside item 7's `check_linkage.py`).
+Becomes a new **deterministic box** in `docs/DRAFTING-GATE.md` (alongside item 7's `linkage check`).
 
 ---
 
@@ -255,16 +242,16 @@ Ranked; each independent of the others:
 Codify the "independent re-formalization + diff" move (never *"does this match?"* — that invites
 sycophantic agreement): re-formalize the English claim from scratch, diff against the Lean, treat
 divergence as the signal. Most useful variant is scope/hypothesis mismatch ("prose says *for all
-distributions*; statement assumes compact support"). Home: extend `Formalization/REVIEW.md` and the
+distributions*; statement assumes compact support"). Home: extend `docs/REVIEW.md` and the
 hub's `curator` faithfulness job — the LLM flags, the human is the oracle at the boundary.
 
 ### 5. Calibration corpus for the template
 Acquire 6–10 current JMIV papers via the librarian (Lindeberg 2024, Bednarski–Lellmann 2023, the JMIV
-"Variational Image Regularisation" 2025 special issue) and tune `PUBLICATION-TEMPLATE.md` §B contracts and
+"Variational Image Regularisation" 2025 special issue) and tune `docs/PUBLICATION-TEMPLATE.md` §B contracts and
 proportions to 2026 norms. A `literature-study` task, run from the wiki.
 
 ### 6. Publish logistics
-Fold into `README.md`'s existing publish step. arXiv tightened endorsement (Dec 2025): as an unaffiliated
+Fold into each article's README publish step. arXiv tightened endorsement (Dec 2025): as an unaffiliated
 first-time submitter you fall to the **personal-endorsement path** (request a code, pass it to an
 established arXiv author in the target category — pick from your cited, arXiv-active authors); endorsement
 is **per-category**; every submission needs a **full English version** (since Feb 2026). Choose the primary
@@ -284,5 +271,5 @@ backlog (content). Same pattern as the hub's and the librarian's wishlists.
 The adversarial-reviewer half of the template (§B *LLM* prompts + §C voice rubric) is a **`/review-draft`
 skill owned by the hub** — because the author develops notes *there*, in dialog, and wants publication
 awareness during authoring, not only over a finished `.tex`. It reads this repo's
-`PUBLICATION-TEMPLATE.md` as its spec (the same cross-repo spec/consumer pattern as `CLAIMS.md`). See
+`docs/PUBLICATION-TEMPLATE.md` as its spec (the same cross-repo spec/consumer pattern as `CLAIMS.md`). See
 `Notes/ROADMAP.md`.
