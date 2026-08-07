@@ -45,6 +45,14 @@ on:
         required: false
         default: main
         type: string
+      private_dep_owner:
+        description: >-
+          GitHub owner whose repos may be private Lake dependencies. Git is told to
+          authenticate clones under this owner only — never all of github.com, which would
+          send the token to public dependencies a fine-grained PAT cannot cover.
+        required: false
+        default: danielfagerstrom
+        type: string
 
     secrets:
       ARTICLE_KIT_TOKEN:
@@ -76,8 +84,12 @@ jobs:
             echo "no ARTICLE_KIT_TOKEN — assuming all Lake dependencies are public"
             exit 0
           fi
-          git config --global url."https://x-access-token:${KIT_TOKEN}@github.com/".insteadOf "https://github.com/"
-          echo "git configured to authenticate github.com clones"
+          # Scope the rewrite to the OWNER, never all of github.com. A blanket rewrite sends
+          # the token to every clone including public dependencies (Mathlib, batteries,
+          # aesop...), and a fine-grained PAT that does not cover them answers 403 —
+          # "Write access to repository not granted" on a public repo it has no grant for.
+          git config --global             url."https://x-access-token:${KIT_TOKEN}@github.com/${{ inputs.private_dep_owner }}/".insteadOf             "https://github.com/${{ inputs.private_dep_owner }}/"
+          echo "git will authenticate clones under ${{ inputs.private_dep_owner }}/ only"
 
       # elan/lean/lake setup + `lake exe cache get` (auto, Mathlib detected) + `lake build`.
       # A lakefile whose lean_lib uses `globs = ["Lib.*"]` compiles *every* module under the
