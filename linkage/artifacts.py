@@ -132,3 +132,37 @@ def git_provenance(root: Path) -> dict:
 
     return {"source_commit": _git("rev-parse", "--short", "HEAD"),
             "source_dirty": bool(_git("status", "--porcelain"))}
+
+
+def lake_package_sources(cfg: Config) -> list[dict]:
+    """Where each `lean_packages` entry lives, and whether it is present.
+
+    Read from the article's `lake-manifest.json` — the pinned url + rev lake resolved. This
+    exists so the *checker* can stay toolchain-free and offline: the manifest CI job runs on
+    source text alone with no lake and no elan, and a shared library is one small shallow
+    clone away. `linkage packages` prints this; the workflow does the fetching with plain git.
+    """
+    import json
+
+    lakefile = cfg.lean / "lake-manifest.json"
+    if not lakefile.exists():
+        return []
+    try:
+        data = json.loads(lakefile.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, TypeError):
+        return []
+    by_name = {p.get("name"): p for p in data.get("packages", []) if isinstance(p, dict)}
+    out = []
+    for pkg in cfg.lean_packages:
+        entry = by_name.get(pkg) or {}
+        dest = cfg.lean / ".lake" / "packages" / pkg
+        out.append({
+            "name": pkg,
+            "url": entry.get("url"),
+            # the resolved sha, not inputRev — the manifest must project the exact tree lake
+            # pinned, not whatever a moving tag points at today
+            "rev": entry.get("rev") or entry.get("inputRev"),
+            "dest": dest,
+            "present": dest.is_dir(),
+        })
+    return out

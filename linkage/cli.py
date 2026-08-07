@@ -129,6 +129,28 @@ def cmd_axioms(args) -> int:
     return 0
 
 
+def cmd_packages(args) -> int:
+    """Report the shared Lake packages this article needs, for a toolchain-free fetch."""
+    cfg = config.load(args.root)
+    rows = artifacts.lake_package_sources(cfg)
+    if not rows:
+        return 0
+    missing = 0
+    for r in rows:
+        if args.missing_only and r["present"]:
+            continue
+        if not r["present"]:
+            missing += 1
+        if not r["url"] or not r["rev"]:
+            print(f"{r['name']}: not resolved in lake-manifest.json — run `lake update "
+                  f"{r['name']}`", file=sys.stderr)
+            return 1
+        print(f"{r['name']}	{r['url']}	{r['rev']}	{r['dest']}")
+    if args.missing_only and missing:
+        print(f"{missing} shared package(s) not checked out", file=sys.stderr)
+    return 0
+
+
 def cmd_init(args) -> int:
     from . import scaffold
     root = args.root or Path.cwd()
@@ -176,6 +198,11 @@ def build_parser() -> argparse.ArgumentParser:
                    help="also report the grounding verdict on stderr; fail if the "
                         "declaration file is missing")
     x.set_defaults(func=cmd_axioms)
+
+    k = sub.add_parser("packages", help="shared Lake packages: name, url, rev, destination")
+    k.add_argument("--missing-only", action="store_true",
+                   help="only those not already checked out")
+    k.set_defaults(func=cmd_packages)
 
     i = sub.add_parser("init", help="scaffold linkage.toml + blueprint skeleton here")
     i.add_argument("--slug", help="satellite id, e.g. 'hcs' (omit with --sync)")

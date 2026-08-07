@@ -114,6 +114,28 @@ jobs:
           linkage --help > /dev/null
           echo "linkage installed from article-kit@${{ inputs.linkage_ref }}"
 
+      # This job is deliberately toolchain-free — no elan, no lake — because the manifest is
+      # a projection of source text. But an article may point `\lean{}` tags at a shared Lake
+      # package, and check 1 has to resolve them. `linkage packages` reports the url + resolved
+      # sha lake pinned, so a shallow clone into the place lake would have put it is enough.
+      # The sha, not the tag: the manifest must project the exact tree that is pinned.
+      - name: Fetch shared Lake packages (no toolchain)
+        env:
+          KIT_TOKEN: ${{ secrets.ARTICLE_KIT_TOKEN }}
+        run: |
+          linkage packages --missing-only | while IFS=$'	' read -r name url rev dest; do
+            [ -z "$name" ] && continue
+            echo "fetching $name @ ${rev:0:7}"
+            if [ -n "$KIT_TOKEN" ]; then
+              url="${url/https:\/\/github.com\//https://x-access-token:${KIT_TOKEN}@github.com/}"
+            fi
+            mkdir -p "$dest"
+            git -C "$dest" init -q
+            git -C "$dest" remote add origin "$url"
+            git -C "$dest" fetch -q --depth 1 origin "$rev"
+            git -C "$dest" checkout -q FETCH_HEAD
+          done
+
       # Emit BEFORE the hub checkout lands in the workspace, and to $RUNNER_TEMP — the
       # emitter's `source_dirty` flag is a whole-repo `git status --porcelain`, and an
       # untracked hub directory (or the manifest itself) inside the article tree would
