@@ -203,7 +203,7 @@ if [ -n "$LNK_DIR" ] && [ -d "$LNK_DIR" ]; then
   uv tool install --editable "$LNK_DIR" --python "$PYTHON313" --force
 else
   log "no linkage checkout found — installing from git"
-  uv tool install "git+https://github.com/danielfagerstrom/linkage" --python "$PYTHON313" --force \
+  uv tool install "git+https://github.com/danielfagerstrom/article-kit" --python "$PYTHON313" --force \
     || warn "could not install linkage — \`linkage check\` unavailable this session."
 fi
 

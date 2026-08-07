@@ -87,7 +87,7 @@ jobs:
 
       - name: Install the linkage framework
         run: |
-          pipx install "git+https://github.com/danielfagerstrom/linkage@${{ inputs.linkage_ref }}"
+          pipx install "git+https://github.com/danielfagerstrom/article-kit@${{ inputs.linkage_ref }}"
           linkage --help > /dev/null
 
       # Emit BEFORE the hub checkout lands in the workspace, and to $RUNNER_TEMP — the

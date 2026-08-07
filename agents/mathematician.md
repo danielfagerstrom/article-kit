@@ -51,7 +51,7 @@ than guessing which one was meant.
    machine-checked and which are cited interfaces is). Keep statement/proof LaTeX within the
    render-safe macro set (fatal check 4 enforces this) so nodes transclude cleanly.
 6. **Do not edit the framework's files from here.** `linkage-macros.tex`, `theorems.tex`,
-   `blueprint.sty` and `latexmkrc` are owned by the `linkage` repo; `linkage check` reports an
+   `blueprint.sty` and `latexmkrc` are owned by the `article-kit` repo; `linkage check` reports an
    advisory when an article's copy has drifted. If one genuinely needs changing, say so in your
    report — the change belongs in the framework, where every article gets it.
 

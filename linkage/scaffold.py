@@ -10,7 +10,7 @@ Two tiers:
 
 **Framework-owned** — `blueprint.sty`, `theorems.tex`, `linkage-macros.tex`, `latexmkrc`.
 Editing the article's copy is a mistake; `linkage check` reports it as an advisory naming
-the file. Change them in the framework and re-run `linkage init --sync`.
+the file. Change them in article-kit and re-run `linkage init --sync`.
 
 **Seeded** — `plastex.cfg`, `extra_styles.css`, `render-allowlist.txt`, and the rendered
 templates (`web.tex`, `print.tex`, `macros.tex`, `linkage.toml`). Copied once as a starting

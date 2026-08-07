@@ -81,7 +81,7 @@ jobs:
 
       - name: Install the linkage framework
         if: inputs.axiom_guard_file != ''
-        run: pipx install "git+https://github.com/danielfagerstrom/linkage@${{ inputs.linkage_ref }}"
+        run: pipx install "git+https://github.com/danielfagerstrom/article-kit@${{ inputs.linkage_ref }}"
 
       # The allowlist is the article's declared trust boundary, and `--check` fails when any
       # declared name is not mentioned by a ledger entry — a name added to CI without review

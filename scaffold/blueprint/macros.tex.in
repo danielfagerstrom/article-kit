@@ -1,7 +1,7 @@
 % This article's macros.
 %
 % The framework's vocabulary (\lean/\leanok/\uses/\notready, \ledger, \notes, \sscite, and
-% the [T]/[A] status tags) lives in linkage-macros.tex, which the `linkage` repo owns.
+% the [T]/[A] status tags) lives in linkage-macros.tex, which the `article-kit` repo owns.
 % Everything below the rule is this article's own NOTATION — yours to change.
 %
 % Anything you add here is automatically render-safe (fatal check 4 reads this file's

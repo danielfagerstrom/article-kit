@@ -1,4 +1,4 @@
-# linkage
+# article-kit
 
 The shared machinery behind the article repos: the blueprint ↔ Lean ↔ ledger ↔ paper
 linkage checks, the manifest the wiki hub reads, and the scaffolding a new article starts
