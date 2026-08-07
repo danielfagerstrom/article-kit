@@ -1,0 +1,48 @@
+% The linkage framework's macro vocabulary. OWNED BY THE `linkage` REPO — do not edit this
+% copy; edit it there and re-run `linkage scaffold --sync`. `linkage check` reports drift.
+%
+% Two tiers live here, and neither is the article's to choose:
+%
+%   (a) the leanblueprint API (\lean, \leanok, \uses, \notready, \proves), stubbed as no-ops
+%       so the blueprint also compiles with plain pdflatex;
+%   (b) the linkage macros proper (\ledger, \notes, \sscite, and the [T]/[A] status tags).
+%       The checker and the hub manifest key on these names, and the hub reads every
+%       satellite's manifest with one reader — so an article that renamed them would emit a
+%       manifest nothing could consume.
+%
+% The article's own NOTATION belongs in its own macros file, alongside an \input of this one.
+
+% -- (a) leanblueprint API ----------------------------------------------------
+% When compiled standalone (via print.tex) these are no-ops. When built through the
+% plasTeX/leanblueprint pipeline, the package's own definitions take precedence and the
+% dependency graph / Lean-link tracking activates. See the load-order note in web.tex.
+\providecommand{\lean}[1]{}
+\providecommand{\leanok}{}
+\providecommand{\uses}[1]{}
+\providecommand{\notready}{}
+\providecommand{\proves}[1]{}
+
+% -- (b) linkage macros -------------------------------------------------------
+% \ledger{A15} : this [A] node is grounded in axiom-ledger entry A15 (renders inline, so it
+%                reads the same as the older prose form "ledger A15").
+% \notes{slug} : the node's "what" lives in the wiki content note <slug>. A no-op in the PDF,
+%                so private wiki slugs stay out of the public build; the checker reads it
+%                from the source.
+% \sscite{key} : inline citation by pinned citekey (the librarian's Better BibTeX key).
+%                Renders as the typewriter @citekey both in the PDF and, via macro expansion
+%                at manifest emit, in transcluded wiki blocks — where it matches the hub's
+%                claim-ref convention and stays checkable.
+\newcommand{\ledger}[1]{ledger~#1}
+\newcommand{\notes}[1]{}
+\newcommand{\sscite}[1]{\texttt{@#1}}
+
+% -- Status tags --------------------------------------------------------------
+% [T] proved-target  : Lean must prove this from primitives + the [A] interfaces.
+% [A] analytic axiom : stated as a Lean axiom / carried hypothesis; the paper cites the
+%     external analysis for it, and the ledger entry records the page anchor.
+% Every statement node must declare one (fatal check 5), and every [A] node must say in its
+% status annotation what the citation carries and what it does not (fatal check 7).
+\newcommand{\Ttag}{\textbf{[T]}\ \textsf{proved-target}}
+\newcommand{\Atag}{\textbf{[A]}\ \textsf{analytic interface}}
+\newcommand{\statusT}{\hfill{\small$\vartriangleright$ \Ttag}}
+\newcommand{\statusA}{\hfill{\small$\vartriangleright$ \Atag}}

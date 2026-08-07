@@ -1,0 +1,32 @@
+% Pdf build of the blueprint content (plain pdflatex, no leanblueprint CLI needed).
+%   cd blueprint/src && pdflatex print.tex     % or: latexmk  (see latexmkrc)
+% The leanblueprint macros (\lean, \uses, \leanok, \notready) are no-ops here, stubbed
+% in linkage-macros.tex; the web build (web.tex) gives them their real meaning. The theorem
+% environments are shared with that build via theorems.tex, so numbering cannot drift.
+\documentclass[11pt]{report}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amssymb, amsthm, amsmath}
+\usepackage{hyperref}
+
+\input{macros}
+\input{theorems}
+
+\title{@@TITLE@@}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Legend.}\quad
+\textbf{[T]} \textsf{proved-target}: the Lean formalisation must prove this from primitives together with
+the [A] interfaces.\quad
+\textbf{[A]} \textsf{analytic interface}: stated in Lean as an axiom / carried hypothesis; the underlying
+analysis is cited, not reproven.
+
+\tableofcontents
+
+\input{content}
+
+\end{document}

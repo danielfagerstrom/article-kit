@@ -1,0 +1,17 @@
+% This article's macros.
+%
+% The framework's vocabulary (\lean/\leanok/\uses/\notready, \ledger, \notes, \sscite, and
+% the [T]/[A] status tags) lives in linkage-macros.tex, which the `linkage` repo owns.
+% Everything below the rule is this article's own NOTATION — yours to change.
+%
+% Anything you add here is automatically render-safe (fatal check 4 reads this file's
+% \newcommand definitions); anything you use but do not define must be vetted in
+% render-allowlist.txt, or the manifest would silently drop it.
+
+\input{linkage-macros}
+
+% -- Notation -----------------------------------------------------------------
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\CC}{\mathbb{C}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\ZZ}{\mathbb{Z}}

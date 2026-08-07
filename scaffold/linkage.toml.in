@@ -1,0 +1,22 @@
+# This article's binding to the `linkage` framework.
+#
+# `slug` is the satellite id: the hub keys claim refs (`num:@@SLUG@@:…`) and the manifest
+# filename (`blueprint-manifest-@@SLUG@@.json`) on it, so it must stay stable once wiki
+# notes start citing this article.
+
+slug = "@@SLUG@@"
+
+[paths]
+blueprint = "blueprint/src/content.tex"
+axioms    = "blueprint/AXIOMS.md"
+macros    = "blueprint/src/macros.tex"
+allowlist = "blueprint/render-allowlist.txt"
+lean      = "Formalization"
+paper     = "paper"
+
+# Everything else is a framework default and is omitted deliberately — the statement
+# environments, statement label prefixes, ledger-id shape and pandoc pin all live in
+# linkage/config.py. Override here only if this article genuinely differs.
+#
+# The linkage *macro* names are not configurable at all: they are the framework's
+# vocabulary, and the hub reads every satellite's manifest with one reader.

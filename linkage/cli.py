@@ -63,6 +63,18 @@ def cmd_check(args) -> int:
         safe_commands=artifacts.render_safe_commands(cfg),
         wiki=args.wiki,
     )
+
+    # Framework-owned scaffolding must exist in the article tree (TeX resolves \input
+    # against the source dir), so it is a copy; ADR-0008 says a copy owes detectable
+    # divergence. Advisory, not fatal — an edited copy still builds, it just silently
+    # stops tracking the framework.
+    from . import scaffold
+    for rel in scaffold.drift(cfg.root):
+        f.advisory.append(
+            f"[scaffold] {rel} differs from the framework's copy — edit it in the linkage "
+            "repo and re-run `linkage init --sync`, or the change is lost on the next sync"
+        )
+
     s = f.stats
     print(f"Blueprint: {s['nodes']} statement nodes ({s['leanok']} \\leanok), "
           f"{s['ledger_refs']} ledger refs, {s['paper_shared']} paper shared-statements.")
@@ -96,7 +108,15 @@ def cmd_demand(args) -> int:
 
 def cmd_init(args) -> int:
     from . import scaffold
-    return scaffold.init(Path.cwd(), slug=args.slug)
+    root = args.root or Path.cwd()
+    slug = args.slug
+    if slug is None:
+        # --sync inside an existing article: take the slug from its config
+        slug = config.load(root).slug
+    subs = {k: v for k, v in (
+        ("TITLE", args.title), ("GITHUB", args.github),
+        ("HOME", args.home), ("DOCHOME", args.dochome)) if v}
+    return scaffold.init(root, slug=slug, subs=subs, sync=args.sync)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -129,7 +149,13 @@ def build_parser() -> argparse.ArgumentParser:
     d.set_defaults(func=cmd_demand)
 
     i = sub.add_parser("init", help="scaffold linkage.toml + blueprint skeleton here")
-    i.add_argument("--slug", required=True, help="satellite id, e.g. 'hcs'")
+    i.add_argument("--slug", help="satellite id, e.g. 'hcs' (omit with --sync)")
+    i.add_argument("--sync", action="store_true",
+                   help="refresh the framework-owned files only; leave article files alone")
+    i.add_argument("--title", help="document title for the rendered web/print templates")
+    i.add_argument("--github", help="the article repo's URL")
+    i.add_argument("--home", help="published site URL")
+    i.add_argument("--dochome", help="published API-docs URL")
     i.set_defaults(func=cmd_init)
 
     return ap

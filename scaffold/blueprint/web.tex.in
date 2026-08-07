@@ -1,0 +1,44 @@
+% Web (plasTeX) version of the blueprint -- the dependency graph and the Lean links.
+%
+%   cd blueprint/src && plastex -c plastex.cfg web.tex     % output: blueprint/web/
+%   cd blueprint/web && python -m http.server 8000         % the graph needs a server
+%
+% This file is *not* compiled by a TeX engine in normal use; plasTeX parses it. It is
+% kept LaTeX-compilable anyway (blueprint.sty swallows the options and defines the one
+% macro plasTeX would otherwise supply), so a stray `pdflatex web.tex` does not explode.
+%
+% Load order matters. \usepackage{blueprint} + the dep_graph plugin install \lean,
+% \leanok, \notready, \uses and \proves as real plasTeX commands; macros.tex declares
+% the same names with \providecommand as no-ops for the pdflatex build. plasTeX's
+% Context.newcommand refuses to overwrite a package-defined command with a
+% \newcommand-style one, so inputting macros.tex *after* the package leaves the real
+% definitions in place. Do not reorder these two lines.
+
+\documentclass{report}
+
+\usepackage{amssymb, amsthm, amsmath}
+\usepackage{hyperref}
+\usepackage[showmore, dep_graph]{blueprint}
+
+\input{macros}
+\input{theorems}
+
+\home{@@HOME@@}
+\github{@@GITHUB@@}
+\dochome{@@DOCHOME@@}
+
+\title{@@TITLE@@}
+\author{}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Legend.}\quad
+\textbf{[T]} \textsf{proved-target}: the Lean formalisation must prove this from primitives together with
+the [A] interfaces.\quad
+\textbf{[A]} \textsf{analytic interface}: stated in Lean as an axiom / carried hypothesis; the underlying
+analysis is cited, not reproven.
+
+\input{content}
+
+\end{document}
