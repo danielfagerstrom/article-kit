@@ -68,14 +68,16 @@ on:
 permissions:
   contents: read
 
-env:
-  TECTONIC_VERSION: ${{ inputs.tectonic_version }}
-  PAPER_TEX: ${{ inputs.paper_tex }}
-  BLUEPRINT_TEX: ${{ inputs.blueprint_tex }}
+# NOTE: no workflow-level `env:` here. The `inputs` context is not available at that
+# scope in a called workflow — using it there makes the whole run fail with a bare
+# "workflow file issue" startup_failure and no step logs. Job-level env is fine.
 
 jobs:
   paper:
     runs-on: ubuntu-latest
+    env:
+      TECTONIC_VERSION: ${{ inputs.tectonic_version }}
+      PAPER_TEX: ${{ inputs.paper_tex }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -116,6 +118,9 @@ jobs:
   blueprint:
     if: inputs.build_blueprint
     runs-on: ubuntu-latest
+    env:
+      TECTONIC_VERSION: ${{ inputs.tectonic_version }}
+      BLUEPRINT_TEX: ${{ inputs.blueprint_tex }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
