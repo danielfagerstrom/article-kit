@@ -241,7 +241,7 @@ jobs:
       - name: Install Graphviz and kpsewhich
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends graphviz graphviz-dev texlive-binaries
+          sudo apt-get install -y --no-install-recommends graphviz graphviz-dev texlive-base
           kpsewhich --version | head -1
 
       - name: Install plasTeX and the blueprint plugins
@@ -254,6 +254,15 @@ jobs:
       - name: Build the web blueprint
         run: |
           cd "$WEB_DIR"
+          # Fail here, with a sentence, rather than in plasTeX's traceback. A kpsewhich
+          # that RUNS but resolves nothing is worse than an absent one: plasTeX only falls
+          # back to its TEXINPUTS scan when the call raises, so an installed-but-
+          # unconfigured kpsewhich (texlive-binaries without texlive-base's texmf.cnf)
+          # turns every lookup into a bare FileNotFoundError.
+          if ! kpsewhich web.tex >/dev/null 2>&1; then
+            echo "::error::kpsewhich cannot resolve web.tex from $PWD — it is installed but has no search path, so plasTeX will fail to find every input. Is texlive-base present (not just texlive-binaries)?"
+            exit 1
+          fi
           plastex -c plastex.cfg --imager=none --vector-imager=none web.tex
 
       # A plasTeX run that produced no graph is a broken deploy, not a warning: the graph is
