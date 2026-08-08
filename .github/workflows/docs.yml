@@ -264,7 +264,18 @@ jobs:
           fi
           nodes=$(grep -oE 'shape=(ellipse|box)' "$WEB_OUT/dep_graph_document.html" | wc -l)
           if [ "$nodes" -eq 0 ]; then
-            echo "::error::the dependency graph has no nodes — the blueprint built empty"; exit 1
+            echo "::error::the dependency graph has no nodes — the blueprint built empty"
+            # Print the evidence rather than making the next person reproduce it: the two
+            # known causes (no Graphviz for pygraphviz; kpsewhich absent so \input drops
+            # the part files) both land here, and they look identical from the exit code.
+            echo "--- digraph source as generated ---"
+            sed -n 's/.*\(digraph[^<]*\).*/\1/p' "$WEB_OUT/dep_graph_document.html" | head -c 2000
+            echo
+            echo "--- statement environments seen in the rendered pages ---"
+            grep -ohoE '(Definition|Lemma|Proposition|Theorem|Corollary) [0-9]+\.[0-9]+' "$WEB_OUT"/*.html 2>/dev/null | sort -u | head -20
+            echo "--- pages produced ---"
+            ls -1 "$WEB_OUT"
+            exit 1
           fi
           echo "web blueprint OK: $nodes nodes in the dependency graph"
 
