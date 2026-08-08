@@ -264,9 +264,18 @@ not to either projection.
   rest of the nodes; add reciprocal `blueprint:` frontmatter to the wiki content notes. (Paper
   same-labelling is settled: the non-existence theorem uses `thm:galilean-nonexistence`; the affine result
   is shared at prose level — no advisories outstanding.)
-- **Larger, separate:** activate the full leanblueprint web/dep-graph build (Tier B is installed) so
-  blueprint→Lean is checked by the official tool and the graph renders; and true statement
-  single-sourcing via shared `\input`.
+- **Shipped 2026-08-08 — the web/dep-graph build is deployed, not just installed.** The reusable
+  [`docs.yml`](../.github/workflows/docs.yml) gained a `web` job: plasTeX renders
+  `blueprint/src/web.tex` and the deploy job publishes it at `/blueprint/` on the article's
+  Cloudflare Pages project, so the `\uses` graph and the `[T]`/`[A]` tags are a shareable URL
+  rather than a local artifact. Opt out per article with `build_web: false`. It needs neither TeX
+  nor a graphviz binary — all mathematics goes to MathJax client-side (so plasTeX emits no images;
+  the job passes `--imager=none` to make that explicit rather than relying on a fallback), and
+  `plastexdepgraph` ships Graphviz as WebAssembly, laying the graph out in the reader's browser.
+  Locally, `scripts/build-blueprint.sh` in each article rebuilds the same view.
+- **Still larger, separate:** have blueprint→Lean checked by leanblueprint's *own* tooling
+  (`checkdecls`) rather than only by `linkage check`'s declaration scan; and true statement
+  single-sourcing between paper and blueprint via shared `\input`.
 - **Decided 2026-07-25, in build-out:** the transclusion layer — the blueprint as the single source of
   the mathematical text for wiki and article (see the *Planned — transclusion fields* bullet above;
   master roadmap `ROADMAP.md` #7, hub half `Notes/ROADMAP.md` #14). Promotes paper statement

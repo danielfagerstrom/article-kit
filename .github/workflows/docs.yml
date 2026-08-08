@@ -19,11 +19,23 @@ name: Docs CI (reusable)
 # blueprint changes: theorem statements are single-sourced between the two, so a blueprint
 # edit must rebuild the paper.
 #
-# The `deploy` job additionally publishes the pair to a Cloudflare Pages project, one per
-# article (behind Cloudflare Access — account-side setup in docs/CLOUD.md § "Private docs
-# site"). On pull requests pass dry_run: true — assemble dist/ and validate it, never
-# deploy. Otherwise it FAILS LOUDLY if the Cloudflare secrets are missing (the build and
-# publish jobs stay green).
+# The `web` job builds the THIRD view: the plasTeX blueprint under blueprint/web/, which is
+# the only one that renders the \uses dependency graph and the [T]/[A] status tags. It is
+# deployed alongside the PDFs at /blueprint/, so the graph is a shareable URL rather than a
+# local artifact. Notably it needs NO TeX and NO graphviz binary:
+#   - all mathematics is handed to MathJax client-side, so plasTeX emits no images and
+#     never invokes an imager (the job passes --imager=none to make that explicit rather
+#     than depending on a fallback);
+#   - plastexdepgraph ships Graphviz compiled to WebAssembly (graphvizlib.wasm, via
+#     d3-graphviz), so the graph is laid out in the reader's browser, not at build time.
+# So the whole job is Python plus three pip packages. It is NOT force-pushed to the
+# `artifacts` branch — that branch is for the PDFs; a couple of megabytes of HTML and wasm
+# rewritten on every build does not belong in git.
+#
+# The `deploy` job publishes the set to a Cloudflare Pages project, one per article (behind
+# Cloudflare Access — account-side setup in docs/CLOUD.md § "Private docs site"). On pull
+# requests pass dry_run: true — assemble dist/ and validate it, never deploy. Otherwise it
+# FAILS LOUDLY if the Cloudflare secrets are missing (the build and publish jobs stay green).
 
 on:
   workflow_call:
@@ -51,6 +63,32 @@ on:
         description: "Entry point of the blueprint's print build."
         required: false
         default: blueprint/src/print.tex
+        type: string
+      build_web:
+        description: >-
+          Build and deploy the plasTeX web blueprint (the dependency-graph view). Requires
+          blueprint/src/web.tex and blueprint/src/plastex.cfg, both part of the scaffold.
+        required: false
+        default: true
+        type: boolean
+      blueprint_web_dir:
+        description: "Directory holding plastex.cfg and web.tex; plastex runs from here."
+        required: false
+        default: blueprint/src
+        type: string
+      blueprint_web_out:
+        description: >-
+          Where plastex.cfg's [files] directory= resolves to, relative to the repo root.
+          Must agree with that setting or the upload finds nothing.
+        required: false
+        default: blueprint/web
+        type: string
+      plastex_requirements:
+        description: >-
+          pip requirements for the web build, pinned for reproducibility. Keep plasTeX in
+          lockstep with what authors run locally, so CI and the desk render the same bytes.
+        required: false
+        default: "plastex==3.1 plastexdepgraph plastexshowmore leanblueprint"
         type: string
       tectonic_version:
         description: >-
@@ -154,6 +192,59 @@ jobs:
           path: blueprint.pdf
           if-no-files-found: error
 
+  # The dependency-graph view. See the header note for why this needs neither TeX nor a
+  # graphviz binary.
+  web:
+    if: inputs.build_web
+    runs-on: ubuntu-latest
+    env:
+      WEB_DIR: ${{ inputs.blueprint_web_dir }}
+      WEB_OUT: ${{ inputs.blueprint_web_out }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install plasTeX and the blueprint plugins
+        run: pip install ${{ inputs.plastex_requirements }}
+
+      # plastex.cfg's [files] directory= is relative to the config, so this must run from
+      # WEB_DIR. --imager=none / --vector-imager=none because every formula goes to MathJax:
+      # without them plasTeX probes for pdf2svg and dvisvgm and merely warns when both are
+      # absent, which would leave a silent dependency on the runner image.
+      - name: Build the web blueprint
+        run: |
+          cd "$WEB_DIR"
+          plastex -c plastex.cfg --imager=none --vector-imager=none web.tex
+
+      # A plasTeX run that produced no graph is a broken deploy, not a warning: the graph is
+      # the whole reason this view exists, and an empty one still renders as a page.
+      - name: Validate the web build
+        run: |
+          for f in "$WEB_OUT/index.html" "$WEB_OUT/dep_graph_document.html"; do
+            [ -s "$f" ] || { echo "::error::$f is missing or empty — plasTeX produced no web build"; exit 1; }
+          done
+          if ! grep -q 'graphvizlib.wasm\|d3-graphviz' "$WEB_OUT/dep_graph_document.html" "$WEB_OUT"/js/* 2>/dev/null; then
+            echo "::error::the dependency graph carries no renderer — is plastexdepgraph installed?"; exit 1
+          fi
+          nodes=$(grep -coE '(def|prop|lem|thm|cor):[a-zA-Z0-9-]+' "$WEB_OUT/dep_graph_document.html" || true)
+          if [ "${nodes:-0}" -eq 0 ]; then
+            echo "::error::the dependency graph names no blueprint labels — the build is empty"; exit 1
+          fi
+          echo "web blueprint OK: $nodes label references in the graph"
+
+      - name: Upload the web blueprint (per-run artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: blueprint-web
+          path: ${{ inputs.blueprint_web_out }}
+          if-no-files-found: error
+
   # Publish the freshly built pair to the orphan `artifacts` branch — never on a dry run.
   # The branch is recreated from scratch each time (a new root commit, force-pushed), so it
   # never accumulates binary history.
@@ -164,9 +255,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      # `pattern` so the web blueprint is not dragged in: this branch carries the two PDFs
+      # only (see the header note).
       - name: Download the built PDFs
         uses: actions/download-artifact@v4
         with:
+          pattern: "*-pdf"
           path: publish
           merge-multiple: true
 
@@ -204,20 +298,41 @@ jobs:
   # docs/CLOUD.md § "Private docs site" is done — while paper/blueprint/publish stay green.
   # Each article needs its OWN Pages project and its own Access application.
   deploy:
-    needs: [paper, blueprint]
-    if: ${{ !cancelled() && needs.paper.result == 'success' && needs.blueprint.result == 'success' }}
+    needs: [paper, blueprint, web]
+    # `web` is skipped when build_web is false, and a skipped need must not block the
+    # deploy — hence != failure rather than == success.
+    if: ${{ !cancelled() && needs.paper.result == 'success' && needs.blueprint.result == 'success' && needs.web.result != 'failure' && needs.web.result != 'cancelled' }}
     runs-on: ubuntu-latest
     steps:
+      # Downloaded separately, not merge-multiple over everything: the web build is a tree
+      # with its own index.html, which merged flat would collide with the one assembled
+      # below.
       - name: Download the built PDFs
         uses: actions/download-artifact@v4
         with:
+          pattern: "*-pdf"
           path: dist
           merge-multiple: true
 
-      - name: Assemble dist/ (PDFs + index.html)
+      - name: Download the web blueprint
+        if: inputs.build_web
+        uses: actions/download-artifact@v4
+        with:
+          name: blueprint-web
+          path: dist/blueprint
+
+      - name: Assemble dist/ (PDFs + web blueprint + index.html)
+        env:
+          BUILD_WEB: ${{ inputs.build_web }}
         run: |
           cd dist
           BUILD_DATE="$(date -u +%F)"
+          # The two web-blueprint list items are emitted only when that view was built, so
+          # the landing page never advertises a link that 404s.
+          WEB_LINKS=""
+          if [ "$BUILD_WEB" = "true" ]; then
+            WEB_LINKS='<li><a href="blueprint/">blueprint (web)</a> — the same blueprint as hypertext, with the <a href="blueprint/dep_graph_document.html">dependency graph</a>: which statement rests on which, and whether each is a proved target [T] or a cited analytic interface [A].</li>'
+          fi
           cat > index.html <<EOF
           <!doctype html>
           <html lang="en">
@@ -234,6 +349,7 @@ jobs:
           <ul>
           <li><a href="paper.pdf">paper.pdf</a> — the article (<code>${{ inputs.paper_tex }}</code>)</li>
           <li><a href="blueprint.pdf">blueprint.pdf</a> — the blueprint (<code>${{ inputs.blueprint_tex }}</code>)</li>
+          ${WEB_LINKS}
           </ul>
           <footer>Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA} on ${BUILD_DATE} UTC by the shared linkage docs workflow.</footer>
           </body>
@@ -241,6 +357,8 @@ jobs:
           EOF
 
       - name: Validate dist/
+        env:
+          BUILD_WEB: ${{ inputs.build_web }}
         run: |
           for f in dist/paper.pdf dist/blueprint.pdf dist/index.html; do
             [ -s "$f" ] || { echo "::error::$f is missing or empty"; exit 1; }
@@ -251,6 +369,21 @@ jobs:
           grep -q 'href="paper.pdf"' dist/index.html || { echo "::error::index.html lacks the paper.pdf link"; exit 1; }
           grep -q 'href="blueprint.pdf"' dist/index.html || { echo "::error::index.html lacks the blueprint.pdf link"; exit 1; }
           grep -q "$GITHUB_SHA" dist/index.html || { echo "::error::index.html lacks the build provenance sha"; exit 1; }
+          # Every link the landing page offers must resolve, or the site ships a 404 that
+          # nobody notices until a reader clicks it.
+          if [ "$BUILD_WEB" = "true" ]; then
+            for f in dist/blueprint/index.html dist/blueprint/dep_graph_document.html; do
+              [ -s "$f" ] || { echo "::error::$f is missing or empty — the web blueprint did not reach dist/"; exit 1; }
+            done
+            grep -q 'href="blueprint/"' dist/index.html || { echo "::error::index.html lacks the web blueprint link"; exit 1; }
+            grep -q 'href="blueprint/dep_graph_document.html"' dist/index.html || { echo "::error::index.html lacks the dependency graph link"; exit 1; }
+            [ -s dist/blueprint/js/graphvizlib.wasm ] || { echo "::error::dist/blueprint/js/graphvizlib.wasm missing — the graph would not render in the browser"; exit 1; }
+          else
+            if grep -q 'href="blueprint/"' dist/index.html; then
+              echo "::error::index.html advertises the web blueprint but build_web is false"; exit 1
+            fi
+            echo "web blueprint skipped (build_web=false)"
+          fi
           echo "dist/ validated:"
           ls -l dist
 
