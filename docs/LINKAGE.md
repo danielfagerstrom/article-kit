@@ -268,11 +268,19 @@ not to either projection.
   [`docs.yml`](../.github/workflows/docs.yml) gained a `web` job: plasTeX renders
   `blueprint/src/web.tex` and the deploy job publishes it at `/blueprint/` on the article's
   Cloudflare Pages project, so the `\uses` graph and the `[T]`/`[A]` tags are a shareable URL
-  rather than a local artifact. Opt out per article with `build_web: false`. It needs neither TeX
-  nor a graphviz binary — all mathematics goes to MathJax client-side (so plasTeX emits no images;
-  the job passes `--imager=none` to make that explicit rather than relying on a fallback), and
-  `plastexdepgraph` ships Graphviz as WebAssembly, laying the graph out in the reader's browser.
-  Locally, `scripts/build-blueprint.sh` in each article rebuilds the same view.
+  rather than a local artifact. Opt out per article with `build_web: false`. Locally,
+  `scripts/build-blueprint.sh` in each article rebuilds the same view.
+
+  Two dependencies bite, and both are silent — a desk with MiKTeX and Graphviz installed hides
+  each of them, and neither failure stops the build. **Graphviz is needed at build time**:
+  `plastexdepgraph` pulls in `pygraphviz`, a binding against the Graphviz C library, and without
+  the system package it installs from a wheel and emits a graph with *no nodes*. (The
+  `graphvizlib.wasm` the plugin also ships only lays the graph out in the reader's browser.) And
+  **`\input` resolution goes through `kpsewhich`**: TeX is not needed for images — all mathematics
+  goes to MathJax, so plasTeX emits none — but a runner without TeX cannot resolve an
+  extensionless `\input`, so `content.tex` must write `\input{parts/foo.tex}` or every part file
+  is dropped with a warning the build survives. Both were found by the first real CI run, not by
+  review; the workflow's validation now counts graph nodes for exactly this reason.
 - **Still larger, separate:** have blueprint→Lean checked by leanblueprint's *own* tooling
   (`checkdecls`) rather than only by `linkage check`'s declaration scan; and true statement
   single-sourcing between paper and blueprint via shared `\input`.

@@ -22,15 +22,26 @@ name: Docs CI (reusable)
 # The `web` job builds the THIRD view: the plasTeX blueprint under blueprint/web/, which is
 # the only one that renders the \uses dependency graph and the [T]/[A] status tags. It is
 # deployed alongside the PDFs at /blueprint/, so the graph is a shareable URL rather than a
-# local artifact. Notably it needs NO TeX and NO graphviz binary:
-#   - all mathematics is handed to MathJax client-side, so plasTeX emits no images and
-#     never invokes an imager (the job passes --imager=none to make that explicit rather
-#     than depending on a fallback);
-#   - plastexdepgraph ships Graphviz compiled to WebAssembly (graphvizlib.wasm, via
-#     d3-graphviz), so the graph is laid out in the reader's browser, not at build time.
-# So the whole job is Python plus three pip packages. It is NOT force-pushed to the
-# `artifacts` branch — that branch is for the PDFs; a couple of megabytes of HTML and wasm
-# rewritten on every build does not belong in git.
+# local artifact.
+#
+# Its two system dependencies are exactly the ones that are easy to get wrong, because a
+# desktop with MiKTeX and Graphviz installed hides both, and neither failure is loud:
+#
+#   - GRAPHVIZ IS NEEDED AT BUILD TIME. plastexdepgraph pulls in pygraphviz, which is a
+#     binding against the Graphviz C library; the wasm the plugin also ships
+#     (graphvizlib.wasm via d3-graphviz) only lays the graph out in the reader's browser.
+#     Without the system package pygraphviz still installs from a wheel and the build still
+#     succeeds — it just emits a graph with no nodes. Hence the apt step and the node count
+#     in the validation.
+#   - TEX IS NOT NEEDED FOR IMAGES, BUT KPSEWHICH RESOLVES \input. All mathematics goes to
+#     MathJax, so plasTeX emits no images and the job passes --imager=none to say so rather
+#     than rely on a fallback probe. But plasTeX resolves an extensionless \input through
+#     kpsewhich, which a runner without TeX does not have: articles must write
+#     \input{parts/foo.tex} in content.tex, or every part file is dropped with a warning
+#     the build survives.
+#
+# The web build is NOT force-pushed to the `artifacts` branch — that branch is for the PDFs;
+# a couple of megabytes of HTML and wasm rewritten on every build does not belong in git.
 #
 # The `deploy` job publishes the set to a Cloudflare Pages project, one per article (behind
 # Cloudflare Access — account-side setup in docs/CLOUD.md § "Private docs site"). On pull
@@ -212,6 +223,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      # pygraphviz (a plastexdepgraph dependency) is a binding, not an implementation: it
+      # installs happily from a wheel with no Graphviz present and then yields an empty
+      # graph. Install the library first.
+      - name: Install Graphviz
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends graphviz graphviz-dev
 
       - name: Install plasTeX and the blueprint plugins
         run: pip install ${{ inputs.plastex_requirements }}
