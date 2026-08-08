@@ -88,7 +88,7 @@ on:
           pip requirements for the web build, pinned for reproducibility. Keep plasTeX in
           lockstep with what authors run locally, so CI and the desk render the same bytes.
         required: false
-        default: "plastex==3.1 plastexdepgraph plastexshowmore leanblueprint"
+        default: "plastex==3.1 plastexdepgraph==0.0.5 plastexshowmore==0.0.2 leanblueprint==0.0.20"
         type: string
       tectonic_version:
         description: >-
@@ -227,6 +227,11 @@ jobs:
 
       # A plasTeX run that produced no graph is a broken deploy, not a warning: the graph is
       # the whole reason this view exists, and an empty one still renders as a page.
+      #
+      # The node count is taken from the embedded DOT source (plastexdepgraph writes a
+      # `digraph` whose nodes carry shape=ellipse / shape=box, laid out in the browser).
+      # Counting DOT structure rather than grepping for `kind:name` label spellings keeps
+      # this from being coupled to how the plugin happens to name things.
       - name: Validate the web build
         run: |
           for f in "$WEB_OUT/index.html" "$WEB_OUT/dep_graph_document.html"; do
@@ -235,11 +240,14 @@ jobs:
           if ! grep -q 'graphvizlib.wasm\|d3-graphviz' "$WEB_OUT/dep_graph_document.html" "$WEB_OUT"/js/* 2>/dev/null; then
             echo "::error::the dependency graph carries no renderer — is plastexdepgraph installed?"; exit 1
           fi
-          nodes=$(grep -coE '(def|prop|lem|thm|cor):[a-zA-Z0-9-]+' "$WEB_OUT/dep_graph_document.html" || true)
-          if [ "${nodes:-0}" -eq 0 ]; then
-            echo "::error::the dependency graph names no blueprint labels — the build is empty"; exit 1
+          if ! grep -q 'digraph' "$WEB_OUT/dep_graph_document.html"; then
+            echo "::error::no DOT digraph in dep_graph_document.html — plastexdepgraph produced no graph"; exit 1
           fi
-          echo "web blueprint OK: $nodes label references in the graph"
+          nodes=$(grep -oE 'shape=(ellipse|box)' "$WEB_OUT/dep_graph_document.html" | wc -l)
+          if [ "$nodes" -eq 0 ]; then
+            echo "::error::the dependency graph has no nodes — the blueprint built empty"; exit 1
+          fi
+          echo "web blueprint OK: $nodes nodes in the dependency graph"
 
       - name: Upload the web blueprint (per-run artifact)
         uses: actions/upload-artifact@v4
