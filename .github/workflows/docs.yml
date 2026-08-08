@@ -33,12 +33,12 @@ name: Docs CI (reusable)
 #     Without the system package pygraphviz still installs from a wheel and the build still
 #     succeeds — it just emits a graph with no nodes. Hence the apt step and the node count
 #     in the validation.
-#   - TEX IS NOT NEEDED FOR IMAGES, BUT KPSEWHICH RESOLVES \input. All mathematics goes to
-#     MathJax, so plasTeX emits no images and the job passes --imager=none to say so rather
-#     than rely on a fallback probe. But plasTeX resolves an extensionless \input through
-#     kpsewhich, which a runner without TeX does not have: articles must write
-#     \input{parts/foo.tex} in content.tex, or every part file is dropped with a warning
-#     the build survives.
+#   - KPSEWHICH IS NEEDED, THOUGH NO TeX FORMATS ARE. Nothing here is typeset -- all
+#     mathematics goes to MathJax, so plasTeX emits no images and the job passes
+#     --imager=none to say so rather than rely on a fallback probe. But plasTeX resolves
+#     every \input through kpsewhich, and its fallback is an exact filename match against
+#     a directory listing, which cannot resolve any path containing a separator. Without
+#     it, blueprint/src/parts/* is dropped and the site renders complete but empty.
 #
 # The web build is NOT force-pushed to the `artifacts` branch — that branch is for the PDFs;
 # a couple of megabytes of HTML and wasm rewritten on every build does not belong in git.
@@ -224,13 +224,25 @@ jobs:
         with:
           python-version: "3.12"
 
-      # pygraphviz (a plastexdepgraph dependency) is a binding, not an implementation: it
-      # installs happily from a wheel with no Graphviz present and then yields an empty
-      # graph. Install the library first.
-      - name: Install Graphviz
+      # Two system dependencies, both of which fail quietly rather than loudly:
+      #
+      #   graphviz  - pygraphviz (via plastexdepgraph) is a binding, not an implementation.
+      #               It installs happily from a wheel with no Graphviz present and then
+      #               yields a graph with no nodes.
+      #
+      #   kpsewhich - plasTeX resolves EVERY \input through it (TeX.py:kpsewhich). Its
+      #               fallback when the binary is absent is `if name in os.listdir(path)`
+      #               over TEXINPUTS, an exact filename match that can never resolve a name
+      #               containing a directory separator. So without kpsewhich, files beside
+      #               the entry point resolve and blueprint/src/parts/* silently do not --
+      #               the build then renders a complete-looking site whose every statement
+      #               node is missing. texlive-binaries is the small package that carries
+      #               it; no TeX *formats* are needed, since nothing here is typeset.
+      - name: Install Graphviz and kpsewhich
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends graphviz graphviz-dev
+          sudo apt-get install -y --no-install-recommends graphviz graphviz-dev texlive-binaries
+          kpsewhich --version | head -1
 
       - name: Install plasTeX and the blueprint plugins
         run: pip install ${{ inputs.plastex_requirements }}
