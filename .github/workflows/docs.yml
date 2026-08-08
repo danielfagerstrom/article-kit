@@ -204,11 +204,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # No `cache: pip` here: it keys the cache on a dependency file and fails the job
+      # outright ("No file matched to [**/requirements.txt or **/pyproject.toml]") when the
+      # article has neither -- and an article repo has no reason to. The requirements are
+      # three small pure-Python packages named in an input, so there is little to cache.
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
       - name: Install plasTeX and the blueprint plugins
         run: pip install ${{ inputs.plastex_requirements }}
