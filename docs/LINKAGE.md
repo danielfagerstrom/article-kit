@@ -58,6 +58,25 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no
    numbered check, and the checker's numbering runs one behind the rules' from here on.)
+
+   **Ledger identifiers are opaque and stable** (2026-08-09, from `hcs`). Assign them in order of
+   introduction; never reuse, never renumber. They are *published names* — `manifest` gives every node a
+   `ledger` array and the hub reads it, so renumbering silently changes what an existing hub note means,
+   in a place no check can see. The tempting convention, numbering in order of first use through the
+   draft, is a trap: it requires a complete and correctly ordered ledger before any proving starts, which
+   presumes a finished dependency graph, and a draft is a proof sketch. Formalisation routinely isolates
+   an interface the draft never separated — a Lean route that needs a *construction* where the paper cites
+   a *representation theorem*, say — and under that convention each such discovery forces either a
+   renumbering migration or an entry that lies about its position. Keep order in an index table instead.
+   An article that has not yet pinned a ledger may prefer mnemonic ids outright (`ledger_key` is
+   per-article configurable; `A\d+` is only the default); one that has should leave its ids alone.
+
+   A ledger entry need not be `\ledger{}`-referenced. Check 2 is one-directional — every reference must
+   resolve to an entry, not every entry be referenced — which is what lets an article carry a **Lean-side
+   entry**: an interface the Lean development needs because it reaches a theorem by a different route than
+   the blueprint's proof, and which therefore grounds no `[A]` node. Such an entry is still fully
+   reviewed; it is the `**Lean:**` segment, not a `\ledger{}` reference, that `trust-boundary.txt` is
+   cross-checked against.
 6. **Every statement node declares `\statusT` or `\statusA`.** The hub's confidence grading keys on the
    projected status, so a node without one is a node the hub cannot grade.
 7. **Every `[A]` node declares its assignment** (ADR-0011, 2026-07-30): a `\textbf{Assignment.}` clause
