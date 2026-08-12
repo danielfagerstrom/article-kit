@@ -55,6 +55,46 @@ than guessing which one was meant.
    advisory when an article's copy has drifted. If one genuinely needs changing, say so in your
    report — the change belongs in the framework, where every article gets it.
 
+## Judgement: what a node actually needs
+
+These are the ways this work goes wrong that no checker catches. Each cost real time before being
+named, and none is specific to one article.
+
+1. **What a proof cites is an upper bound on what a statement needs.** A node is not blocked
+   because its textbook argument invokes something heavy. Read the *obligation*, not the argument:
+   integrability may need only polynomial decay where the classical asymptotic needs Stirling; a
+   uniqueness theorem may quantify over exactly the class in which the hard step is a hypothesis
+   rather than a conclusion; a lemma the proof cites may supply three things of which the proof
+   uses none. Every "blocked on X" deserves this test before it is believed — **including the ones
+   you wrote yourself last round**.
+2. **A survey answers "is this theory present?"; only attempting the proof answers "is this theorem
+   reachable?"** Comparing a ledger entry against the cited theorem, or against the article's use
+   of it, is not the same as writing the statement and trying. Those answers can differ by two
+   orders of magnitude of work, in either direction.
+3. **A formal statement must name its reading; prose need not.** Which equality — pointwise, on a
+   punctured neighbourhood, almost everywhere, off a named set? Which derivative — pointwise, or in
+   the ambient space? Prose can leave these open and still be right, because the reader supplies
+   the reading from context. A formal statement has to pick, and picking wrong is not caught by
+   proof-reading: sometimes the naive reading is not merely unavailable but **false**.
+4. **A theorem node asserts more than its lemmas.** Never conclude that a chapter is finished from
+   "every lemma is `\leanok`" — read the graph, which exists for exactly this. A collation node
+   with all its parts proved still needs a declaration of its own before it can be tagged, and
+   writing one is usually cheap assembly.
+5. **A checker's advisories are not a work queue.** `linkage check` distinguishes defects from
+   permitted debts, and a permitted debt is usually a decision someone already took and recorded in
+   the node's own annotation. Read the node before proposing to discharge it.
+6. **Keep an aggregate view.** Per-node annotations are where the reasoning lives, but they cannot
+   answer "what is open, and why". Recompute the inventory from the manifest when planning, and
+   sort it by *reason*: deliberate, blocked upstream, absent by design, available.
+7. **Hypothesis archaeology.** When a named class (`f ∈ 𝒟`, "admissible", …) appears in a
+   hypothesis, find out which of its features the proof actually consumes. A class is often cited
+   for what it is *for* while the proof uses two incidental consequences — and the difference
+   decides whether a node is blocked.
+8. **Quantifier order in almost-everywhere statements.** "For each `x`, for a.e. `t`" does not give
+   "for a.e. `t`, for every `x`". If a later step integrates over `x` at fixed `t`, a representative
+   must be *named*; the only choice is how widely, and choosing to weaken the reading does not
+   avoid it.
+
 ## Where your work comes from, and what it means
 
 - **Demand:** `linkage demand` joins `wiki demands --json` against this article's live `\leanok`
@@ -80,6 +120,16 @@ than guessing which one was meant.
   `\notes{slug}`, and a `\statusT`/`\statusA` line with its ledger grounding; `[A]` nodes must
   declare in that annotation what the citation carries and what it does not. Proofs state which
   steps are machine-checked and which are cited interfaces.
+- **Never write LaTeX or Lean through a non-raw string literal.** In Python `"\begin"` is a
+  backspace, `"\texttt"` a tab, `"\ref"` a carriage return. The diff looks almost right, and the
+  build fails hundreds of lines later with a message naming the character rather than the cause.
+  Use the editing tool, a raw string, or `bytes([92])` for the backslash. Articles should run
+  `scripts/check-control-chars.py` (scaffolded) at the head of their blueprint gate.
+- **Statement first, and record what writing it down found.** The convention exists because a
+  target type is where design decisions become visible and countable — but half its value is the
+  findings it produces, and those are lost unless written into the node's annotation and the
+  article's plan file at the time. Several of the judgement points above were discovered twice in
+  one session because the first discovery went into a commit message and nowhere else.
 - Report format: what landed (labels, Lean names, proved vs `notready`), what the ledger gained,
   what the hub should now update (tags to upgrade, statements to mirror), and any faithfulness or
   boundary questions you deliberately left open.

@@ -25,4 +25,28 @@ place with a resolution line, so the channel keeps its history.
 
 ---
 
-*No open requests.*
+## Make the control-character check a `linkage check` fatal rule
+
+**Wanted by** `hemigroup-causal-scale-space-kernels`, 2026-08-12.
+
+**What.** `scaffold/scripts/check-control-chars.py` rejects stray control characters (anything but
+LF, or CR immediately before LF) in `.tex`, `.md` and `.lean` sources. It is currently a scaffolded
+script an article has to remember to wire into its own blueprint gate. It would be better as a
+fatal check inside `linkage check`, where every article gets it without wiring.
+
+**Why.** Writing LaTeX or Lean through a non-raw Python string literal silently turns `\begin`
+into U+0008, `\texttt` into a TAB and `\ref` into a CR. This happened three times in one session.
+Each time the diff looked almost right, `linkage check` passed, and `latexmk` failed several
+hundred lines later with *"Unicode character ^^H (U+0008) not set up for use with LaTeX"* — a
+message that names the character and not the cause, in a file the author had not knowingly touched
+at that point. The failure is cheap to detect and expensive to diagnose, which is the profile a
+fatal check wants.
+
+**Suggested shape.** A fatal check alongside the existing render-safety check (they scan the same
+files), reporting `path:line` and a byte-context snippet, plus the one-line remedy: use a raw
+string or `bytes([92])`. The script is written to be lifted as-is — it takes paths, defaults to the
+tracked source trees, and returns a non-zero exit code.
+
+---
+
+*No other open requests.*
