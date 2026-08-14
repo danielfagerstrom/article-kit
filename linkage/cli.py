@@ -151,6 +151,13 @@ def cmd_packages(args) -> int:
     return 0
 
 
+def cmd_prose_extract(args) -> int:
+    """Dump the prose extraction. Config-free: it takes bare paths, so it also runs
+    over the baseline corpus, which lives outside any article repo."""
+    from .prose import show
+    return show.main(args)
+
+
 def cmd_init(args) -> int:
     from . import scaffold
     root = args.root or Path.cwd()
@@ -203,6 +210,17 @@ def build_parser() -> argparse.ArgumentParser:
     k.add_argument("--missing-only", action="store_true",
                    help="only those not already checked out")
     k.set_defaults(func=cmd_packages)
+
+    p = sub.add_parser("prose", help="prose measurement over the paper sources")
+    psub = p.add_subparsers(dest="prose_cmd", required=True)
+    pe = psub.add_parser("extract", help="dump the extraction, for auditing it")
+    pe.add_argument("paths", nargs="+", help=".tex sources")
+    pe.add_argument("--kind", action="append",
+                    help="only these block kinds (prose, statement, proof, "
+                         "remark, abstract, list, heading); repeatable")
+    pe.add_argument("--long-at", type=int, default=45,
+                    help="mark sentences at or above this word count (default 45)")
+    pe.set_defaults(func=cmd_prose_extract)
 
     i = sub.add_parser("init", help="scaffold linkage.toml + blueprint skeleton here")
     i.add_argument("--slug", help="satellite id, e.g. 'hcs' (omit with --sync)")
