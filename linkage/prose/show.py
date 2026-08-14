@@ -31,7 +31,7 @@ def audit(ex: Extraction) -> list[str]:
         out.append("  unrecognised commands (argument kept as prose — check for "
                    "anything whose argument is NOT prose):")
         for cmd, cnt in sorted(ex.unknown.items(), key=lambda kv: -kv[1]):
-            out.append(f"    \\{cmd:<24} {cnt}")
+            out.append(f"    \\{cmd:<20} {cnt:>4}   {ex.unknown_ctx.get(cmd, '')[:90]}")
     if ex.dropped_envs:
         out.append("")
         out.append("  environments skipped wholesale:")

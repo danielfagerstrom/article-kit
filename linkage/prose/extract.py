@@ -118,6 +118,10 @@ class Extraction:
     blocks: list[Block]
     unknown: dict[str, int]        # command -> occurrences, for the audit
     dropped_envs: dict[str, int]   # environment -> occurrences skipped wholesale
+    # One sample of surrounding source per unrecognised command. A bare count says
+    # something escaped; only the context says whether it was math that should have
+    # been masked or a wrapper whose prose was rightly kept.
+    unknown_ctx: dict[str, str] = field(default_factory=dict)
 
     @property
     def words(self) -> int:
@@ -150,21 +154,50 @@ def strip_comments(src: str) -> str:
 
 # --- math and verbatim removal ------------------------------------------------
 
-_DISPLAY = [
+_MATH_PATTERNS = [
     (re.compile(r"\\\[.*?\\\]", re.S), EQ),
     (re.compile(r"\$\$.*?\$\$", re.S), EQ),
+    (re.compile(r"\\begin\{(" + "|".join(sorted(MATH_ENVS)) + r")\*?\}.*?\\end\{\1\*?\}",
+                re.S), EQ),
+    # Inline math may span a wrapped line but never a blank line, so an unpaired `$`
+    # cannot swallow the prose up to the next formula. `\\[\s\S]` rather than `\\.`
+    # because a control space at end of line (`…,\` + newline) is ordinary LaTeX and
+    # `.` would not cross it — that single case shifts every later `$` pairing by one.
+    (re.compile(r"(?<!\\)\$(?:\\[\s\S]|[^$\\\n]|\n(?!\s*\n))*\$"), MATH),
 ]
-_MATH_ENV = re.compile(
-    r"\\begin\{(" + "|".join(sorted(MATH_ENVS)) + r")\*?\}.*?\\end\{\1\*?\}", re.S)
-_INLINE = re.compile(r"(?<!\\)\$(?:\\.|[^$\\])*\$", re.S)
 
 
-def mask_math(src: str) -> str:
-    for pat, tok in _DISPLAY:
-        src = pat.sub(tok, src)
-    src = _MATH_ENV.sub(EQ, src)
-    src = _INLINE.sub(MATH, src)
-    return src
+def mask_math(src: str, patterns=_MATH_PATTERNS) -> tuple[str, list[int]]:
+    """Replace math with placeholders, returning the text and a per-character map
+    back to the *source* line number.
+
+    Masking must happen before anything splits the text, because a display block
+    routinely contains blank lines and paragraph splitting would cut it in half,
+    orphaning its delimiters and spilling `\\frac`, `\\alpha` … into the prose. But
+    collapsing many lines into one token also destroys line numbering, and a line
+    number is how a finding is located later. So the map is carried rather than
+    recomputed.
+    """
+    out: list[str] = []
+    lines: list[int] = []
+    i, ln, n = 0, 1, len(src)
+    while i < n:
+        for pat, tok in patterns:
+            m = pat.match(src, i)
+            if m:
+                out.append(tok)
+                lines.extend([ln] * len(tok))
+                ln += m.group(0).count("\n")
+                i = m.end()
+                break
+        else:
+            out.append(src[i])
+            lines.append(ln)
+            if src[i] == "\n":
+                ln += 1
+            i += 1
+    lines.append(ln)
+    return "".join(out), lines
 
 
 # --- argument-aware command handling ------------------------------------------
@@ -189,7 +222,8 @@ def _match_brace(s: str, i: int) -> int:
 _CMD = re.compile(r"\\([A-Za-z]+)\*?")
 
 
-def normalize(src: str, unknown: dict[str, int], emphases: list[str]) -> tuple[str, int]:
+def normalize(src: str, unknown: dict[str, int], emphases: list[str],
+              contexts: dict[str, str] | None = None) -> tuple[str, int]:
     """LaTeX prose -> plain text. Returns (text, em-dash count).
 
     Math is already masked. Anything not recognised is counted in `unknown` and its
@@ -242,6 +276,9 @@ def normalize(src: str, unknown: dict[str, int], emphases: list[str]) -> tuple[s
             i = j
         else:
             unknown[name] = unknown.get(name, 0) + 1
+            if contexts is not None and name not in contexts:
+                contexts[name] = re.sub(
+                    r"\s+", " ", src[max(0, i - 90):i + 50]).strip()
             if end != -1:
                 out.append(src[j + 1:end - 1])   # keep the argument's prose
                 i = end
@@ -353,17 +390,10 @@ def extract(path: Path) -> Extraction:
     raw = strip_comments(path.read_text(encoding="utf-8"))
     raw = _CITE_CMD.sub(CITE, raw)
     raw = _REF_CMD.sub(REF, raw)
-    raw = mask_math(raw)
-
-    line_of = [0] * (len(raw) + 1)
-    ln = 1
-    for idx, ch in enumerate(raw):
-        line_of[idx] = ln
-        if ch == "\n":
-            ln += 1
-    line_of[len(raw)] = ln
+    raw, line_of = mask_math(raw)
 
     unknown: dict[str, int] = {}
+    unknown_ctx: dict[str, str] = {}
     dropped: dict[str, int] = {}
     blocks: list[Block] = []
 
@@ -389,7 +419,7 @@ def extract(path: Path) -> Extraction:
         if not text:
             return
         emph: list[str] = []
-        norm, dashes = normalize(text, unknown, emph)
+        norm, dashes = normalize(text, unknown, emph, unknown_ctx)
         norm = re.sub(r"\s+", " ", norm).strip()
         if not norm or not _WORD.search(norm.replace(EQ, " ").replace(MATH, " ")):
             return
@@ -413,7 +443,7 @@ def extract(path: Path) -> Extraction:
             flush()
             title, after = _heading_text(raw, m.end() - 1)
             level = m.group(1)
-            tnorm, _ = normalize(title, unknown, [])
+            tnorm, _ = normalize(title, unknown, [], unknown_ctx)
             tnorm = re.sub(r"\s+", " ", tnorm).strip()
             if level == "section":
                 section, subsection = tnorm, None
@@ -453,7 +483,7 @@ def extract(path: Path) -> Extraction:
                             break
                     k += 1
                 if k < n:
-                    t, _ = normalize(raw[i + 1:k], unknown, [])
+                    t, _ = normalize(raw[i + 1:k], unknown, [], unknown_ctx)
                     pending_title = re.sub(r"\s+", " ", t).strip() or None
                     i = k + 1
             buf_at = i
@@ -474,4 +504,5 @@ def extract(path: Path) -> Extraction:
         buf.append(raw[i])
         i += 1
     flush()
-    return Extraction(blocks=blocks, unknown=unknown, dropped_envs=dropped)
+    return Extraction(blocks=blocks, unknown=unknown, dropped_envs=dropped,
+                      unknown_ctx=unknown_ctx)
