@@ -77,12 +77,15 @@ FAMILIES: dict[str, re.Pattern] = {
         r"as is (well )?known)\b", re.I),
 }
 
-PUNCT = {
-    "emdash": lambda t: t.count("—"),
-    "semicolon": lambda t: t.count(";"),
-    "colon": lambda t: t.count(":"),
-    "parenthesis": lambda t: t.count("("),
+PUNCT: dict[str, re.Pattern] = {
+    "emdash": re.compile("—"),
+    "semicolon": re.compile(";"),
+    "colon": re.compile(":"),
+    "parenthesis": re.compile(r"\("),
 }
+
+# Everything countable, so the report and the drill-down key on one namespace.
+ALL_FEATURES: dict[str, re.Pattern] = {**PUNCT, **FAMILIES}
 
 
 @dataclass
@@ -121,8 +124,8 @@ def features(blocks: list[Block], kinds: set[str] | None = PROSE_KINDS) -> Featu
         if kinds is not None and b.kind not in kinds:
             continue
         f.words += len(real_words(b.text))
-        for k, fn in PUNCT.items():
-            f.punct[k] += fn(b.text)
+        for k, pat in PUNCT.items():
+            f.punct[k] += len(pat.findall(b.text))
         for k, pat in FAMILIES.items():
             f.families[k] += len(pat.findall(b.text))
         f.lens += [s.words for s in b.sentences if s.words > 0]

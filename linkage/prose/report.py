@@ -22,7 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .extract import extract
-from .measure import FAMILIES, PUNCT, Baseline, Features, features
+from .measure import ALL_FEATURES, FAMILIES, PUNCT, Baseline, Features, features
 
 MIN_WORDS = 300     # below this a rate is noise; sections are reported but marked
 
@@ -132,22 +132,28 @@ def per_section(paths: list[Path], baselines: list[Baseline]) -> list[str]:
     return out
 
 
-def instances(paths: list[Path], family: str, limit: int = 40) -> list[str]:
-    """The drill-down: located occurrences of one family, for a human to triage."""
-    pat = FAMILIES[family]
-    out = [f"  {family} — located instances", "  " + "-" * 76]
+def instances(paths: list[Path], feature: str, limit: int = 40) -> list[str]:
+    """The drill-down: located occurrences of one feature, for a human to triage.
+
+    Punctuation counts per sentence, because the finding for a mark like the em
+    dash is usually not that one exists but that three do in the same sentence.
+    """
+    pat = ALL_FEATURES[feature]
+    out = [f"  {feature} — located instances", "  " + "-" * 76]
     n = 0
     for p in paths:
         for b in extract(p).blocks:
             if b.kind not in {"prose", "abstract", "remark"}:
                 continue
             for s in b.sentences:
-                if not pat.search(s.text):
+                hits = len(pat.findall(s.text))
+                if not hits:
                     continue
-                n += 1
+                n += hits
                 if n > limit:
                     continue
-                out.append(f"  {p.stem}:{b.line}  [{s.words}w]")
+                mark = f" ×{hits}" if hits > 1 else "   "
+                out.append(f"  {p.stem}:{b.line}  [{s.words}w]{mark}")
                 out.append(f"      {s.text}")
     if n > limit:
         out.append(f"  … and {n - limit} more (showing {limit})")

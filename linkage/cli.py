@@ -189,9 +189,9 @@ def cmd_prose_stats(args) -> int:
     bases = measure.load(args.baseline)
     paths = [Path(p) for p in args.paths]
     if args.instances:
-        if args.instances not in measure.FAMILIES:
+        if args.instances not in measure.ALL_FEATURES:
             print(f"unknown family {args.instances!r}; one of: "
-                  f"{', '.join(measure.FAMILIES)}", file=sys.stderr)
+                  f"{', '.join(measure.ALL_FEATURES)}", file=sys.stderr)
             return 2
         print("\n".join(report.instances(paths, args.instances)))
         return 0
