@@ -158,6 +158,54 @@ def cmd_prose_extract(args) -> int:
     return show.main(args)
 
 
+def cmd_prose_baseline(args) -> int:
+    from .prose import corpus, measure
+    bases, stats = corpus.build(warn=_warn)
+    for b in bases:
+        f = b.features
+        print(f"{b.name:<8} {len(b.sources):>2} sources  {f.words:>7}w  "
+              f"{f.sentences:>5} sentences   carries: {', '.join(b.supports)}")
+        for s in stats[b.name]:
+            note = ""
+            if s.repaired.get("reflow", {}).get("blocks joined"):
+                r = s.repaired
+                note = (f"  [repaired: {sum(r['running heads'].values())} heads, "
+                        f"{sum(r['dehyphenated'].values())} hyphens, "
+                        f"{r['reflow']['blocks joined']} rejoins]")
+            print(f"    {s.key[:44]:<46}{s.words:>7}w  residue {s.residue:>5.1%}{note}")
+    for k, why in corpus.GENRE_REJECTED.items():
+        print(f"  rejected  {k[:44]:<46}{why}")
+    measure.save(bases, args.out)
+    print(f"\nwrote {args.out}")
+    return 0
+
+
+def cmd_prose_stats(args) -> int:
+    from .prose import measure, report
+    if not args.baseline.exists():
+        print(f"no baseline at {args.baseline} — run `linkage prose baseline` first",
+              file=sys.stderr)
+        return 2
+    bases = measure.load(args.baseline)
+    paths = [Path(p) for p in args.paths]
+    if args.instances:
+        if args.instances not in measure.FAMILIES:
+            print(f"unknown family {args.instances!r}; one of: "
+                  f"{', '.join(measure.FAMILIES)}", file=sys.stderr)
+            return 2
+        print("\n".join(report.instances(paths, args.instances)))
+        return 0
+    from .prose.extract import extract
+    blocks = [b for p in paths for b in extract(p).blocks]
+    f = measure.features(blocks)
+    print(f"  {f.words} words of connective prose, {f.sentences} sentences, "
+          f"over {len(paths)} file(s)\n")
+    print("\n".join(report.compare(f, bases)))
+    print("\n".join(report.sentence_shape(f, bases)))
+    print("\n".join(report.per_section(paths, bases)))
+    return 0
+
+
 def cmd_init(args) -> int:
     from . import scaffold
     root = args.root or Path.cwd()
@@ -221,6 +269,17 @@ def build_parser() -> argparse.ArgumentParser:
     pe.add_argument("--long-at", type=int, default=45,
                     help="mark sentences at or above this word count (default 45)")
     pe.set_defaults(func=cmd_prose_extract)
+
+    pb = psub.add_parser("baseline", help="build the author + genre baseline profiles")
+    pb.add_argument("--out", type=Path, default=Path("prose-baseline.json"))
+    pb.set_defaults(func=cmd_prose_baseline)
+
+    ps = psub.add_parser("stats", help="the report: rates against both baselines")
+    ps.add_argument("paths", nargs="+", help=".tex sources")
+    ps.add_argument("--baseline", type=Path, default=Path("prose-baseline.json"))
+    ps.add_argument("--instances", metavar="FAMILY",
+                    help="drill down: located occurrences of one family")
+    ps.set_defaults(func=cmd_prose_stats)
 
     i = sub.add_parser("init", help="scaffold linkage.toml + blueprint skeleton here")
     i.add_argument("--slug", help="satellite id, e.g. 'hcs' (omit with --sync)")

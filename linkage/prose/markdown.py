@@ -93,7 +93,17 @@ def _inline(text: str, unknown: dict[str, int], emph: list[str]) -> str:
 
 
 def extract_md(path: Path) -> Extraction:
-    src = path.read_text(encoding="utf-8", errors="replace")
+    return extract_md_text(path.read_text(encoding="utf-8", errors="replace"),
+                           path.name)
+
+
+def extract_md_text(src: str, name: str = "<text>") -> Extraction:
+    """Extract from markdown already in memory.
+
+    The repair passes run in memory over the librarian's sources, and writing a
+    repaired copy back beside the original would put an unowned second copy of
+    someone else's paper in a tree this package does not write to.
+    """
     masked, line_of = mask_math(src, MD_MATH)
     # Walk the masked text by line, but report the *source* line number.
     lines, srcno, at = [], [], 0
@@ -138,7 +148,7 @@ def extract_md(path: Path) -> Extraction:
             return
         b = Block(kind="list" if is_list else kind_now(),
                   env=div_stack[-1] if div_stack else None,
-                  section=section, subsection=subsection, source=path.name,
+                  section=section, subsection=subsection, source=name,
                   line=buf_at, text=norm, emphases=emph, emdashes=emdashes)
         b.sentences = [measure(s) for s in split_sentences(norm)]
         blocks.append(b)
@@ -150,13 +160,13 @@ def extract_md(path: Path) -> Extraction:
         if m := _DIV_OPEN.match(line):
             flush(in_list)
             in_list = False
-            name = _div_name(m)
-            if skipping or (name in DIV_DROP):
+            div = _div_name(m)
+            if skipping or (div in DIV_DROP):
                 skipping += 1
-                if name:
-                    dropped[name] = dropped.get(name, 0) + 1
+                if div:
+                    dropped[div] = dropped.get(div, 0) + 1
                 continue
-            div_stack.append(name or "div")
+            div_stack.append(div or "div")
             buf_at = no + 1
             continue
         if _DIV_CLOSE.match(line):
