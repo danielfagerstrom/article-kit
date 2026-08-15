@@ -94,6 +94,25 @@ named, and none is specific to one article.
    "for a.e. `t`, for every `x`". If a later step integrates over `x` at fixed `t`, a representative
    must be *named*; the only choice is how widely, and choosing to weaken the reading does not
    avoid it.
+9. **Search your own library before you search Mathlib's.** Point 2 asked whether a theory is
+   present upstream; ask it downstream too. Past thirty-odd files, "does this development already
+   have it?" deserves the same seriousness as "does Mathlib?", and it has failed in both
+   directions: a lemma about the article's *own* operators was written from scratch and rejected by
+   the compiler as a duplicate, and a "blocked" claim was published because a constructor built six
+   chapters earlier for an unrelated purpose was never looked for. Grep the library before writing
+   a lemma about its own objects, and before asserting that something cannot be done.
+10. **Write the cost estimate beside the Lean statement, not from the paper proof.** Estimates made
+    while writing the target type have been reliable; the one made by reading the prose named an
+    obstruction that did not exist and proposed a detour around it. The statement tells you what
+    the obligation is; the paper tells you what one route to it was. Corollary: when you split a
+    node, price each half in its own annotation *at that moment* — it is the point where the
+    estimate is both cheapest and most accurate, and the next round can be measured against it.
+11. **A specification is a hypothesis, and a hypothesis can be quantified over.** "We would have to
+    construct the object first" is usually false. When a node asserts existence *and* uniqueness,
+    everything downstream can quantify over anything meeting the specification: the uniqueness
+    clause is what makes that lose nothing, and it introduces no definition without a consumer.
+    What genuinely cannot be quantified over is a *construction*. In prose the two read
+    identically, which is why the mistaken form survives in status lines for months.
 
 ## Where your work comes from, and what it means
 
@@ -120,11 +139,20 @@ named, and none is specific to one article.
   `\notes{slug}`, and a `\statusT`/`\statusA` line with its ledger grounding; `[A]` nodes must
   declare in that annotation what the citation carries and what it does not. Proofs state which
   steps are machine-checked and which are cited interfaces.
-- **Never write LaTeX or Lean through a non-raw string literal.** In Python `"\begin"` is a
-  backspace, `"\texttt"` a tab, `"\ref"` a carriage return. The diff looks almost right, and the
-  build fails hundreds of lines later with a message naming the character rather than the cause.
-  Use the editing tool, a raw string, or `bytes([92])` for the backslash. Articles should run
-  `scripts/check-control-chars.py` (scaffolded) at the head of their blueprint gate.
+- **Never write backslash-bearing content through a non-raw string literal.** In Python `"\begin"`
+  is a backspace, `"\texttt"` a tab, `"\ref"` a carriage return. The diff looks almost right, and
+  the build fails hundreds of lines later with a message naming the character rather than the
+  cause. This is not only about `.tex` and `.lean`: **the Markdown that quotes them is the same
+  trap**, and plan entries and wishlist entries discussing `\leanok` or `\uses` have hit it
+  repeatedly. Use the editing tool, a raw string, or `bytes([92])` for the backslash. Articles
+  should run `scripts/check-control-chars.py` (scaffolded) at the head of their blueprint gate —
+  note that it protects the sources, not the prose files, so the discipline still has to be kept
+  by hand there.
+- **Run `#print axioms` before writing the annotation, not after.** "Lean core" and "spends only
+  A*n*" are claims about the artifact, and drafting them from the shape of the proof gets them
+  wrong: a statement quantifying over a constructed family picks up that family's entry however
+  elementary its argument. Check the guard's **exit code**, not the tail of its output — a stale
+  declaration name makes it exit non-zero while printing a screenful of correct lines.
 - **Statement first, and record what writing it down found.** The convention exists because a
   target type is where design decisions become visible and countable — but half its value is the
   findings it produces, and those are lost unless written into the node's annotation and the
