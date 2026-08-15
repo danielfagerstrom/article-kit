@@ -76,11 +76,20 @@ def cmd_check(args) -> int:
             "repo and re-run `linkage init --sync`, or the change is lost on the next sync"
         )
 
+    if args.pin_shared and f.unpinned:
+        shas = {n.label: n.shared_sha for n in bp.nodes if n.label}
+        keys = {f"{m.file}:{m.line}" for m in f.unpinned}
+        n = artifacts.pin_shared(cfg, shas, only=keys)
+        print(f"Pinned {len(keys)} marker(s) across {n} file(s); re-run to verify.")
+        return 0
+
     s = f.stats
-    drift = s.get("shared_drift", 0)
+    drift, verb = s.get("shared_drift", 0), s.get("shared_verbatim", 0)
+    trk, noenv = s.get("shared_tracked", 0), s.get("shared_no_env", 0)
     print(f"Blueprint: {s['nodes']} statement nodes ({s['leanok']} \\leanok), "
           f"{s['ledger_refs']} ledger refs, {s['paper_shared']} paper shared-statements "
-          f"({s['paper_shared'] - drift} matching the blueprint, {drift} drifted).")
+          f"({verb} verbatim, {trk} tracked by sha, {drift} needing attention"
+          + (f", {noenv} on prose" if noenv else "") + ").")
     print(f"Dependency closure: {s['reached_unproved']} statement(s) proved nowhere reached "
           f"by a \\leanok node, {s['reached_on_paper']} proved on paper only; "
           f"{len(s['unproved'])} [T] statement(s) proved nowhere in all "
@@ -234,6 +243,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="path to the Notes wiki (enables \\notes{} checking)")
     c.add_argument("--emit-manifest", type=Path, metavar="PATH",
                    help="also write the blueprint manifest the wiki reads")
+    c.add_argument("--pin-shared", action="store_true",
+                   help="record in each paper marker the sha of every blueprint node it "
+                        "renders editorially, so a later blueprint edit surfaces as stale "
+                        "rather than diverging silently")
     c.add_argument("--strict-shared", action="store_true",
                    help="fail (exit 1) on a paper statement that has drifted from the "
                         "blueprint node it declares it shares, instead of reporting it as "

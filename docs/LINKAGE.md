@@ -54,16 +54,51 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    blueprint node is a valid weaker link — the checker verifies the node exists but does not advise a
    same-label. Labelled-statement mismatches are reported as advisories; align them opportunistically.
 
-   **And the shared text must still agree** — checked since 2026-08-15, advisory by default and fatal
-   under `--strict-shared`. Both sides are reduced to what they are supposed to share before comparing:
-   everything from the `[T]`/`[A]` status tag onward is blueprint-only (a node may carry free-standing
-   `\emph{}` formalisation notes after it, which the paper is right to omit — 45 of 87 nodes in the
-   first article do), and the environment word the paper writes before a `\ref` is dropped, since
+   **The grammar is a list, with an optional pinned sha per label** (2026-08-15):
+
+   ```
+   % shared with blueprint <label>[@<sha12>][, <label>[@<sha12>]]…
+   ```
+
+   **Why a list.** The relationship is **n:1, not 1:1**. The blueprint is deliberately finer-grained
+   than the paper — it splits statements so Lean progress is legible, and it re-splits as proving
+   proceeds — while the paper renders the pieces as one readable statement. In the first article 25 of
+   87 nodes are marked by no paper marker at all, being halves of something the paper states whole
+   (`thm:main-construction` / `thm:main-analysis` / `prop:main-uniqueness` against the paper's one
+   `thm:main-characterization`; `prop:gamma-density` + `prop:gamma-moments`; `prop:volterra-uniqueness`).
+   A one-label marker cannot say that, and reported five correct statements as drifted.
+
+   **Why a sha.** A merged statement cannot be compared as text — the paper rewrites when it merges —
+   but it can record *which version* of each node it was written against. That matters because the
+   blueprint moves for two different reasons: **splitting**, after which the paper is still right, and
+   **new mathematical learning**, after which the paper must follow. Nothing else distinguishes them.
+   The pin is over `shared_statement`, not `statement_sha`: the latter covers the formalisation notes
+   too, so editing a note would report the paper stale when nothing it shares had moved.
+
+   **The four states**, reported by `linkage check`:
+
+   | state | meaning |
+   |---|---|
+   | **verbatim** | one label, text identical. Single-sourcing as a verified fact, not an intention. Needs no pin. |
+   | **tracked** | rendered editorially (a merge, or reworded) and pinned to each node's current sha |
+   | **stale** | a pinned node has moved since — read the statement, then re-pin |
+   | **unpinned** | neither identical nor pinned; nothing relates the two texts |
+
+   Advisory by default, fatal under `--strict-shared`; `--pin-shared` writes the shas, since markers
+   maintained by hand would not be. **Pinning is an assertion that someone read the statement against
+   that version of the node** — auto-pinning a backlog wholesale converts the check into a rubber
+   stamp, so pin deliberately, one statement at a time.
+
+   Before comparing, both sides are reduced to what they are supposed to share: everything from the
+   `[T]`/`[A]` status tag onward is blueprint-only (a node may carry free-standing `\emph{}`
+   formalisation notes after it, which the paper is right to omit — 45 of 87 nodes in the first
+   article do), and the environment word the paper writes before a `\ref` is dropped, since
    leanblueprint renders it itself. Without the first reduction 35 of 62 markers look drifted; without
-   the second, 16; with both, 11 — and those eleven are real. The comparison is by text rather than by
-   sha because both sides are in memory here: the check reports *where* two statements part company,
-   which a sha cannot. (`statement_sha` remains the hub's wire format and is deliberately untouched by
-   this — the reduction is a comparison key, never projected, so no published sha moves.)
+   the second, 16; with both, 11 — and every one of those eleven turned out to be a real structural
+   fact rather than noise. The 1:1 comparison is by text rather than sha because both sides are in
+   memory: the check reports *where* two statements part company, which a sha cannot.
+   (`statement_sha` remains the hub's wire format and is untouched by any of this — the reduction is
+   a comparison key, never projected, so no published sha moves.)
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no

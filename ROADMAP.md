@@ -269,10 +269,36 @@ that the paper's own `\label` matches. There is no text comparison and no sha, s
 statements in `hemigroup-causal-scale-space-kernels` can drift from the blueprint silently — the exact
 failure the hub's rule exists to prevent, on the artifact that gets published.
 
-**C1 — statement drift. Cheap, and the data already exists.** The manifest has carried
-`statement`/`statement_sha` since v2 and `proof`/`proof_sha` since T1. Check 3 can compare the paper's
-shared statement against `statement_sha` under the same normalization. Direct analogue of lint pass 3c;
-fatal, like the hub's.
+**C1 — statement drift.**  ·  ✅ 2026-08-15, and it taught the design something. Shipped as check 3b:
+51 of the first article's 62 shared statements are now verified **byte-identical**, and every one of
+the 11 that are not turned out to be a real structural fact.
+
+**The assumption that failed was 1:1.** The blueprint is deliberately finer-grained than the paper —
+it splits statements so Lean progress is legible, re-splits as proving proceeds, and *also* changes
+for genuine mathematical reasons — while the paper renders the pieces as one readable statement. In
+the first article **25 of 87 nodes are marked by no paper marker at all**, being halves of something
+the paper states whole. So the marker grammar became a list with an optional pinned sha per label
+(`LINKAGE.md` rule 4), and the check reports four states: verbatim / tracked / stale / unpinned.
+
+The sha is what makes the split case checkable at all: a merged statement cannot be compared as text,
+but it can record which version of each node it was written against — and that is the only thing
+distinguishing "the blueprint split, the paper is still right" from "the blueprint learned something,
+the paper must follow". `--pin-shared` writes them; **pinning is an assertion that someone read the
+statement against that version**, so a backlog must not be pinned wholesale or the check becomes a
+rubber stamp.
+
+Corroboration that this was the right shape: the author had already been annotating these markers by
+hand in free prose — `— "§10" adapted to the appendix.`, `— the pointer to the blueprint's split…`,
+`— see SYNC FLAG in the header.` The grammar turns notes no tool could read into something checkable.
+
+Two reductions were needed before any comparison meant anything, both measured rather than assumed:
+everything from the `[T]`/`[A]` status tag onward is blueprint-only (45 of 87 nodes carry a
+free-standing `\emph{}` formalisation note after it — and those reach `statement_sha`, so the hub sees
+them too), and the environment word the paper writes before a `\ref`. Without the first, 35 of 62 look
+drifted; without the second, 16; with both, 11.
+
+**Still open:** CI adopting `--strict-shared`, which waits on an article pinning or resolving its
+remaining markers.
 
 **C2 — dropped context *around* the statement. The half that actually failed.** Fourteen blind draft
 reviews of the hemigroup paper found five sections where the blueprint knew something the paper does

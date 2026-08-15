@@ -8,12 +8,12 @@ article repository*.
   FATAL (exit 1 if any fail)
     1. every \\leanok node's \\lean{Decl} names a declaration that exists in the Lean sources
     2. every \\ledger{AXX} (and legacy "ledger AXX" prose) resolves to an AXIOMS.md entry
-    3. every paper "% shared with blueprint <label>" names a real blueprint statement label
-       (3b, --strict-shared only: and the paper's statement still SAYS what that node says.
-       A shared statement was single-sourced by convention and by nothing else until this
-       existed; the first two articles carry 11 and 4 real divergences respectively, so it
-       is advisory by default -- a check that fails on day one gets waived, not fixed --
-       and CI adopts --strict-shared once an article's backlog is clear)
+    3. every paper "% shared with blueprint <label>[@<sha>][, ...]" names real blueprint
+       statement labels (3b, --strict-shared only: and the paper's statement is still
+       related to them -- byte-identical for a 1:1 marker, or pinned to each node's sha
+       where the paper renders several nodes as one. A shared statement was single-sourced
+       by convention and by nothing else until this existed. Advisory by default: a check
+       that fails on day one gets waived, not fixed)
     4. every \\command in a statement/proof is render-safe: defined in the article's macros
        or vetted in its render allowlist (the clean-render gate — pandoc silently DROPS
        unknown commands, argument and all, so this must be caught source-side)
@@ -74,6 +74,8 @@ class Findings:
     fatal: list[str] = field(default_factory=list)
     advisory: list[str] = field(default_factory=list)
     stats: dict = field(default_factory=dict)
+    unpinned: list = field(default_factory=list)
+    """Markers `--pin-shared` would write a sha into."""
 
     @property
     def ok(self) -> bool:
@@ -332,11 +334,13 @@ def run(
     # 3. paper shared statements
     labels = bp.labels
     drifted: list[str] = []
+    unpinned: list[PaperMarker] = []
+    verbatim = tracked = no_env = 0
     for mk in markers:
-        if mk.blueprint_label not in labels:
+        if missing := [l for l in mk.blueprint_labels if l not in labels]:
             fatal.append(
-                f"[paper]  {mk.file}: 'shared with blueprint {mk.blueprint_label}' but no such "
-                "blueprint label"
+                f"[paper]  {mk.file}:{mk.line}: 'shared with blueprint "
+                f"{', '.join(missing)}' but no such blueprint label"
             )
             continue
         if (mk.statement_label and mk.statement_label != mk.blueprint_label
@@ -348,7 +352,22 @@ def run(
             )
 
         # 3b. does the paper still say what the blueprint says?
-        node = bp.by_label[mk.blueprint_label]
+        #
+        # Three outcomes, because there are three genuinely different situations:
+        #
+        #   verbatim  one label, text identical. The strongest form, and the only one
+        #             where "single-sourced" is a verified fact rather than an
+        #             intention. Needs no pin.
+        #   tracked   the paper renders one or more nodes editorially -- it merges a
+        #             split, or reworded -- AND pins the sha of each node it was
+        #             written against. Not verifiable as text, but a later blueprint
+        #             edit will move the sha and surface as `stale`.
+        #   stale     a pinned node has moved since the paper was written against it.
+        #             THE point of the mechanism: the blueprint changes both for
+        #             splitting (paper still correct) and for new mathematical
+        #             learning (paper must follow), and only the pin tells them apart.
+        #   unpinned  neither identical nor pinned -- nothing relates the two texts.
+        nodes_here = [bp.by_label[l] for l in mk.blueprint_labels]
         if mk.shared_statement is None:
             # No statement environment follows. Either the marker sits on prose that
             # merely references the node -- a valid weaker link -- or the statement it
@@ -358,11 +377,31 @@ def run(
                 f"[paper]  {mk.file}:{mk.line}: 'shared with blueprint "
                 f"{mk.blueprint_label}' precedes no statement environment (marker on "
                 "prose, or a statement that has since been removed)")
+            no_env += 1
             continue
-        if mk.shared_statement != node.shared_statement:
+        if len(nodes_here) == 1 and mk.shared_statement == nodes_here[0].shared_statement:
+            verbatim += 1
+            continue
+        if moved := [n.label for n in nodes_here
+                     if mk.pinned.get(n.label) not in (None, n.shared_sha)]:
             drifted.append(
-                f"[shared] {mk.file}:{mk.line} {mk.blueprint_label}: "
-                f"{_divergence(mk.shared_statement, node.shared_statement)}")
+                f"[shared] {mk.file}:{mk.line}: blueprint node(s) {', '.join(moved)} "
+                f"changed since this paper statement was pinned to them — re-read the "
+                f"statement, then re-pin with `linkage check --pin-shared`")
+            continue
+        if unpin := [n.label for n in nodes_here if n.label not in mk.pinned]:
+            if len(nodes_here) == 1:
+                drifted.append(
+                    f"[shared] {mk.file}:{mk.line} {mk.blueprint_label}: "
+                    f"{_divergence(mk.shared_statement, nodes_here[0].shared_statement)}")
+            else:
+                drifted.append(
+                    f"[shared] {mk.file}:{mk.line}: renders blueprint node(s) "
+                    f"{', '.join(unpin)} editorially but pins neither text nor sha — "
+                    f"`linkage check --pin-shared` records what it was written against")
+            unpinned.append(mk)
+            continue
+        tracked += 1
 
     # A shared statement is single-sourced by convention and by nothing else: until this
     # check there was no comparison at all, only "does the label exist". Advisory rather
@@ -370,6 +409,7 @@ def run(
     # that fails every run on day one gets waived rather than fixed. `--strict` promotes
     # it, which is what CI should adopt once an article's backlog is clear.
     (fatal if strict_shared else advisory).extend(drifted)
+    f.unpinned = unpinned
 
     # optional: wiki notes
     if wiki:
@@ -382,6 +422,9 @@ def run(
         "leanok": sum(1 for n in nodes if n.leanok),
         "ledger_refs": len(bp.ledger_refs),
         "paper_shared": len(markers),
+        "shared_verbatim": verbatim,
+        "shared_tracked": tracked,
+        "shared_no_env": no_env,
         "shared_drift": len(drifted),
         "reached_unproved": len(reached_unproved),
         "reached_on_paper": len(reached_on_paper),

@@ -98,12 +98,18 @@ def render_safe_commands(cfg: Config) -> set[str]:
     return defined | vetted
 
 
-MARKER_RE = re.compile(r"%[^\n]*?shared[^\n]*?with blueprint\s+([a-z]+:[\w-]+)")
+# `% shared with blueprint <label>[@<sha12>][, <label>[@<sha12>]]…`
+#
+# The list and the pins are both optional, so every marker written before this grammar
+# existed still parses as a one-label unpinned marker.
+_REF = r"[a-z]+:[\w-]+(?:@[0-9a-f]{12})?"
+MARKER_RE = re.compile(
+    r"%[^\n]*?shared[^\n]*?with blueprint\s+(" + _REF + r"(?:\s*,\s*" + _REF + r")*)")
 
 
 def paper_markers(cfg: Config) -> list[PaperMarker]:
-    """Every `% shared with blueprint <label>` marker, with the paper's nearest label
-    and the statement it marks.
+    """Every `% shared with blueprint …` marker, with its labels, any pinned shas, the
+    paper statement's own label, and the statement text it marks.
 
     The marked statement is the next statement environment after the marker, provided
     no *other* marker intervenes — a marker whose own statement was deleted must not
@@ -122,15 +128,50 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
             em = env_re.search(t, m.end())
             body = em.group(2) if em and em.start() < nxt else None
             lm = re.search(r"\\label\{([^}]+)\}", body) if body else None
+            labels, pinned = [], {}
+            for ref in (r.strip() for r in m.group(1).split(",")):
+                label, _, sha = ref.partition("@")
+                labels.append(label)
+                if sha:
+                    pinned[label] = sha
             out.append(PaperMarker(
                 file=f.name,
-                blueprint_label=m.group(1),
+                blueprint_labels=labels,
                 statement_label=lm.group(1) if lm else None,
                 line=t.count("\n", 0, m.start()) + 1,
+                pinned=pinned,
                 shared_statement=(shared_statement(split_env_title(body)[1])
                                   if body is not None else None),
+                raw=m.group(0),
             ))
     return out
+
+
+def pin_shared(cfg: Config, shas: dict[str, str], only: set[str] | None = None) -> int:
+    """Rewrite paper markers to pin the current sha of each label they name.
+
+    Maintaining these by hand would not happen, so the checker that asks for them
+    supplies them. Only markers in `only` (keyed by "file:line") are touched, so the
+    caller can pin exactly the ones it decided need pinning and leave verbatim 1:1
+    markers clean.
+    """
+    changed = 0
+    for f in sorted(cfg.paper.glob("*.tex")):
+        text = orig = read(f)
+        for m in reversed(list(MARKER_RE.finditer(orig))):
+            key = f"{f.name}:{orig.count(chr(10), 0, m.start()) + 1}"
+            if only is not None and key not in only:
+                continue
+            refs = []
+            for ref in (r.strip() for r in m.group(1).split(",")):
+                label = ref.partition("@")[0]
+                refs.append(f"{label}@{shas[label]}" if label in shas else label)
+            new = m.group(0).replace(m.group(1), ", ".join(refs))
+            text = text[:m.start()] + new + text[m.end():]
+        if text != orig:
+            f.write_text(text, encoding="utf-8")
+            changed += 1
+    return changed
 
 
 def git_provenance(root: Path) -> dict:
