@@ -34,6 +34,7 @@ manifest without transclusion fields a hard failure, so one can never reach the 
 | `scaffold/blueprint/` | the LaTeX scaffolding a new article copies: theorem envs, plasTeX config, the framework's linkage macros, the render allowlist |
 | `.github/workflows/` | reusable workflows (`workflow_call`) that article repos call |
 | `.claude/agents/mathematician.md` | the shared sub-agent; the hub's `sync-agents.sh` installs it from here (it expects `<repo>/.claude/agents/<name>.md`) |
+| `.claude/skills/fidelity-review/` | the **fidelity review** skill: does the Lean prove what the article states, or something weaker or vacuous? The method (eight failure modes, tiering, the card), agent prompt templates (blind restatement, adversarial vacuity, axiom-vs-source, card pass, witnesses, draft↔blueprint diff), plan/review templates, and `scripts/f7sweep.py` (`\uses` edges vs Lean imports, read from `linkage.toml`). Install user-wide with a junction/symlink `~/.claude/skills/fidelity-review → <this dir>` so `/fidelity-review` is available in every article repo. First executed on hcs, 2026-08-15 |
 | `docs/` | `LINKAGE.md` (the spec these checks enforce), the drafting gate, the publication template, the Lean review tour, the cloud setup guide |
 
 ## The package

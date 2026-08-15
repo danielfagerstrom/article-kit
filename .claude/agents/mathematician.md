@@ -161,3 +161,13 @@ named, and none is specific to one article.
 - Report format: what landed (labels, Lean names, proved vs `notready`), what the ledger gained,
   what the hub should now update (tags to upgrade, statements to mirror), and any faithfulness or
   boundary questions you deliberately left open.
+- **When a formalisation phase closes, the article gets a fidelity review** — the `fidelity-review`
+  skill in article-kit (`.claude/skills/fidelity-review/`): does the Lean prove what the article
+  states, or something weaker or vacuous? Its P1 (`Witnesses.lean`) and its fix commits are your
+  work; the cards and the blind/adversarial passes are run by the integrating session with
+  read-only agents. Two of its rules apply to every node you write, review or not: the `\lean`
+  tag must name the declaration(s) proving **all** the node's clauses (a bundle assembling the
+  halves is the usual cure, and the per-half `#print axioms` lines stay the load-bearing ones),
+  and a headline theorem's conclusion should land in the type the next theorem starts from (an
+  analysis direction that yields `(b₀, k)` rather than the admissible-exponent structure is
+  weaker in form than the article, even when the data are the same).
