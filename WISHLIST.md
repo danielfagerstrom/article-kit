@@ -59,7 +59,7 @@ with three adjustments the framework's own shape asked for:
   measuring first showed neither article carried one.
 
 It earned its place on the first run, in the *other* article: `scale-space-foundations`'
-`blueprint/PROOFS-PLAN.md:63` had `arphi` corrupted to U+000B (`` → vertical tab), undetected
+`blueprint/PROOFS-PLAN.md:63` had `\varphi` corrupted to U+000B (`\v` → vertical tab), undetected
 since the framework split. Repaired in the same pass.
 
 The scaffolded `scripts/check-control-chars.py` stays: it is wired into `build-blueprint.sh`, where
