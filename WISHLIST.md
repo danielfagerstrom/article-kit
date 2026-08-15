@@ -85,4 +85,54 @@ while the context is fresh and invisible six weeks later.
 
 ---
 
+## Check that a proved node carries `\leanok` on its *proof*, not only on its statement
+
+**Wanted by** `hemigroup-causal-scale-space-kernels`, 2026-08-15.
+
+**What.** A `linkage check` rule: if a node's `\lean{...}` names a Lean *theorem* and its statement
+carries `\leanok`, its `proof` environment should carry `\leanok` too. Advisory is probably the
+right severity — there are legitimate exemptions, listed below.
+
+**Why.** leanblueprint colours the dependency graph from **two independent flags**, and `linkage`
+models only one of them:
+
+| flag | where | graph effect |
+|---|---|---|
+| `\leanok` in the statement environment | node body | **green border** — "the statement is formalized" |
+| `\leanok` inside the `proof` environment | the following proof | **green background** — "the proof is formalized" |
+
+A node with the first and not the second paints green-bordered with a *blue* background, which the
+generated legend reads as "the proof of this result is ready to be formalized" — i.e. **not done**.
+`linkage check` counts statement-level `\leanok` only, includes the node in its `\leanok` total,
+and passes. So the graph and the linkage count disagree, silently, and the graph is the artifact
+the hub and human readers actually look at.
+
+Found by a reader asking why a node they knew was proved was painting blue. Six nodes in this
+article were affected — `prop:moments`, `lem:potential-kernel`, `prop:sonine-pair-exists`,
+`lem:delay-core`, `lem:generator-properties`, `lem:local-polynomial-symbol` — every one of them
+machine-checked, sorry-free, and listed in the article's `#print axioms` guard. Four had been wrong
+for weeks. **Two were introduced in a single session by an author who had just fixed the other
+four**, which is the argument for a check rather than for care: the flag is invisible at the point
+of writing, because the statement and the proof are separate environments and only one of them is
+in front of you when you tag the node.
+
+**Suggested shape.** In the pass that already parses `\leanok` / `\notready` / `\lean{}`, record
+whether the `proof` environment immediately following a statement contains `\leanok`, and report
+the mismatch as `path:line`. Three exemptions, all mechanical:
+
+- **definitions** — no proof environment, so nothing to flag; they colour from the statement flag
+  alone;
+- **`\notready` nodes** — stated but unproved by construction;
+- **nodes with no proof environment at all** — though in this constellation that is already
+  disallowed by the "the blueprint is the text of record" rule.
+
+The converse mismatch is worth reporting too, and more loudly: `\leanok` on a proof whose statement
+lacks it is incoherent rather than merely under-reported.
+
+**Not blocking.** The six are fixed here by hand, and a one-off audit script took twenty lines —
+which is rather the point. It should not be twenty lines that each article rediscovers after a
+reader notices a wrong colour.
+
+---
+
 *No other open requests.*
