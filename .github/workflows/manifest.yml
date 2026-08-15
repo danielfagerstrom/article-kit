@@ -40,6 +40,17 @@ on:
         required: false
         default: danielfagerstrom/notes-wiki
         type: string
+      strict_shared:
+        description: >
+          Fail the build when a paper statement declaring `% shared with blueprint` has
+          drifted from the node it names. Opt-in per article, because the check is only
+          meaningful once that article's existing divergences are resolved — turning it on
+          over a backlog produces a build everyone learns to ignore. An article enables it
+          the day it reaches zero, and from then on the paper cannot fork from the
+          blueprint silently.
+        required: false
+        default: false
+        type: boolean
       linkage_ref:
         description: "Ref of the linkage framework to install."
         required: false
@@ -145,7 +156,10 @@ jobs:
       # (or with any label failing to render) must never reach the hub — CI is its single
       # writer, so a silent degrade here would strand the hub on prose-only entries.
       - name: Emit the manifest (and run the linkage check)
-        run: linkage check --require-render --emit-manifest "$RUNNER_TEMP/$MANIFEST_NAME"
+        run: |
+          linkage check --require-render \
+            ${{ inputs.strict_shared && '--strict-shared' || '' }} \
+            --emit-manifest "$RUNNER_TEMP/$MANIFEST_NAME"
 
       # ---- dry-run half: prove the guard's semantics, touch nothing ----
       - name: "Dry run: self-test the diff-guard semantics"

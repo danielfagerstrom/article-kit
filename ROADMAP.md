@@ -297,8 +297,22 @@ free-standing `\emph{}` formalisation note after it — and those reach `stateme
 them too), and the environment word the paper writes before a `\ref`. Without the first, 35 of 62 look
 drifted; without the second, 16; with both, 11.
 
-**Still open:** CI adopting `--strict-shared`, which waits on an article pinning or resolving its
-remaining markers.
+**CI adoption**  ·  ✅ 2026-08-15. `manifest.yml` gained a `strict_shared` input, default false,
+because it is a *reusable* workflow both articles call: `hemigroup-causal-scale-space-kernels`
+reached zero drift and opted in, `scale-space-foundations` still carries four divergences and would
+have had its build broken by an unconditional flag. Per-article opt-in is the same doctrine as the
+check's own advisory default — an article enables it the day it reaches zero.
+
+The caller also had to gain `paper/**` in its trigger paths. Without that the workflow never ran on
+the edit most likely to break the check, so strict would have been enabled and silent. The
+projection is unaffected: the diff-guard compares content excluding the freshness stamp, so a
+paper-only push emits, matches, and commits nothing to the hub.
+
+**Worth recording: the multi-label grammar and `--pin-shared` went unused.** The article resolved
+all eleven divergences by syncing the paper to the blueprint instead, reaching 69 of 69 *verbatim* —
+which is strictly stronger than pinning, since any later blueprint edit surfaces immediately rather
+than waiting for someone to re-read a pin. The machinery remains the escape hatch for statements
+that genuinely cannot be mirrored, and the right conclusion is that it should stay the exception.
 
 **C2 — dropped context *around* the statement. The half that actually failed.** Fourteen blind draft
 reviews of the hemigroup paper found five sections where the blueprint knew something the paper does
