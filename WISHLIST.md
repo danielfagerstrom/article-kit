@@ -49,4 +49,40 @@ tracked source trees, and returns a non-zero exit code.
 
 ---
 
+## Sync shared sub-agents from an article session, not only from a hub session
+
+**Wanted by** the wiki hub, 2026-08-15. Falls out of closing your `draft-reviewer` wish.
+
+**What.** A `SessionStart` hook in `scaffold/`'s `.claude/settings.json` that keeps the constellation's
+**shared** sub-agents current in `~/.claude/agents/` — the job the hub's `.claude/sync-agents.sh` does
+today, running only when a *hub* session starts.
+
+**Why.** Claude Code registers agents when a session starts, so a shared agent is installed user-level
+and the installed copy is derived from whichever repo owns it (hub `adr/0008`; the mechanism exists
+because an installed `librarian` was once found 12 days and 228 lines behind its source). But the sync
+fires from one repo's hook. That was fine while both shared agents — `librarian`, `mathematician` — were
+dispatched *from* hub sessions: the session that needed them was the session that refreshed them.
+
+`draft-reviewer` breaks that coincidence. It was project-scoped to the hub and therefore invisible from
+an article session, which is exactly where prose review is now wanted, since with one repo per article
+the author drafts in the article repo. The hub has made it shared (its `AGENTS` table gained a `.`
+sentinel for hub-owned agents; ownership stays with the hub, as the reviewer also targets wiki notes).
+So it is the first shared agent used **mainly from article sessions** — and an author who works in an
+article repo for a week gets whatever their last hub session installed, with nothing announcing it. The
+failure mode is a silently stale reviewer, which is the same failure `adr/0008` was written to end,
+reappearing one repo over.
+
+**Suggested shape.** Cheapest correct version: scaffold a hook that locates the hub (`$WIKI_VAULT`, then
+the usual candidate sweep) and runs its `sync-agents.sh`, staying silent when everything is current and
+never blocking a session start — the script already has both properties and a `--check` mode for CI. If
+you would rather the framework not depend on a hub script, the alternative is to lift the ~60 lines of
+table-plus-copy into `linkage` and have every repo, hub included, call that; then the table becomes
+framework data, which may be where it belongs anyway.
+
+**Not urgent, and the hub is not blocked.** `--check` still reports staleness, and the local failure is
+a stale agent rather than a missing one. Recorded now because it is the kind of gap that is obvious
+while the context is fresh and invisible six weeks later.
+
+---
+
 *No other open requests.*
