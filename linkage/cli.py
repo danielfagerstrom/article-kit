@@ -61,6 +61,7 @@ def cmd_check(args) -> int:
         ledger=artifacts.ledger_entries(cfg),
         markers=artifacts.paper_markers(cfg),
         safe_commands=artifacts.render_safe_commands(cfg),
+        control_chars=artifacts.control_chars(cfg),
         wiki=args.wiki,
         strict_shared=args.strict_shared,
     )

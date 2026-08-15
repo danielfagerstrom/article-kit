@@ -99,6 +99,17 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    memory: the check reports *where* two statements part company, which a sha cannot.
    (`statement_sha` remains the hub's wire format and is untouched by any of this — the reduction is
    a comparison key, never projected, so no published sha moves.)
+9. **No source file carries a stray control character.** Legal below U+0020: LF, and CR
+   immediately before LF. Everything else — a bare TAB, a lone CR, a backspace, a vertical tab — is
+   corruption, and there is no legitimate use of it in these files. Writing LaTeX or Lean through a
+   *non-raw* Python string literal silently turns `egin` into U+0008, `	exttt` into a TAB and
+   `arphi` into U+000B; the diff looks almost right and `latexmk` fails hundreds of lines later
+   naming the character rather than the cause. Fatal with no grace period, because neither article
+   carried one when it shipped — and it found a `arphi` corrupted to U+000B in
+   `scale-space-foundations`' `PROOFS-PLAN.md` on its first run, undetected since the framework split.
+   Scope is every `.tex`/`.md`/`.lean` file under the repo, build output and `.claude/` worktrees
+   excluded; that includes `paper/`, which the article-side script this replaced did not cover.
+
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no
@@ -200,6 +211,8 @@ It enforces the **in-repo** edges and fails (exit 1) on:
   node (rule 4). Advisory without the flag, so an article can adopt the check before its
   existing drift is cleared;
 - a `\command` in a statement or proof that the render pipeline cannot handle (the clean-render gate);
+- a stray control character in any `.tex`, `.md` or `.lean` source — anything below U+0020 that
+  is not LF, or CR immediately before LF (rule 9);
 - a statement node with no `\statusT` / `\statusA` (rule 6);
 - a `\statusA` node with no `\textbf{Assignment.}` clause, or whose clause names no ledger entry (rule 7);
 - a `\leanok` node whose transitive `\uses` closure contains a `[T]` statement proved nowhere (rule 8) —

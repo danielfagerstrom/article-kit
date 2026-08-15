@@ -60,7 +60,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .config import Config
-from .model import Blueprint, LedgerEntry, Node, PaperMarker
+from .model import Blueprint, ControlChar, LedgerEntry, Node, PaperMarker
 from .render import unknown_commands
 
 # ADR-0011: an [A] node declares, in its status annotation, what its citation carries and
@@ -203,6 +203,7 @@ def run(
     ledger: dict[str, LedgerEntry],
     markers: list[PaperMarker],
     safe_commands: set[str],
+    control_chars: list[ControlChar] | None = None,
     wiki: Path | None = None,
     strict_shared: bool = False,
 ) -> Findings:
@@ -410,6 +411,21 @@ def run(
     # it, which is what CI should adopt once an article's backlog is clear.
     (fatal if strict_shared else advisory).extend(drifted)
     f.unpinned = unpinned
+
+    # 9. control characters in sources
+    #
+    # Fatal with no strict flag and no grace period, unlike check 3b: there is no
+    # legitimate use of a bare TAB or a lone CR in these files, and neither article
+    # carries one today, so it cannot fail on day one. The message names the cause
+    # rather than only the character -- the whole complaint that prompted it was a
+    # diagnostic that named the character.
+    for cc in (control_chars or []):
+        fatal.append(
+            f"[chars]  {cc.path}:{cc.line}: illegal control character U+{cc.char:04X} "
+            f"near {cc.context!r} -- almost always a non-raw Python string literal "
+            "writing LaTeX or Lean: an escape that should have stayed literal "
+            "(0x08, TAB, CR, 0x0C are what backslash b/t/r/f become); "
+            "use the Edit tool, a raw string, or bytes([92]) for the backslash")
 
     # optional: wiki notes
     if wiki:

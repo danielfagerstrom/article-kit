@@ -47,6 +47,25 @@ files), reporting `path:line` and a byte-context snippet, plus the one-line reme
 string or `bytes([92])`. The script is written to be lifted as-is — it takes paths, defaults to the
 tracked source trees, and returns a non-zero exit code.
 
+**Resolved 2026-08-15** — shipped as fatal check 9 (`LINKAGE.md` rule 9). Implemented as suggested,
+with three adjustments the framework's own shape asked for:
+
+- The scan is I/O, so it lives in `artifacts.py` with the other side inputs and is passed into
+  `checks.run()`; `checks.py` holds only the policy and still touches no files.
+- Paths come from `linkage.toml` rather than hardcoded globs, since article layouts differ — and the
+  scope now includes **`paper/`**, which the script's globs omitted. That is the tree an author edits
+  most, and the one `--pin-shared` writes to.
+- Fatal with no grace period, unlike check 3b: there is no legitimate use of these characters, and
+  measuring first showed neither article carried one.
+
+It earned its place on the first run, in the *other* article: `scale-space-foundations`'
+`blueprint/PROOFS-PLAN.md:63` had `arphi` corrupted to U+000B (`` → vertical tab), undetected
+since the framework split. Repaired in the same pass.
+
+The scaffolded `scripts/check-control-chars.py` stays: it is wired into `build-blueprint.sh`, where
+it fails fast before `latexmk` and without needing the framework importable. `linkage check` now
+covers the same ground more broadly; the duplication is deliberate and cheap.
+
 ---
 
 ## Sync shared sub-agents from an article session, not only from a hub session

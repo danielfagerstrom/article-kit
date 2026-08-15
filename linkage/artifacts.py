@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 
 from .config import Config
-from .model import LedgerEntry, PaperMarker
+from .model import ControlChar, LedgerEntry, PaperMarker
 from .parse_latex import expand_inputs
 
 # a Lean declaration keyword, allowing leading attributes / modifiers
@@ -172,6 +172,66 @@ def pin_shared(cfg: Config, shas: dict[str, str], only: set[str] | None = None) 
             f.write_text(text, encoding="utf-8")
             changed += 1
     return changed
+
+
+# --- control characters in sources -------------------------------------------
+#
+# Writing LaTeX or Lean through a *non-raw* Python string literal silently turns
+# `\begin` into U+0008, `\texttt` into a TAB and `\ref` into a CR. The diff looks
+# almost right, every existing check passes, and latexmk fails several hundred lines
+# later with "Unicode character ^^H (U+0008) not set up for use with LaTeX" -- a
+# message naming the character rather than the cause, in a file the author does not
+# recall touching. Cheap to detect, expensive to diagnose: the profile of a fatal check.
+#
+# Requested by `hemigroup-causal-scale-space-kernels` (WISHLIST, 2026-08-12) after it
+# happened three times in one session. It had a scaffolded script wired into that
+# article's blueprint gate; moving it here gives every article the check without
+# wiring, and widens it to `paper/`, which the script's globs did not cover -- and the
+# paper is the tree an author edits most, and the one `--pin-shared` writes to.
+
+SOURCE_SUFFIXES = {".tex", ".md", ".lean"}
+# Build output and tooling, not sources. `.claude` matters more than it looks: agent
+# worktrees live there and hold a whole second copy of the repo.
+SKIP_DIRS = {".git", ".lake", ".claude", ".venv", "__pycache__", "node_modules",
+             "build", "web", "print", "_minted"}
+LF, CR = 0x0A, 0x0D
+
+
+def source_files(cfg: Config) -> list[Path]:
+    """Every hand-written source file in the article, build output excluded."""
+    return sorted(
+        p for p in cfg.root.rglob("*")
+        if p.suffix in SOURCE_SUFFIXES and p.is_file()
+        and not (set(p.relative_to(cfg.root).parts) & SKIP_DIRS)
+    )
+
+
+def control_chars(cfg: Config) -> list[ControlChar]:
+    """Illegal control characters in the article's sources.
+
+    Legal: LF, and CR immediately before LF (a Windows checkout). Everything else
+    below U+0020 -- a bare TAB, a lone CR, a backspace, a form feed -- is corruption.
+    Read as bytes on purpose: the point is to catch what a decoder would hide.
+    """
+    out: list[ControlChar] = []
+    for path in source_files(cfg):
+        try:
+            data = path.read_bytes()
+        except OSError:
+            continue
+        for i, c in enumerate(data):
+            if c >= 0x20 or c == LF:
+                continue
+            if c == CR and i + 1 < len(data) and data[i + 1] == LF:
+                continue
+            snippet = data[max(0, i - 30):i + 30]
+            out.append(ControlChar(
+                path=path.relative_to(cfg.root).as_posix(),
+                line=data.count(bytes([LF]), 0, i) + 1,
+                char=c,
+                context=snippet.decode("utf-8", "replace"),
+            ))
+    return out
 
 
 def git_provenance(root: Path) -> dict:

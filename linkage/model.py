@@ -163,6 +163,19 @@ class PaperMarker:
 
 
 @dataclass
+class ControlChar:
+    """One illegal control character in a source file."""
+
+    path: str
+    """Repo-relative, so the message is the same wherever the checker was invoked."""
+    line: int
+    char: int
+    """The code point, reported as U+XXXX — naming it is half the diagnosis."""
+    context: str
+    """Printable rendering of the surrounding bytes."""
+
+
+@dataclass
 class Blueprint:
     """A parsed blueprint: the nodes, plus the whole-document facts the checks need."""
 
