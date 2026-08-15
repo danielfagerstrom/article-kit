@@ -51,9 +51,19 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    `<label>` must be a real blueprint label. **Target (strong single-sourcing):** when the paper renders
    the statement as a *labelled* theorem, its own `\label` *equals* `<label>`, so the correspondence is
    machine-exact and statements could later be `\input` from a shared file. Prose that merely references a
-   blueprint node (its nearest label is a section, not a statement) is a valid weaker link — the checker
-   verifies the node exists but does not advise a same-label. Labelled-statement mismatches are reported as
-   advisories; align them opportunistically.
+   blueprint node is a valid weaker link — the checker verifies the node exists but does not advise a
+   same-label. Labelled-statement mismatches are reported as advisories; align them opportunistically.
+
+   **And the shared text must still agree** — checked since 2026-08-15, advisory by default and fatal
+   under `--strict-shared`. Both sides are reduced to what they are supposed to share before comparing:
+   everything from the `[T]`/`[A]` status tag onward is blueprint-only (a node may carry free-standing
+   `\emph{}` formalisation notes after it, which the paper is right to omit — 45 of 87 nodes in the
+   first article do), and the environment word the paper writes before a `\ref` is dropped, since
+   leanblueprint renders it itself. Without the first reduction 35 of 62 markers look drifted; without
+   the second, 16; with both, 11 — and those eleven are real. The comparison is by text rather than by
+   sha because both sides are in memory here: the check reports *where* two statements part company,
+   which a sha cannot. (`statement_sha` remains the hub's wire format and is deliberately untouched by
+   this — the reduction is a comparison key, never projected, so no published sha moves.)
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no
@@ -151,6 +161,9 @@ It enforces the **in-repo** edges and fails (exit 1) on:
 - a `\leanok` node whose `\lean{Decl}` is not declared in `Formalization/` (rule 3);
 - a `\ledger{AXX}` / "ledger AXX" with no `## AXX` entry in `AXIOMS.md`, or an entry with no `**Cite:**` line (rule 2);
 - a paper `% shared with blueprint <label>` naming a label the blueprint does not have (rule 4);
+- under `--strict-shared`: a shared paper statement whose text has drifted from its blueprint
+  node (rule 4). Advisory without the flag, so an article can adopt the check before its
+  existing drift is cleared;
 - a `\command` in a statement or proof that the render pipeline cannot handle (the clean-render gate);
 - a statement node with no `\statusT` / `\statusA` (rule 6);
 - a `\statusA` node with no `\textbf{Assignment.}` clause, or whose clause names no ledger entry (rule 7);

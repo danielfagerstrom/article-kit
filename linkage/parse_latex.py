@@ -115,6 +115,55 @@ def status_annotation(body: str) -> str:
     return (m.group(1) or "") if m else ""
 
 
+# --- the shared-statement projection (check 3's drift comparison) ---------------
+#
+# The paper shares a blueprint node's *mathematics*, not its formalisation commentary.
+# Two systematic differences have to be normalized away before a comparison means
+# anything, and both were measured rather than assumed:
+#
+# 1. Everything from the [T]/[A] status tag onward is blueprint-only. `\statusT\quad
+#    \emph{...}` is already stripped by normalize_statement, but a node may carry
+#    FURTHER free-standing `\emph{...}` notes after it — 45 of 87 nodes in the first
+#    article do — and those survive into `statement`, so they reach `statement_sha`
+#    too. They are exactly the formalisation notes the paper is right to omit.
+# 2. The paper writes `Theorem~\ref{X}`; the blueprint writes `\ref{X}`, because
+#    leanblueprint renders the environment name itself. Same rendered text, two
+#    sources.
+#
+# Without (1) the comparison reports 35 of 62 markers as drifted; without (2), 16.
+# With both, 11 — and those eleven are real.
+
+SHARED_CUT = re.compile(r"\\status[TA]\b")
+REF_PREFIX = re.compile(
+    r"\b(?:Theorems|Propositions|Lemmas|Corollaries|Definitions|Examples|Remarks|"
+    r"Sections|Appendices|Theorem|Proposition|Lemma|Corollary|Definition|Example|"
+    r"Remark|Appendix|Section)~?\s*(?=\\ref\{)")
+ENV_TITLE = re.compile(r"\s*\[([^\]]*)\]")
+
+
+def split_env_title(body: str) -> tuple[str | None, str]:
+    """`[human title]` off the front of an environment body, if there is one."""
+    m = ENV_TITLE.match(body)
+    return (m.group(1).strip(), body[m.end():]) if m else (None, body)
+
+
+def shared_statement(body: str) -> str:
+    """A statement body reduced to what paper and blueprint are supposed to share.
+
+    Expects the environment's `[title]` already removed (both callers parse the
+    environment, so the title is theirs to strip; doing it here would risk eating a
+    statement that legitimately opens with a bracketed interval).
+
+    Applied to *both* sides, so it is a comparison key rather than a claim about
+    either. Deliberately NOT used for `statement`/`statement_sha`: those are the
+    hub's wire format, and moving them would move every published sha at once.
+    """
+    cut = SHARED_CUT.search(body)
+    if cut:
+        body = body[:cut.start()]
+    return REF_PREFIX.sub("", normalize_statement(body))
+
+
 # a proof environment directly following a statement env (whitespace/comments between);
 # non-greedy to the first \end{proof} — the blueprint does not nest proofs
 PROOF_AHEAD = re.compile(r"(?:\s|%[^\n]*)*\\begin\{proof\}(.*?)\\end\{proof\}", re.S)
@@ -169,6 +218,7 @@ def blueprint_nodes(tex: str, cfg: Config) -> list[Node]:
                 # this list as the node's sources, where a repeat is noise.
                 ledger=list(dict.fromkeys(re.findall(r"\\ledger\{([^}]*)\}", body))),
                 statement=normalize_statement(body),
+                shared_statement=shared_statement(body),
                 proof=normalize_statement(pm.group(1)) if pm else None,
                 statement_render_src=normalize_for_render(body),
                 proof_render_src=normalize_for_render(pm.group(1)) if pm else None,

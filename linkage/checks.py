@@ -9,6 +9,11 @@ article repository*.
     1. every \\leanok node's \\lean{Decl} names a declaration that exists in the Lean sources
     2. every \\ledger{AXX} (and legacy "ledger AXX" prose) resolves to an AXIOMS.md entry
     3. every paper "% shared with blueprint <label>" names a real blueprint statement label
+       (3b, --strict-shared only: and the paper's statement still SAYS what that node says.
+       A shared statement was single-sourced by convention and by nothing else until this
+       existed; the first two articles carry 11 and 4 real divergences respectively, so it
+       is advisory by default -- a check that fails on day one gets waived, not fixed --
+       and CI adopts --strict-shared once an article's backlog is clear)
     4. every \\command in a statement/proof is render-safe: defined in the article's macros
        or vetted in its render allowlist (the clean-render gate — pandoc silently DROPS
        unknown commands, argument and all, so this must be caught source-side)
@@ -25,10 +30,16 @@ article repository*.
        phrased in terms of an unproved one either)
 
   ADVISORY (reported, non-fatal)
-    - a *labelled* paper statement that shares a blueprint node but uses a different label
-      (rename to the blueprint label for true single-sourcing). Prose that merely references
-      a blueprint node -- nearest preceding label is a section, not a statement -- is a valid
-      weaker link and is not advised.
+    - a paper statement that shares a blueprint node but carries a different \\label
+      (rename to the blueprint label for true single-sourcing). Read from the label INSIDE
+      the marked environment: the marker is a comment above its statement, so the nearest
+      *preceding* label is the previous statement's, and comparing against that reported
+      47 of 62 markers as mismatched in the first article when every one of them matched.
+    - a marker preceding no statement environment at all: either it sits on prose that
+      merely references the node (a valid weaker link) or the statement it marked has been
+      removed. The checker cannot tell those apart and does not guess.
+    - a shared statement that has drifted from its blueprint node (fatal under
+      --strict-shared; see 3b)
     - a \\leanok node with no \\lean{}, or a node marked both \\leanok and \\notready
     - a statement reached by a \\leanok node that is proved on paper but not in Lean: a
       formalisation debt (permitted -- ADR-0010 rule 2), and the list to read when choosing
@@ -166,6 +177,23 @@ def _who(reachers: list[str]) -> str:
     return shown + (f", +{len(reachers) - 4} more" if len(reachers) > 4 else "")
 
 
+def _divergence(paper: str, blueprint: str, width: int = 72) -> str:
+    """Where two shared statements first part company, and what each says there.
+
+    A sha would say only *that* they differ. Both texts are in memory here, so the
+    check can say where — which is the difference between a finding and a chore.
+    """
+    i = next((k for k in range(min(len(paper), len(blueprint)))
+              if paper[k] != blueprint[k]), min(len(paper), len(blueprint)))
+    lead = blueprint[max(0, i - 36):i].lstrip()
+    return "\n".join([
+        f"drifted from the blueprint after {i} chars",
+        f"             ...{lead}",
+        f"             paper     : {paper[i:i + width]}",
+        f"             blueprint : {blueprint[i:i + width]}",
+    ])
+
+
 def run(
     bp: Blueprint,
     cfg: Config,
@@ -174,6 +202,7 @@ def run(
     markers: list[PaperMarker],
     safe_commands: set[str],
     wiki: Path | None = None,
+    strict_shared: bool = False,
 ) -> Findings:
     """Every in-repo edge, plus the wiki edge when a vault path is given."""
     f = Findings()
@@ -302,18 +331,45 @@ def run(
 
     # 3. paper shared statements
     labels = bp.labels
+    drifted: list[str] = []
     for mk in markers:
         if mk.blueprint_label not in labels:
             fatal.append(
                 f"[paper]  {mk.file}: 'shared with blueprint {mk.blueprint_label}' but no such "
                 "blueprint label"
             )
-        elif (mk.nearest_label != mk.blueprint_label and mk.nearest_label
-              and cfg.is_statement_label(mk.nearest_label)):
+            continue
+        if (mk.statement_label and mk.statement_label != mk.blueprint_label
+                and cfg.is_statement_label(mk.statement_label)):
             advisory.append(
-                f"[paper]  {mk.file}: labelled statement '{mk.nearest_label}' shares blueprint "
-                f"'{mk.blueprint_label}' (rename to the blueprint label for single-sourcing)"
+                f"[paper]  {mk.file}:{mk.line}: statement '{mk.statement_label}' shares "
+                f"blueprint '{mk.blueprint_label}' (rename to the blueprint label for "
+                "single-sourcing)"
             )
+
+        # 3b. does the paper still say what the blueprint says?
+        node = bp.by_label[mk.blueprint_label]
+        if mk.shared_statement is None:
+            # No statement environment follows. Either the marker sits on prose that
+            # merely references the node -- a valid weaker link -- or the statement it
+            # marked was deleted and the marker outlived it. Advisory either way; the
+            # checker cannot tell them apart and should not guess.
+            advisory.append(
+                f"[paper]  {mk.file}:{mk.line}: 'shared with blueprint "
+                f"{mk.blueprint_label}' precedes no statement environment (marker on "
+                "prose, or a statement that has since been removed)")
+            continue
+        if mk.shared_statement != node.shared_statement:
+            drifted.append(
+                f"[shared] {mk.file}:{mk.line} {mk.blueprint_label}: "
+                f"{_divergence(mk.shared_statement, node.shared_statement)}")
+
+    # A shared statement is single-sourced by convention and by nothing else: until this
+    # check there was no comparison at all, only "does the label exist". Advisory rather
+    # than fatal *for now* — the first article carries 11 real divergences, and a check
+    # that fails every run on day one gets waived rather than fixed. `--strict` promotes
+    # it, which is what CI should adopt once an article's backlog is clear.
+    (fatal if strict_shared else advisory).extend(drifted)
 
     # optional: wiki notes
     if wiki:
@@ -326,6 +382,7 @@ def run(
         "leanok": sum(1 for n in nodes if n.leanok),
         "ledger_refs": len(bp.ledger_refs),
         "paper_shared": len(markers),
+        "shared_drift": len(drifted),
         "reached_unproved": len(reached_unproved),
         "reached_on_paper": len(reached_on_paper),
         "unproved": sorted(unproved),

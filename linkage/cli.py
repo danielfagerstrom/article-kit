@@ -62,6 +62,7 @@ def cmd_check(args) -> int:
         markers=artifacts.paper_markers(cfg),
         safe_commands=artifacts.render_safe_commands(cfg),
         wiki=args.wiki,
+        strict_shared=args.strict_shared,
     )
 
     # Framework-owned scaffolding must exist in the article tree (TeX resolves \input
@@ -76,8 +77,10 @@ def cmd_check(args) -> int:
         )
 
     s = f.stats
+    drift = s.get("shared_drift", 0)
     print(f"Blueprint: {s['nodes']} statement nodes ({s['leanok']} \\leanok), "
-          f"{s['ledger_refs']} ledger refs, {s['paper_shared']} paper shared-statements.")
+          f"{s['ledger_refs']} ledger refs, {s['paper_shared']} paper shared-statements "
+          f"({s['paper_shared'] - drift} matching the blueprint, {drift} drifted).")
     print(f"Dependency closure: {s['reached_unproved']} statement(s) proved nowhere reached "
           f"by a \\leanok node, {s['reached_on_paper']} proved on paper only; "
           f"{len(s['unproved'])} [T] statement(s) proved nowhere in all "
@@ -231,6 +234,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="path to the Notes wiki (enables \\notes{} checking)")
     c.add_argument("--emit-manifest", type=Path, metavar="PATH",
                    help="also write the blueprint manifest the wiki reads")
+    c.add_argument("--strict-shared", action="store_true",
+                   help="fail (exit 1) on a paper statement that has drifted from the "
+                        "blueprint node it declares it shares, instead of reporting it as "
+                        "an advisory -- for CI, once an article's existing drift is cleared")
     c.add_argument("--require-render", action="store_true",
                    help="fail (exit 2) unless the pinned pandoc renders every label — for "
                         "CI, where a manifest without transclusion fields must never reach "

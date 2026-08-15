@@ -98,19 +98,37 @@ def render_safe_commands(cfg: Config) -> set[str]:
     return defined | vetted
 
 
+MARKER_RE = re.compile(r"%[^\n]*?shared[^\n]*?with blueprint\s+([a-z]+:[\w-]+)")
+
+
 def paper_markers(cfg: Config) -> list[PaperMarker]:
-    """Every `% shared with blueprint <label>` marker, with the paper's nearest label."""
+    """Every `% shared with blueprint <label>` marker, with the paper's nearest label
+    and the statement it marks.
+
+    The marked statement is the next statement environment after the marker, provided
+    no *other* marker intervenes — a marker whose own statement was deleted must not
+    silently adopt the following one's and report it as drift.
+    """
+    from .parse_latex import shared_statement, split_env_title
+
+    env_re = re.compile(
+        r"\\begin\{(" + "|".join(cfg.statement_envs) + r")\}(.*?)\\end\{\1\}", re.S)
     out: list[PaperMarker] = []
     for f in sorted(cfg.paper.glob("*.tex")):
         t = read(f)
-        for m in re.finditer(
-            r"%[^\n]*?shared[^\n]*?with blueprint\s+([a-z]+:[\w-]+)", t
-        ):
-            labs = re.findall(r"\\label\{([^}]+)\}", t[: m.start()])
+        marks = list(MARKER_RE.finditer(t))
+        for i, m in enumerate(marks):
+            nxt = marks[i + 1].start() if i + 1 < len(marks) else len(t)
+            em = env_re.search(t, m.end())
+            body = em.group(2) if em and em.start() < nxt else None
+            lm = re.search(r"\\label\{([^}]+)\}", body) if body else None
             out.append(PaperMarker(
                 file=f.name,
                 blueprint_label=m.group(1),
-                nearest_label=labs[-1] if labs else None,
+                statement_label=lm.group(1) if lm else None,
+                line=t.count("\n", 0, m.start()) + 1,
+                shared_statement=(shared_statement(split_env_title(body)[1])
+                                  if body is not None else None),
             ))
     return out
 

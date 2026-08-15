@@ -52,6 +52,12 @@ class Node:
     statement: str = ""
     """Statement text normalized for stable hashing."""
 
+    shared_statement: str = ""
+    """The statement reduced to what the paper is supposed to share: content before the
+    [T]/[A] status tag, with the environment word the paper writes before a `\\ref`
+    removed. A comparison key for check 3, never projected — the hub reads
+    `statement`/`statement_sha` and those must not move."""
+
     proof: str | None = None
     """Proof-of-record text, normalized the same way. None when there is no proof."""
 
@@ -97,8 +103,19 @@ class PaperMarker:
 
     file: str
     blueprint_label: str
-    nearest_label: str | None
-    """The paper's own nearest preceding `\\label{}` — label equality is the target form."""
+    statement_label: str | None
+    """The `\\label{}` *inside* the statement the marker marks — label equality with
+    `blueprint_label` is the target form. Read forwards, not backwards: the marker is a
+    comment ABOVE its environment, so the nearest *preceding* label is the previous
+    statement's, and comparing against that reported 47 of 62 markers as mismatched when
+    every one of them in fact matched."""
+
+    line: int = 0
+    """1-indexed line of the marker, so a drift report can be opened."""
+
+    shared_statement: str | None = None
+    """The paper's own statement under the same reduction applied to the blueprint node.
+    None when no statement environment follows the marker — itself a finding."""
 
 
 @dataclass
