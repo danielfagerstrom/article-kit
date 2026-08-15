@@ -165,6 +165,29 @@ existing checker. The chat's own "highest reliability-to-effort" pick. Checks:
 - **Citation integrity** — every `\cite` key resolves in `references.bib`; flag entries missing a DOI.
 - **Contribution↔section map** — a contributions passage exists and each item maps to a later section.
 
+**Sharpened by fourteen blind draft reviews of `hemigroup-causal-scale-space-kernels`, 2026-08-15.**
+Those runs produced a recurring class of pointer defects that **every existing checker is blind to,
+because each one either resolves or is not a `\ref` at all**. Three concrete requirements, all
+mechanical, all found in a paper that `linkage check` passes:
+
+- **Item-number pointers into numbered results.** `Proposition~\ref{prop:pair-regularity}(3)` where
+  that proposition has two items. The `\ref` resolves; only the `(3)` is wrong. Checkable: parse the
+  target environment's `\item` count and compare. *Found independently three times in one paper — by
+  the reviewers of §3, the appendix, and §11 — which is the best evidence any item here has.*
+- **Prose-form references to external works.** A bare `§XIII` whose antecedent is a citation four
+  sections earlier, in a paper that has thirteen numbered sections of its own. No `\ref` is involved,
+  so nothing sees it. Checkable at least as an advisory: a `§`/`Ch.`/`Thm.` in running prose with no
+  adjacent `\cite` and no matching internal label.
+- **Hand-written `\tag{}` colliding with auto-numbering.** The paper carries `\tag{7.1}` in §7 —
+  where `lem:selfdecomposable-exponents` *renders as* "Lemma 7.1", both appearing in one sentence —
+  and `\tag{9.1}`/`\tag{9.2}` inside Appendix A, where §9 is the signaling section. Checkable: any
+  `\tag{N.M}` whose `N` is not the enclosing section's number, or which duplicates a theorem counter
+  in the same section.
+
+Also worth folding in from the same batch, as advisories: a numbered result the text promises is used
+("each family below is admissible by one criterion") but which no proof cites, and tables carrying
+neither `\caption` nor `\label` while the prose refers to "the table".
+
 Becomes a new **deterministic box** in `docs/DRAFTING-GATE.md` (alongside item 7's `linkage check`).
 
 ---
@@ -235,6 +258,76 @@ Ranked; each independent of the others:
    rejected; needs rented GPU. Low priority.
 5. **Reading list** for the process rules: Tao's Claude-Code formalization video (2026-03) + the
    equational-theories write-up (arXiv 2512.07087) — the human-adjudication philosophy #8 encodes.
+
+### 10. The paper half of the transclusion seam — shared statements are not content-protected  ·  ⬜ found 2026-08-15
+
+**The gap.** The hub protects transcluded blueprint text: `wiki import` writes
+`<!-- blueprint:<label> v<N> sha:<12hex> -->`, lint pass 3c makes a hand-edit inside the markers an
+**error**, and a moved node a stale **warning**. The paper has nothing equivalent. `checks.py` check 3
+verifies only that a `% shared with blueprint <label>` marker **names a real label**, plus an advisory
+that the paper's own `\label` matches. There is no text comparison and no sha, so all 65 shared
+statements in `hemigroup-causal-scale-space-kernels` can drift from the blueprint silently — the exact
+failure the hub's rule exists to prevent, on the artifact that gets published.
+
+**C1 — statement drift. Cheap, and the data already exists.** The manifest has carried
+`statement`/`statement_sha` since v2 and `proof`/`proof_sha` since T1. Check 3 can compare the paper's
+shared statement against `statement_sha` under the same normalization. Direct analogue of lint pass 3c;
+fatal, like the hub's.
+
+**C2 — dropped context *around* the statement. The half that actually failed.** Fourteen blind draft
+reviews of the hemigroup paper found five sections where the blueprint knew something the paper does
+not, and none of it lives inside a shared statement, so no sha would ever see it:
+
+- the LE/BF₀ integrability note (blueprint: "valued in [0,∞] so that no integrability hypothesis is
+  carried") — dropped, leaving the paper's class equality unqualified;
+- §5's covariance-free note, which §13's stratification depends on, and a change-of-variables step;
+- `lem:action-rigidity`'s gloss;
+- **the appendix's (ND) note — the blueprint says it was "borrowed silently" and that *without it the
+  identity is false*;**
+- **the deliberate split of Laplace uniqueness into finite and σ-finite nodes, "proved in advance
+  precisely because κ, ℓ and Lebesgue are none of them finite" — collapsed back into one node in the
+  paper, with five appendix proofs leaning on the wrong one.**
+
+Most of C2 is judgement and belongs to the `draft-reviewer`, not to a linter. **One piece is
+mechanical and is the highest-value check here:** compare each shared node's blueprint `\uses{}` set
+against the `\ref`s in the paper's corresponding proof, and report divergence as an advisory. A paper
+may legitimately reorganize, so it cannot be fatal — but it would have caught §8, where the blueprint
+routes three proofs through `prop:admissibility-criterion` and the paper's reordering dropped the
+invocations *while keeping the sentence that promises them*, leaving two results referenced nowhere.
+
+Both halves extend `checks.py` over the IR alone, so neither touches `parse_latex` — the load-bearing
+separation holds.
+
+### 11. Reviewer output contract — make the flags aggregable  ·  ⬜ found 2026-08-15
+
+Fourteen blind `draft-reviewer` runs over one paper returned ~120 located flags as **prose reports**.
+Pooling them into the ten recurring threads that made them actionable had to be done by reading
+fourteen essays, which is where the whole cost of the exercise sat, and it is not repeatable.
+
+The aggregation is the product: ~120 flags is far past `@thakkar2025can`'s fewer-items-better
+threshold, ten threads is triage, and four decisions discharged most of the volume. But aggregation
+needs structured input, so the contract comes first and the aggregator is then trivial.
+
+**This repo is the natural owner**, by the pattern already in use: `docs/PUBLICATION-TEMPLATE.md` is
+framework-owned and read by the hub's agent as its spec. The output contract can be owned the same
+way, and the hub picks it up (`Notes/WISHLIST.md`, 2026-08-15).
+
+Drafted 2026-08-15 as [`docs/REVIEWER-CONTRACT.md`](docs/REVIEWER-CONTRACT.md) — not yet implemented,
+not yet adopted by the reviewer. Starting point is `ai-prose-patterns.md` §3's JSONL record and fixed
+tag vocabulary. It needs
+extending: **every tag in that note is prose-surface** (`NEGPAR`, `PARTTAIL`, `SALIENCE`, …), while
+eight of the ten threads were scope-and-hypothesis. `SCOPE`, `HYPOTHESIS`, `COUNT`, `NOTATION`,
+`TRANSCLUSION`, `FRONTIER` would have carried that batch.
+
+Two findings from the batch that the contract should encode:
+
+- **Rank by breadth, not severity.** The same defect was labelled `[low-med]` by one reviewer and
+  `[high]` by another. Once flags are pooled, count of independent discoveries is the informative
+  signal and per-reviewer severity is not — so the record needs a stable identity for "the same
+  underlying fact", not just a location.
+- **The contract declaration is worth keeping.** Every run had to be told to map its section to a §B
+  contract *by role* rather than by number, and to declare which it applied. Recording that
+  declaration makes the mapping checkable instead of implicit.
 
 ## Later — capture; build on real need
 
