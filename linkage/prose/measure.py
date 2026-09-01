@@ -158,9 +158,41 @@ ALL_STATS = ["rates", "long_share", "median", "short_share"]
 
 
 def save(baselines: list[Baseline], path: Path) -> None:
-    path.write_text(json.dumps([b.to_json() for b in baselines], indent=1),
-                    encoding="utf-8")
+    """Write the baselines, stamped with the extractor behaviour that produced them.
+
+    The stamp is what makes staleness detectable. A baseline is the output of the
+    extractor over a corpus, so changing the extractor invalidates it silently: the
+    target is then measured one way and compared against numbers produced another.
+    """
+    from .fingerprint import extractor_fingerprint
+
+    doc = {"extractor": extractor_fingerprint(),
+           "baselines": [b.to_json() for b in baselines]}
+    path.write_text(json.dumps(doc, indent=1), encoding="utf-8")
 
 
-def load(path: Path) -> list[Baseline]:
-    return [Baseline.from_json(d) for d in json.loads(path.read_text(encoding="utf-8"))]
+def load(path: Path) -> tuple[list[Baseline], str | None]:
+    """The baselines and the extractor fingerprint they were built with.
+
+    A bare list is the pre-stamp format and yields `None`, which the report reads as
+    "unknown, warn" rather than as agreement — an unstamped baseline is exactly the
+    case this check exists for.
+    """
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(doc, list):
+        return [Baseline.from_json(d) for d in doc], None
+    return ([Baseline.from_json(d) for d in doc["baselines"]],
+            doc.get("extractor"))
+
+
+def baseline_staleness(stamp: str | None) -> str | None:
+    """A one-line complaint if `stamp` disagrees with this extractor, else None."""
+    from .fingerprint import extractor_fingerprint
+
+    now = extractor_fingerprint()
+    if stamp == now:
+        return None
+    was = stamp or "unstamped (built before this check existed)"
+    return (f"baseline is STALE: built by extractor {was}, running {now}. "
+            f"The comparison columns come from a different measurement than the "
+            f"target's — rebuild with `linkage prose baseline`.")

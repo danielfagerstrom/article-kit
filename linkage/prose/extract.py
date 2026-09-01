@@ -410,7 +410,22 @@ def _heading_text(src: str, brace: int) -> tuple[str, int]:
 
 
 def extract(path: Path) -> Extraction:
-    raw = strip_comments(path.read_text(encoding="utf-8"))
+    return extract_text(path.read_text(encoding="utf-8"), path.name)
+
+
+def extract_text(src: str, name: str = "<text>") -> Extraction:
+    """`extract` over a string. The seam the behaviour fingerprint needs, and the
+    markdown dialect already had its own (`extract_md_text`)."""
+
+    class _P:
+        def __init__(self, n):
+            self.name = n
+
+        def read_text(self, **_):
+            return src
+
+    path = _P(name)
+    raw = strip_comments(src)
     raw = _CITE_CMD.sub(CITE, raw)
     raw = _REF_CMD.sub(REF, raw)
     raw, line_of = mask_math(raw)

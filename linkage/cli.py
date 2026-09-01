@@ -199,7 +199,8 @@ def cmd_prose_stats(args) -> int:
         print(f"no baseline at {args.baseline} — run `linkage prose baseline` first",
               file=sys.stderr)
         return 2
-    bases = measure.load(args.baseline)
+    bases, stamp = measure.load(args.baseline)
+    stale = measure.baseline_staleness(stamp)
     paths = [Path(p) for p in args.paths]
     if args.instances:
         if args.instances not in measure.ALL_FEATURES:
@@ -211,6 +212,11 @@ def cmd_prose_stats(args) -> int:
     from .prose.extract import extract
     blocks = [b for p in paths for b in extract(p).blocks]
     f = measure.features(blocks)
+    # Above the table, not below it: a stale baseline makes every ratio in the report
+    # a comparison between two different measurements, and a warning printed after
+    # the numbers is a warning nobody reads.
+    if stale:
+        print(f"  !! {stale}\n", file=sys.stderr)
     print(f"  {f.words} words of connective prose, {f.sentences} sentences, "
           f"over {len(paths)} file(s)\n")
     print("\n".join(report.compare(f, bases)))
