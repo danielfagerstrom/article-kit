@@ -167,6 +167,23 @@ _MATH_PATTERNS = [
 ]
 
 
+# The closing delimiter of a display, whichever dialect wrote it.
+_DISPLAY_CLOSE = re.compile(r"(?:\\\]|\$\$|\\end\{[A-Za-z]+\*?\})\s*$")
+
+
+def display_ends_sentence(display: str) -> bool:
+    """Does this display carry the sentence's terminating punctuation?
+
+    A display usually sits *inside* a sentence, which is why the placeholder does not
+    break one. But when a sentence ends at a display the author punctuates the display
+    itself --- `\\text{for every } c \\in (0,1).` --- and treating that as a continuation
+    silently welds the next sentence onto this one. The trailing mark is the signal, and
+    it is the only reliable one: the following word being capitalised is not, since a
+    sentence may legitimately resume with a proper noun or a symbol.
+    """
+    return _DISPLAY_CLOSE.sub("", display).rstrip().endswith((".", "!", "?"))
+
+
 def mask_math(src: str, patterns=_MATH_PATTERNS) -> tuple[str, list[int]]:
     """Replace math with placeholders, returning the text and a per-character map
     back to the *source* line number.
@@ -177,6 +194,10 @@ def mask_math(src: str, patterns=_MATH_PATTERNS) -> tuple[str, list[int]]:
     collapsing many lines into one token also destroys line numbering, and a line
     number is how a finding is located later. So the map is carried rather than
     recomputed.
+
+    A display that ends its sentence keeps the terminating mark, so the splitter can
+    see it; the splitter's own lowercase-continuation rule then still declines to
+    break if the next word says otherwise.
     """
     out: list[str] = []
     lines: list[int] = []
@@ -185,6 +206,8 @@ def mask_math(src: str, patterns=_MATH_PATTERNS) -> tuple[str, list[int]]:
         for pat, tok in patterns:
             m = pat.match(src, i)
             if m:
+                if tok == EQ and display_ends_sentence(m.group(0)):
+                    tok = EQ + "."
                 out.append(tok)
                 lines.extend([ln] * len(tok))
                 ln += m.group(0).count("\n")
