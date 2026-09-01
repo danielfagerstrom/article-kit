@@ -14,6 +14,27 @@ name: Lean CI (reusable)
 # `blueprint/trust-boundary.txt` via `linkage axioms`, which additionally refuses any name
 # that no AXIOMS.md entry mentions — so the boundary cannot be widened without a reviewed
 # ledger entry behind it. See linkage/trust.py for why it is not derived from the ledger.
+#
+# ── Why this workflow drives the Lake cache itself ────────────────────────────────────────
+# `lean-action` has its own `use-github-cache`, which caches the WHOLE `<lean_dir>/.lake` —
+# Mathlib's compiled oleans included. That is a duplicate of what `lake exe cache get` pulls
+# from Mathlib's own cloud cache on the very next step, and it is most of the payload: the
+# entry grew to 2.3 GB compressed / ~8 GB unpacked. Restoring it, then re-downloading all of
+# Mathlib's `.ltar` bundles on top of it, then building, filled the runner's disk. The
+# post-build `actions/cache/save` then had no room to write `cache.tzst` and reported
+#
+#     zstd: error 70 : Write error : cannot write block : No space left on device
+#     ##[warning]Failed to save: "/usr/bin/tar" failed with error: ... exit code 2
+#
+# A cache-save failure is only a WARNING, so every run stayed green while silently never
+# refreshing the cache — the whole repo sat on one Aug-23 snapshot for ten days, rebuilding
+# more drift each time, until the runner died mid-build with no logs at all.
+#
+# So: `use-github-cache: false`, and the restore/save below cache `.lake` MINUS Mathlib's
+# build tree. Excluding it costs nothing — `lake exe cache get` downloads those oleans on
+# every run regardless, because its `.ltar` bundles live in `~/.cache/mathlib`, which was
+# never cached. Everything else (the package checkouts, this article's own build, a private
+# core library's build) is kept, because nothing else re-fetches it.
 
 on:
   workflow_call:
@@ -40,6 +61,26 @@ on:
         required: false
         default: CIAxiomGuard.lean
         type: string
+      build_jobs:
+        description: >-
+          Value for `lake build -j`, capping how many Lean workers run at once. Empty uses
+          Lake's default (one per core). Peak memory is roughly this many workers' worth, so
+          set it to 2 if a build ever dies mid-step on a runner with little RAM. Note that
+          the failure this workflow was fixed for looked like an OOM but was disk, not
+          memory — try `free_disk` before reaching for this.
+        required: false
+        default: ""
+        type: string
+      free_disk:
+        description: >-
+          Delete the preinstalled toolchains a Lean build never uses (Android SDK, .NET,
+          GHC, CodeQL, Swift, PowerShell, Docker images) before building. Reclaims ~20 GB on
+          ubuntu-latest, which a Mathlib-downstream build genuinely needs: the restored
+          cache, Mathlib's downloaded `.ltar` bundles, its unpacked oleans and the new cache
+          archive do not otherwise fit together on one runner.
+        required: false
+        default: true
+        type: boolean
       linkage_ref:
         description: "Ref of the linkage framework to install."
         required: false
@@ -66,7 +107,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      # Not a micro-optimisation: without this the job runs out of disk, and running out of
+      # disk is how the cache save silently fails and how the runner dies mid-build with no
+      # logs uploaded. `|| true` throughout — a path missing from a future runner image must
+      # never turn CI red. /opt/hostedtoolcache is pruned surgically: Python lives there and
+      # the linkage install below needs it.
+      - name: Reclaim runner disk space
+        if: inputs.free_disk
+        run: |
+          echo "before:"; df -h /
+          for d in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift; do
+            sudo rm -rf "$d" || true
+          done
+          sudo docker image prune --all --force > /dev/null 2>&1 || true
+          echo "after:"; df -h /
 
       # A Lake `require ... git` on a PRIVATE repo (e.g. a shared core library) is fetched by
       # lake itself, not by actions/checkout, so it needs ambient git credentials. Same token
@@ -91,15 +147,64 @@ jobs:
           git config --global             url."https://x-access-token:${KIT_TOKEN}@github.com/${{ inputs.private_dep_owner }}/".insteadOf             "https://github.com/${{ inputs.private_dep_owner }}/"
           echo "git will authenticate clones under ${{ inputs.private_dep_owner }}/ only"
 
+      # Same key scheme lean-action uses — toolchain + manifest + commit, with a prefix
+      # restore-key so a run inherits the nearest previous build. The `v2` marks the payload
+      # change: the entry no longer contains Mathlib's build tree, so it is a different
+      # cache from the pre-fix ones (`actions/cache` versions entries by their path list
+      # anyway; the tag just makes the two distinguishable in the Caches UI).
+      #
+      # Restore and save are separate actions, deliberately: a prefix restore-key match is
+      # NOT an exact-key hit, so the single `actions/cache` action would still save — but
+      # the split makes the save unconditional and its `if:` visible here rather than
+      # buried in a composite action's internals.
+      - name: Restore the Lake build cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ${{ inputs.lean_dir }}/.lake
+            !${{ inputs.lean_dir }}/.lake/packages/mathlib/.lake/build
+          key: lake-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format('{0}/lean-toolchain', inputs.lean_dir)) }}-${{ hashFiles(format('{0}/lake-manifest.json', inputs.lean_dir)) }}-${{ github.sha }}
+          restore-keys: lake-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format('{0}/lean-toolchain', inputs.lean_dir)) }}-${{ hashFiles(format('{0}/lake-manifest.json', inputs.lean_dir)) }}-
+
       # elan/lean/lake setup + `lake exe cache get` (auto, Mathlib detected) + `lake build`.
       # A lakefile whose lean_lib uses `globs = ["Lib.*"]` compiles *every* module under the
       # library, so a broken proof in a module reachable only from a scratch file still turns
       # CI red — without the glob, only the root import closure is built.
+      # `use-github-cache: false` because this workflow does the caching itself; see the
+      # header. Leaving it on would restore a second, Mathlib-inclusive copy of `.lake`.
       - name: Build the Lean library
         uses: leanprover/lean-action@v1
         with:
           lake-package-directory: ${{ inputs.lean_dir }}
-          build-args: ${{ inputs.build_args }}
+          build-args: ${{ inputs.build_jobs != '' && format('-j {0} {1}', inputs.build_jobs, inputs.build_args) || inputs.build_args }}
+          use-github-cache: "false"
+
+      # The save that follows is the one that used to fail silently. Two things protect it:
+      # the `.ltar` bundles are scratch once unpacked and are several GB, so they go; and if
+      # the disk is still too tight to write the archive we fail loudly here instead of
+      # letting `actions/cache/save` downgrade it to a warning nobody reads. A green build
+      # that cannot record its result is not a green run — the next one pays for it.
+      - name: Trim scratch and check there is room to save the cache
+        run: |
+          rm -rf ~/.cache/mathlib
+          echo "whole .lake / of which Mathlib's build tree (the part NOT cached):"
+          du -sh "${{ inputs.lean_dir }}/.lake" 2>/dev/null || true
+          du -sh "${{ inputs.lean_dir }}/.lake/packages/mathlib/.lake/build" 2>/dev/null || true
+          df -h /
+          free_mb=$(( $(df --output=avail -k / | tail -1) / 1024 ))
+          if [ "$free_mb" -lt 3072 ]; then
+            echo "::error::only ${free_mb} MB of disk left — the Lake cache save would fail with 'No space left on device' and be reported as a mere warning. Set free_disk: true, or trim what the build writes."
+            exit 1
+          fi
+          echo "OK: ${free_mb} MB free, enough to write the cache archive."
+
+      - name: Save the Lake build cache
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ${{ inputs.lean_dir }}/.lake
+            !${{ inputs.lean_dir }}/.lake/packages/mathlib/.lake/build
+          key: lake-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format('{0}/lean-toolchain', inputs.lean_dir)) }}-${{ hashFiles(format('{0}/lake-manifest.json', inputs.lean_dir)) }}-${{ github.sha }}
 
       # The pattern excludes the backtick-wrapped prose `sorry`(-free) that legitimately
       # appears in docstrings, while still catching a real `sorry` term/tactic (always
