@@ -124,10 +124,13 @@ def cmd_axioms(args) -> int:
     from . import trust
     cfg = config.load(args.root)
     names = trust.declared(cfg)
-    if not names:
+    if not names and not trust.trust_file(cfg).is_file():
         print(f"no {trust.trust_file(cfg).name} — the trust-boundary guard has nothing to "
               "check; create it naming this article's interface axioms", file=sys.stderr)
         return 0 if not args.check else 1
+    # An existing file that declares nothing is the ideal state, not a missing one: the
+    # article's headline theorems rest on Lean core alone. (Until 2026-09-07 this case was
+    # conflated with the absent file and failed a freshly scaffolded article's Lean CI.)
     if bad := trust.ungrounded(cfg):
         print(f"TRUST BOUNDARY: {len(bad)} declared axiom(s) that no {cfg.axioms.name} entry "
               f"mentions in a **Lean:** segment — declared but never reviewed:", file=sys.stderr)
