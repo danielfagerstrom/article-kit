@@ -95,7 +95,7 @@ def reflow(text: str) -> tuple[str, dict]:
     a sentence boundary, so the short-sentence share rises and the median falls —
     exactly the statistics the baseline exists to supply.
     """
-    blocks = [b for b in text.split("\n\n")]
+    blocks = text.split("\n\n")
     out: list[str] = []
     joined = 0
     for b in blocks:

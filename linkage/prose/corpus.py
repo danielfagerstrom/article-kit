@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .markdown import extract_md_text, residue_score
-from .measure import Baseline, Features, PROSE_KINDS, features
+from .measure import Baseline, Features, features
 from .repair import repair
 
 LIBRARY = Path("G:/My Drive/Zotero_Library")

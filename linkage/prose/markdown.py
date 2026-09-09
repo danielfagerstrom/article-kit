@@ -22,8 +22,20 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .extract import (CITE, ENV_KIND, EQ, LIST_ENVS, MATH, REF, _WORD, Block,
-                      Extraction, mask_math, measure, split_sentences)
+from .extract import (
+    _WORD,
+    CITE,
+    ENV_KIND,
+    EQ,
+    LIST_ENVS,
+    MATH,
+    REF,
+    Block,
+    Extraction,
+    mask_math,
+    measure,
+    split_sentences,
+)
 
 # Fenced-div names that are grouping wrappers or non-prose, not statements.
 DIV_DROP = {"thebibliography", "diagram", "figure", "table", "center", "tikzpicture"}

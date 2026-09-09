@@ -14,12 +14,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .artifacts import git_provenance
-from .parse_latex import expand_inputs
 from .config import Config
 from .model import Blueprint, LedgerEntry
+from .parse_latex import expand_inputs
 from .render import check_pin, render_markdown, render_residue
 
 MANIFEST_VERSION = 2
@@ -157,7 +157,7 @@ def build(
         "note": (f"Projection of {cfg.blueprint.relative_to(cfg.root).as_posix()} "
                  "— generated, do not hand-edit."),
         "manifest_version": MANIFEST_VERSION,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         **git_provenance(cfg.root),
         "render": (
             {"renderer": "pandoc", "version": cfg.pandoc_pin,

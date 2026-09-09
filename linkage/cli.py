@@ -15,7 +15,8 @@ import json
 import sys
 from pathlib import Path
 
-from . import artifacts, checks, config, manifest as manifest_mod, parse_latex
+from . import artifacts, checks, config, parse_latex
+from . import manifest as manifest_mod
 
 
 def _warn(msg: str) -> None:
