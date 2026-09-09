@@ -34,6 +34,15 @@ def test_an_advisory_alone_does_not_fail_the_check(article):
     assert "advisory [lean]" in out
 
 
+def test_a_root_with_no_config_exits_two_rather_than_traceback(article):
+    """`--root` does no walking, so nothing else establishes that the file is there."""
+    article.root.joinpath("linkage.toml").unlink()
+    rc, _, err = run_cli("--root", str(article.root), "check")
+    assert rc == 2
+    assert err.startswith("CONFIG ERROR")
+    assert "point --root at an article repo root" in err
+
+
 def test_a_missing_shared_lake_package_exits_two(article):
     article.file("linkage.toml", article.root.joinpath("linkage.toml").read_text("utf-8")
                  + '\nlean_packages = ["shared"]\n')
