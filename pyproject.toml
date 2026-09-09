@@ -18,3 +18,35 @@ packages = ["linkage"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "scaffold" = "linkage/scaffold_data"
+
+# Dev-only tooling (PEP 735). `uv run pytest` installs this group automatically.
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.ruff]
+target-version = "py311"
+# `.claude/` is not this package's source, on the same two grounds the hub exempts its
+# `scripts/`: the skills' vendored scripts are held to correctness and deliberately left
+# alone, and during a session agent worktrees live there — a whole second copy of the repo
+# (which is also why `artifacts.SKIP_DIRS` skips it).
+extend-exclude = [".claude"]
+# Declared for a future `ruff format`. Line width is deliberately *not* linted (E501 is
+# absent from the select below): this package's long lines are mostly diagnostic strings
+# and prose, and reflowing them by hand is a formatter's job, not a reviewer's.
+line-length = 100
+
+[tool.ruff.lint]
+# Mirrors the hub's selection, and for the same reasons: E4/E7/E9 + F are ruff's defaults
+# (excluding E501 by construction); I sorts imports, UP keeps us current, B catches real
+# bugs (mutable defaults, `raise` without `from`), SIM/C4 catch busywork. Omitted: PTH and
+# RET, as in the hub.
+select = ["E4", "E7", "E9", "W", "F", "I", "UP", "B", "SIM", "C4"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["linkage", "conftest", "fixtures", "scaffold_smoke"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# `-q` keeps agent-run output readable. --strict-markers turns a typo'd marker into an
+# error rather than a silently-skipped test.
+addopts = "-q --strict-markers"
