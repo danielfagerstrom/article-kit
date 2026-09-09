@@ -1,0 +1,79 @@
+name: CI
+
+# The framework's own CI, as opposed to the three reusable workflows beside it (docs,
+# lean, manifest), which run in the ARTICLE repos that call them. Nothing here ran on this
+# repo until now: `linkage` is consumed at `@main` by nine references across the
+# constellation, so a defect pushed here reaches every article at once, and until this
+# workflow existed the first thing to notice would have been an article's build.
+#
+# Modelled on the hub's (C:\Users\danie\Documents\Notes\.github\workflows\ci.yml), which
+# is modelled on the librarian's: three constellation members with the same shape should
+# be checked the same way.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A newer push makes an in-flight run irrelevant.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Windows: every consumer of this framework is a Windows checkout, and the paths, the
+    # cp1252 console default `cli.main` works around with `reconfigure`, and the uv-tool
+    # trampoline are all Windows facts. Testing elsewhere would prove less than it appears.
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        # Pinned exactly, deliberately: astral-sh/setup-uv publishes no floating `v8` major
+        # tag (only v8.3.2, v8.3.1, …), so `@v8` does not resolve and the run fails at "Set
+        # up job". Bump this by tag; do not shorten it. (Learned in the library repo.)
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          enable-cache: true
+
+      - name: Install Python 3.13
+        # The constellation installs its CLIs with `uv tool install --python 3.13`; the
+        # package's own floor is 3.11, and a floor nothing exercises is not the thing to test.
+        run: uv python install 3.13
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Test
+        # No secrets and no network, by construction: every test builds a synthetic article
+        # under tmp_path, and conftest blocks `subprocess.run` outright so nothing can reach
+        # pandoc, git, or a real article repo. `tests/test_isolation.py` is what keeps that
+        # true rather than merely intended.
+        run: uv run pytest
+
+      - name: The console entry point resolves
+        # The suite imports `linkage` directly, so it cannot catch a broken
+        # `[project.scripts]` entry or a packaging change. `uv run` installs the project
+        # into the venv, so this exercises the build backend and the entry point both.
+        # `--help` deliberately needs no article repo. (There is no `--version` flag;
+        # `linkage.__version__` is not exposed on the command line.)
+        run: uv run linkage --help
+
+      - name: A freshly scaffolded article passes `linkage check`
+        # The integration step, and the one thing synthetic fixtures cannot cover: the
+        # scaffold tree itself. `linkage init` copies it into every new article, and the
+        # checker then reads what it copied — the macros file that decides which commands
+        # are render-safe, the linkage macros the parser strips, the seeded allowlist. A
+        # change to any of those breaks a *new* article silently; here it breaks this run.
+        # Built outside the workspace so the scaffolded tree is not mistaken for repo dirt.
+        shell: bash
+        run: |
+          uv run python tests/scaffold_smoke.py "$RUNNER_TEMP/smoke-article"
+          uv run linkage --root "$RUNNER_TEMP/smoke-article" check
+          uv run linkage --root "$RUNNER_TEMP/smoke-article" axioms --check
