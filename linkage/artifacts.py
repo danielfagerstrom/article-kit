@@ -87,8 +87,15 @@ def ledger_entries(cfg: Config) -> dict[str, LedgerEntry]:
 
 
 def render_safe_commands(cfg: Config) -> set[str]:
-    """Commands the render pipeline handles: macros.tex definitions + the vetted allowlist."""
-    defined = set(re.findall(r"\\(?:new|provide|renew)command\{?\\([A-Za-z]+)",
+    r"""Commands the render pipeline handles: macros.tex definitions + the vetted allowlist.
+
+    The starred form counts: `\newcommand*{\foo}` defines `\foo` as surely as the
+    unstarred one does (it only forbids a \par in the argument), and pandoc's
+    `latex_macros` expands both. Missing it made a defined macro fail fatal check 4 —
+    a false failure with no way to satisfy it short of vetting one's own macro in the
+    allowlist.
+    """
+    defined = set(re.findall(r"\\(?:new|provide|renew)command\*?\{?\\([A-Za-z]+)",
                              expand_inputs(cfg.macros)))
     vetted = {
         line.strip()

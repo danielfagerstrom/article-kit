@@ -128,6 +128,21 @@ def test_macros_are_read_through_input(article):
     assert "zz" in artifacts.render_safe_commands(article.cfg)
 
 
+def test_the_starred_form_of_newcommand_is_recognised(article):
+    r"""`\newcommand*{\foo}` defines \foo as surely as the unstarred form does."""
+    article.macros(r"\newcommand*{\starred}{1}" + "\n")
+    assert "starred" in artifacts.render_safe_commands(article.cfg)
+
+
+def test_a_macro_defined_with_the_starred_form_is_render_safe(article):
+    """End to end: fatal check 4 must not fail a command the article defines."""
+    from fixtures.article import statement
+
+    article.macros(r"\newcommand*{\starred}{1}" + "\n")
+    article.blueprint(statement(label="thm:x", body=r"The value \starred{} is fixed."))
+    assert article.check().fatal == []
+
+
 # --- paper markers -------------------------------------------------------------------
 
 
