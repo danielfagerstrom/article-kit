@@ -25,6 +25,20 @@ the paper *prose*.**
 
 ## Now
 
+### 12. Accepted from the hub's engineer office, 2026-09-09  ·  ⬜ E-0001 started 2026-09-09; E-0003 after it
+
+Restated from the hub's `PROPOSALS.md`, ids kept as provenance.
+
+- [ ] **E-0001 — a test suite and a CI of its own.** `tests/` with pytest over `linkage/`: `checks.py`
+  (each fatal rule fired and not fired), `parse_latex.py`, `model.py`, `manifest.py` against a fixture
+  blueprint, `trust.py` on its three states (missing file, existing and empty, populated); `ci.yml` on
+  push and pull request, `windows-latest`, modelled on the hub's and the librarian's; one integration
+  step running `linkage check` over the scaffold fixture. Settled when `gh run list` shows green runs
+  on push and the 2026-09-07 trust-boundary regression, reintroduced on a branch, fails the suite. The
+  framework is consumed at `@main` by nine references and has never had a test or a run of its own.
+- [ ] **E-0003 — tag `v0.1.0` and repoint the `@main` references** in the article repositories, as the
+  hub's `RELEASES.md` requires and `scale-space-lean` already does. After E-0001, so the tag is tested.
+
 ### 7. Blueprint as the single source of mathematical text — the transclusion layer  ·  🟡 decided 2026-07-25
 
 **The decision.** "Write article fragments in the wiki" failed as a workflow step: freeform prose gives
