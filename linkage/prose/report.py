@@ -38,7 +38,7 @@ def _ratio(x: float, b: float) -> str:
     if b <= 0:
         return "  new" if x > 0 else "    -"
     r = x / b
-    return f" >99x" if r > 99 else f"{r:4.1f}x"
+    return " >99x" if r > 99 else f"{r:4.1f}x"
 
 
 def _verdict(x: float, bases: dict[str, float], supported: dict[str, bool],

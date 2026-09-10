@@ -99,6 +99,14 @@ def find_root(start: Path | None = None) -> Path:
 
 def load(root: Path | None = None) -> Config:
     root = (root or find_root()).resolve()
+    # An explicit `--root` does no walking, so nothing has established that the file is
+    # there: without this, a mistyped path reached tomllib as a FileNotFoundError and the
+    # CLI printed a traceback instead of its own "CONFIG ERROR ... exit 2".
+    if not (root / CONFIG_NAME).is_file():
+        raise ConfigError(
+            f"no {CONFIG_NAME} in {root} — point --root at an article repo root, or omit "
+            f"it to walk up from the current directory"
+        )
     raw = tomllib.loads((root / CONFIG_NAME).read_text(encoding="utf-8"))
 
     paths = raw.get("paths", {})

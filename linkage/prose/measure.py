@@ -30,7 +30,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from .extract import EQ, MATH, _WORD, Block
+from .extract import _WORD, EQ, MATH, Block
 
 PROSE_KINDS = {"prose", "abstract", "remark"}
 
@@ -119,7 +119,7 @@ def real_words(text: str) -> list[str]:
 
 
 def features(blocks: list[Block], kinds: set[str] | None = PROSE_KINDS) -> Features:
-    f = Features(punct={k: 0 for k in PUNCT}, families={k: 0 for k in FAMILIES})
+    f = Features(punct=dict.fromkeys(PUNCT, 0), families=dict.fromkeys(FAMILIES, 0))
     for b in blocks:
         if kinds is not None and b.kind not in kinds:
             continue
@@ -149,7 +149,7 @@ class Baseline:
         return d
 
     @staticmethod
-    def from_json(d: dict) -> "Baseline":
+    def from_json(d: dict) -> Baseline:
         fe = Features(**d.pop("features"))
         return Baseline(features=fe, **d)
 

@@ -11,3 +11,7 @@ build/
 
 # tooling scratch (uv run --with ... regenerates this)
 uv.lock
+
+# test / lint caches
+.pytest_cache/
+.ruff_cache/

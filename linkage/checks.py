@@ -338,7 +338,7 @@ def run(
     unpinned: list[PaperMarker] = []
     verbatim = tracked = no_env = 0
     for mk in markers:
-        if missing := [l for l in mk.blueprint_labels if l not in labels]:
+        if missing := [lab for lab in mk.blueprint_labels if lab not in labels]:
             fatal.append(
                 f"[paper]  {mk.file}:{mk.line}: 'shared with blueprint "
                 f"{', '.join(missing)}' but no such blueprint label"
@@ -368,7 +368,7 @@ def run(
         #             splitting (paper still correct) and for new mathematical
         #             learning (paper must follow), and only the pin tells them apart.
         #   unpinned  neither identical nor pinned -- nothing relates the two texts.
-        nodes_here = [bp.by_label[l] for l in mk.blueprint_labels]
+        nodes_here = [bp.by_label[lab] for lab in mk.blueprint_labels]
         if mk.shared_statement is None:
             # No statement environment follows. Either the marker sits on prose that
             # merely references the node -- a valid weaker link -- or the statement it
