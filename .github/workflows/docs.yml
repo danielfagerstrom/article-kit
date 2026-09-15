@@ -75,6 +75,16 @@ on:
         required: false
         default: blueprint/src/print.tex
         type: string
+      extra_papers:
+        description: >-
+          Further papers of the same repository, as a JSON list of objects
+          {"name": ..., "tex": ..., "title": ...}: each is built like the paper, published to the
+          artifacts branch and listed on the site as <name>.pdf. For an article whose repository
+          holds several modules (Paper V's ADR-0004/0006: a released line paper in paper/ and
+          modules B and C in paper-b/, paper-c/). Empty list: nothing extra.
+        required: false
+        default: "[]"
+        type: string
       build_web:
         description: >-
           Build and deploy the plasTeX web blueprint (the dependency-graph view). Requires
@@ -162,6 +172,51 @@ jobs:
         with:
           name: paper-pdf
           path: paper.pdf
+          if-no-files-found: error
+
+  # The further papers of a multi-module repository, one matrix leg each; the same steps as
+  # `paper`, the output named <name>.pdf so that publish and deploy pick every leg up through
+  # the `*-pdf` artifact pattern without knowing the entry points.
+  extra_paper:
+    if: inputs.extra_papers != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        paper: ${{ fromJSON(inputs.extra_papers) }}
+    env:
+      TECTONIC_VERSION: ${{ inputs.tectonic_version }}
+      PAPER_TEX: ${{ matrix.paper.tex }}
+      PAPER_NAME: ${{ matrix.paper.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache the Tectonic package bundle
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Tectonic
+          key: tectonic-${{ runner.os }}-${{ hashFiles('paper*/**/*.tex') }}
+          restore-keys: |
+            tectonic-${{ runner.os }}-
+
+      - name: Install Tectonic
+        run: |
+          curl -fsSL -o tectonic.tar.gz \
+            "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          tar -xzf tectonic.tar.gz tectonic
+          sudo mv tectonic /usr/local/bin/
+
+      - name: Build ${{ matrix.paper.name }}
+        run: |
+          tectonic "$PAPER_TEX"
+          cp "${PAPER_TEX%.tex}.pdf" "${PAPER_NAME}.pdf"
+
+      - name: Upload ${{ matrix.paper.name }}.pdf (per-run artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.paper.name }}-pdf
+          path: ${{ matrix.paper.name }}.pdf
           if-no-files-found: error
 
   blueprint:
@@ -311,14 +366,16 @@ jobs:
   # The branch is recreated from scratch each time (a new root commit, force-pushed), so it
   # never accumulates binary history.
   publish:
-    needs: [paper, blueprint]
-    if: ${{ !cancelled() && !inputs.dry_run && needs.paper.result == 'success' && needs.blueprint.result == 'success' }}
+    needs: [paper, extra_paper, blueprint]
+    # `extra_paper` is skipped when the list is empty, and a skipped need must not block the
+    # publish — hence != failure rather than == success.
+    if: ${{ !cancelled() && !inputs.dry_run && needs.paper.result == 'success' && needs.blueprint.result == 'success' && needs.extra_paper.result != 'failure' && needs.extra_paper.result != 'cancelled' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      # `pattern` so the web blueprint is not dragged in: this branch carries the two PDFs
-      # only (see the header note).
+      # `pattern` so the web blueprint is not dragged in: this branch carries the PDFs only
+      # (see the header note).
       - name: Download the built PDFs
         uses: actions/download-artifact@v4
         with:
@@ -330,7 +387,10 @@ jobs:
         working-directory: publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXTRA_PAPERS: ${{ inputs.extra_papers }}
         run: |
+          # one markdown list item per extra paper, from the JSON input (jq is on the runner)
+          EXTRA_LINES="$(echo "$EXTRA_PAPERS" | jq -r '.[] | "- [\(.name).pdf](./\(.name).pdf) — \(.title) (built from `\(.tex)`)"')"
           cat > README.md <<EOF
           # CI-built PDFs
 
@@ -338,6 +398,7 @@ jobs:
           \`linkage\` docs workflow.
 
           - [paper.pdf](./paper.pdf) — built from \`${{ inputs.paper_tex }}\`
+          ${EXTRA_LINES}
           - [blueprint.pdf](./blueprint.pdf) — built from \`${{ inputs.blueprint_tex }}\`
 
           This orphan branch is recreated (single commit, no history) on every docs
@@ -346,7 +407,7 @@ jobs:
           git init -q -b artifacts
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add paper.pdf blueprint.pdf README.md
+          git add README.md ./*.pdf
           git commit -q -m "CI-built PDFs from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7} ($(date -u +%F))"
           git push --force \
             "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
@@ -360,10 +421,10 @@ jobs:
   # docs/CLOUD.md § "Private docs site" is done — while paper/blueprint/publish stay green.
   # Each article needs its OWN Pages project and its own Access application.
   deploy:
-    needs: [paper, blueprint, web]
-    # `web` is skipped when build_web is false, and a skipped need must not block the
-    # deploy — hence != failure rather than == success.
-    if: ${{ !cancelled() && needs.paper.result == 'success' && needs.blueprint.result == 'success' && needs.web.result != 'failure' && needs.web.result != 'cancelled' }}
+    needs: [paper, extra_paper, blueprint, web]
+    # `web` is skipped when build_web is false and `extra_paper` when the list is empty, and
+    # a skipped need must not block the deploy — hence != failure rather than == success.
+    if: ${{ !cancelled() && needs.paper.result == 'success' && needs.blueprint.result == 'success' && needs.web.result != 'failure' && needs.web.result != 'cancelled' && needs.extra_paper.result != 'failure' && needs.extra_paper.result != 'cancelled' }}
     runs-on: ubuntu-latest
     steps:
       # Downloaded separately, not merge-multiple over everything: the web build is a tree
@@ -386,6 +447,7 @@ jobs:
       - name: Assemble dist/ (PDFs + web blueprint + index.html)
         env:
           BUILD_WEB: ${{ inputs.build_web }}
+          EXTRA_PAPERS: ${{ inputs.extra_papers }}
         run: |
           cd dist
           BUILD_DATE="$(date -u +%F)"
@@ -395,6 +457,8 @@ jobs:
           if [ "$BUILD_WEB" = "true" ]; then
             WEB_LINKS='<li><a href="blueprint/">blueprint (web)</a> — the same blueprint as hypertext, with the <a href="blueprint/dep_graph_document.html">dependency graph</a>: which statement rests on which, and whether each is a proved target [T] or a cited analytic interface [A].</li>'
           fi
+          # one list item per extra paper (a multi-module repository), from the JSON input
+          EXTRA_LINKS="$(echo "$EXTRA_PAPERS" | jq -r '.[] | "<li><a href=\"\(.name).pdf\">\(.name).pdf</a> — \(.title) (<code>\(.tex)</code>)</li>"')"
           cat > index.html <<EOF
           <!doctype html>
           <html lang="en">
@@ -410,6 +474,7 @@ jobs:
           <p>CI-built PDFs, latest <code>${GITHUB_REF_NAME}</code>:</p>
           <ul>
           <li><a href="paper.pdf">paper.pdf</a> — the article (<code>${{ inputs.paper_tex }}</code>)</li>
+          ${EXTRA_LINKS}
           <li><a href="blueprint.pdf">blueprint.pdf</a> — the blueprint (<code>${{ inputs.blueprint_tex }}</code>)</li>
           ${WEB_LINKS}
           </ul>
@@ -421,6 +486,7 @@ jobs:
       - name: Validate dist/
         env:
           BUILD_WEB: ${{ inputs.build_web }}
+          EXTRA_PAPERS: ${{ inputs.extra_papers }}
         run: |
           for f in dist/paper.pdf dist/blueprint.pdf dist/index.html; do
             [ -s "$f" ] || { echo "::error::$f is missing or empty"; exit 1; }
@@ -430,6 +496,12 @@ jobs:
           done
           grep -q 'href="paper.pdf"' dist/index.html || { echo "::error::index.html lacks the paper.pdf link"; exit 1; }
           grep -q 'href="blueprint.pdf"' dist/index.html || { echo "::error::index.html lacks the blueprint.pdf link"; exit 1; }
+          # every extra paper must have arrived, be a PDF, and be linked
+          for n in $(echo "$EXTRA_PAPERS" | jq -r '.[].name'); do
+            [ -s "dist/$n.pdf" ] || { echo "::error::dist/$n.pdf is missing or empty — the extra paper '$n' did not reach dist/"; exit 1; }
+            head -c 5 "dist/$n.pdf" | grep -q "%PDF-" || { echo "::error::dist/$n.pdf does not start with %PDF-"; exit 1; }
+            grep -q "href=\"$n.pdf\"" dist/index.html || { echo "::error::index.html lacks the $n.pdf link"; exit 1; }
+          done
           grep -q "$GITHUB_SHA" dist/index.html || { echo "::error::index.html lacks the build provenance sha"; exit 1; }
           # Every link the landing page offers must resolve, or the site ships a 404 that
           # nobody notices until a reader clicks it.

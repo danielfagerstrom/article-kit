@@ -116,9 +116,10 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
 
    Requested by `spatial-hemigroup-scale-space`, whose Paper V drafts two modules alongside a released
    line paper, each with its own release tag and verification export; with one directory their shared
-   statements were invisible to this rule and `--strict-shared` could not be turned on for them. **The
-   reusable `docs.yml` still builds one paper** (`paper_tex`): a second module is built locally with
-   `tectonic` and released through its export, and a per-paper CI job is a separate change.
+   statements were invisible to this rule and `--strict-shared` could not be turned on for them. The
+   reusable `docs.yml` builds the further papers too, through its `extra_papers` input (a JSON list
+   of `{name, tex, title}`; one matrix leg each, published to the artifacts branch and listed on the
+   site as `<name>.pdf`, added 2026-09-15 for Paper V's module B).
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no
