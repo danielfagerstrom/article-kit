@@ -154,4 +154,36 @@ reader notices a wrong colour.
 
 ---
 
+## A second paper directory in one article repository
+
+**Wanted by** `spatial-hemigroup-scale-space`, 2026-09-15.
+
+**What.** `linkage check` reads the paper from one directory, `paths.paper` in `linkage.toml`
+(`linkage/config.py`, a single `Path`; `linkage/artifacts.py` globs `cfg.paper/*.tex` in
+`paper_markers` and `pin_shared`). Paper V now holds three modules in one repository (its
+ADR-0004, ADR-0006): the released line paper in `paper/`, and modules B and C to be drafted in
+`paper-b/` and `paper-c/`, each with its own release tag and verification export. The markers of a
+second paper directory are invisible to check 3 (rule 4), so its shared statements are not
+compared with the blueprint, `--pin-shared` does not reach them, and `--strict-shared` cannot be
+turned on for it.
+
+**Why.** The gate before every commit of the article stage is `linkage check` with every shared
+statement `verbatim`; the line paper had 33 of them and the drift check caught real divergence at
+the mirror (its ledger rows R156–R157). Module B transcribes about 37 nodes. Drafting it without
+the check means either a private copy of the checker in the article repository or an unchecked
+paper, and the article's rule is that a framework gap is requested here, not worked around there.
+**This blocks the drafting of B** (its session prompt, step 1(c)).
+
+**Suggested shape.** `paths.paper` accepts a string or a list of strings; `Config` carries
+`papers: tuple[Path, ...]` (the string form is a one-element tuple, so every existing
+`linkage.toml` reads as before); `paper_markers`, `pin_shared` and `Config.missing` iterate over
+the tuple; the summary line's "N paper shared-statements" is the sum, or one count per directory
+if that reads better. Markers carry the file name already, so nothing else in the report changes.
+The reusable `docs.yml` has a single `paper_tex` input; a second entry point (a list input, or one
+job per paper) is the same request at the CI level, not blocking, since the article builds with
+`tectonic` locally and releases through the export. The callers' `paths:` filters (`paper/**`)
+are the article's own to widen.
+
+---
+
 *No other open requests.*
