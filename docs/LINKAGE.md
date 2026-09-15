@@ -99,6 +99,26 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    memory: the check reports *where* two statements part company, which a sha cannot.
    (`statement_sha` remains the hub's wire format and is untouched by any of this — the reduction is
    a comparison key, never projected, so no published sha moves.)
+
+   **A repository may hold several papers** (2026-09-15). `paths.paper` in `linkage.toml` takes a
+   directory *or a list of them*:
+
+   ```toml
+   paper = ["paper", "paper-b", "paper-c"]
+   ```
+
+   Every listed directory is read for markers, compared with the blueprint, written by `--pin-shared`,
+   and counted — the summary adds a `papers:` line breaking the shared-statement count down per
+   directory when there is more than one. Markers are located by **repo-relative path**
+   (`paper-b/sections.tex:41`), so two papers may hold a file of the same name. There is one blueprint
+   whichever paper a statement is shared with: the modules of an article are different renderings of
+   the same body of results, and a second blueprint would be a second article.
+
+   Requested by `spatial-hemigroup-scale-space`, whose Paper V drafts two modules alongside a released
+   line paper, each with its own release tag and verification export; with one directory their shared
+   statements were invisible to this rule and `--strict-shared` could not be turned on for them. **The
+   reusable `docs.yml` still builds one paper** (`paper_tex`): a second module is built locally with
+   `tectonic` and released through its export, and a per-paper CI job is a separate change.
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no

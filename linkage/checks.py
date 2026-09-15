@@ -438,6 +438,15 @@ def run(
         "leanok": sum(1 for n in nodes if n.leanok),
         "ledger_refs": len(bp.ledger_refs),
         "paper_shared": len(markers),
+        # Per directory, because a repo may hold several papers (`Config.papers`). The
+        # totals above stay whole-repo: a shared statement is shared with the one
+        # blueprint wherever it is written.
+        "paper_shared_by_dir": {
+            d.relative_to(cfg.root).as_posix(): sum(
+                1 for mk in markers
+                if mk.file.startswith(d.relative_to(cfg.root).as_posix() + "/"))
+            for d in cfg.papers
+        },
         "shared_verbatim": verbatim,
         "shared_tracked": tracked,
         "shared_no_env": no_env,

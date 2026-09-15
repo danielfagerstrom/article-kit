@@ -149,8 +149,15 @@ class Article:
     def lean(self, text: str, name: str = "Main.lean") -> Article:
         return self.file(f"Formalization/{name}", text)
 
-    def paper(self, text: str, name: str = "paper.tex") -> Article:
-        return self.file(f"paper/{name}", text)
+    def paper(self, text: str, name: str = "paper.tex", dir: str = "paper") -> Article:
+        return self.file(f"{dir}/{name}", text)
+
+    def papers(self, *dirs: str) -> Article:
+        """Re-declare `paths.paper` as a list, for the several-papers-per-repo case."""
+        toml = self.root.joinpath("linkage.toml").read_text(encoding="utf-8")
+        listed = ", ".join(f'"{d}"' for d in dirs)
+        return self.file("linkage.toml",
+                         toml.replace('paper     = "paper"', f"paper     = [{listed}]"))
 
     # --- readers ---------------------------------------------------------------
     @property

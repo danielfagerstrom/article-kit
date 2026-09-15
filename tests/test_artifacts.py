@@ -166,7 +166,7 @@ Some prose.
 def test_markers_carry_labels_pins_line_numbers_and_the_marked_statement(article):
     article.paper(PAPER)
     a, b = artifacts.paper_markers(article.cfg)
-    assert (a.file, a.line) == ("paper.tex", 3)
+    assert (a.file, a.line) == ("paper/paper.tex", 3)
     assert a.blueprint_labels == ["thm:a"] and a.pinned == {}
     assert a.statement_label == "thm:a" and a.shared_statement == "First."
     assert b.blueprint_labels == ["thm:b", "thm:c"]
@@ -179,13 +179,13 @@ def test_markers_are_collected_from_every_paper_file_in_name_order(article):
     article.paper("% shared with blueprint thm:a\n", name="01-first.tex")
     article.root.joinpath("paper/paper.tex").unlink()
     assert [m.file for m in artifacts.paper_markers(article.cfg)] == \
-        ["01-first.tex", "02-second.tex"]
+        ["paper/01-first.tex", "paper/02-second.tex"]
 
 
 def test_pin_shared_rewrites_only_the_requested_markers(article):
     article.paper(PAPER)
     n = artifacts.pin_shared(article.cfg, {"thm:a": "aaaaaaaaaaaa", "thm:c": "cccccccccccc"},
-                             only={"paper.tex:3"})
+                             only={"paper/paper.tex:3"})
     text = article.root.joinpath("paper/paper.tex").read_text(encoding="utf-8")
     assert n == 1
     assert "% shared with blueprint thm:a@aaaaaaaaaaaa" in text
@@ -195,7 +195,7 @@ def test_pin_shared_rewrites_only_the_requested_markers(article):
 def test_pin_shared_repins_a_moved_label(article):
     article.paper(PAPER)
     artifacts.pin_shared(article.cfg, {"thm:b": "bbbbbbbbbbbb", "thm:c": "cccccccccccc"},
-                         only={"paper.tex:9"})
+                         only={"paper/paper.tex:9"})
     text = article.root.joinpath("paper/paper.tex").read_text(encoding="utf-8")
     assert "thm:b@bbbbbbbbbbbb, thm:c@cccccccccccc" in text
 

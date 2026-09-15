@@ -134,6 +134,10 @@ class PaperMarker:
     """
 
     file: str
+    """Repo-relative, so a report locates the marker wherever the checker was invoked —
+    and so that two paper directories holding a `sections.tex` each stay distinguishable
+    (`paths.paper` takes a list; see `Config.papers`)."""
+
     blueprint_labels: list[str]
     statement_label: str | None
     """The `\\label{}` *inside* the statement the marker marks — label equality with

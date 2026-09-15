@@ -184,6 +184,31 @@ job per paper) is the same request at the CI level, not blocking, since the arti
 `tectonic` locally and releases through the export. The callers' `paths:` filters (`paper/**`)
 are the article's own to widen.
 
+**Resolved 2026-09-15** — shipped as suggested. `paths.paper` takes a string or a list; `Config`
+carries `papers: tuple[Path, ...]` (the string form is a one-element tuple, so every existing
+`linkage.toml` reads as before); `artifacts.paper_files` is the one place the directories are walked,
+and `paper_markers`, `pin_shared` and `Config.missing` go through it. Three adjustments the
+framework's shape asked for:
+
+- **Markers are located by repo-relative path** (`paper-b/sections.tex:41`), not by file name. The
+  file name alone was unambiguous with one directory and would not have been with three — a module
+  that copies the line paper's `sections.tex` is the likely case, not the exotic one. The report
+  paths are also openable now, which the control-character check already did.
+- **The directories are walked in `linkage.toml` order**, not globally name-sorted, so a report reads
+  paper by paper rather than interleaving module B's findings with the line paper's.
+- **An empty list and a repeated directory are config errors.** Neither is a harmless no-op: the
+  first silently checks no paper at all, and the second reads, reports and pins every marker twice.
+
+The summary gains a `papers:` line with the per-directory breakdown, printed only when there is more
+than one — with a single paper it would repeat the count above it. The totals stay whole-repo: there
+is one blueprint whichever paper a statement is shared with.
+
+`docs.yml` is untouched, as the request allows. A second `paper_tex` is a matrix over the reusable
+workflow and would change the contract of all nine callers; it is worth doing when a second article
+wants it too, and B builds locally and releases through its export until then. `tests/test_papers.py`
+covers the config forms, collection order, same-named files in two directories, drift caught in the
+second paper, `--pin-shared` reaching it, and the breakdown line.
+
 ---
 
 *No other open requests.*

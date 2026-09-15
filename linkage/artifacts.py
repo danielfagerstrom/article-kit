@@ -114,6 +114,16 @@ MARKER_RE = re.compile(
     r"%[^\n]*?shared[^\n]*?with blueprint\s+(" + _REF + r"(?:\s*,\s*" + _REF + r")*)")
 
 
+def paper_files(cfg: Config) -> list[Path]:
+    """Every paper source, the directories in `linkage.toml` order, names sorted inside.
+
+    Config order rather than one global sort, so a report reads paper by paper: an
+    article with a line paper and two modules wants its module-B findings together,
+    not interleaved by file name.
+    """
+    return [f for d in cfg.papers for f in sorted(d.glob("*.tex"))]
+
+
 def paper_markers(cfg: Config) -> list[PaperMarker]:
     """Every `% shared with blueprint …` marker, with its labels, any pinned shas, the
     paper statement's own label, and the statement text it marks.
@@ -127,7 +137,7 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
     env_re = re.compile(
         r"\\begin\{(" + "|".join(cfg.statement_envs) + r")\}(.*?)\\end\{\1\}", re.S)
     out: list[PaperMarker] = []
-    for f in sorted(cfg.paper.glob("*.tex")):
+    for f in paper_files(cfg):
         t = read(f)
         marks = list(MARKER_RE.finditer(t))
         for i, m in enumerate(marks):
@@ -142,7 +152,7 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
                 if sha:
                     pinned[label] = sha
             out.append(PaperMarker(
-                file=f.name,
+                file=f.relative_to(cfg.root).as_posix(),
                 blueprint_labels=labels,
                 statement_label=lm.group(1) if lm else None,
                 line=t.count("\n", 0, m.start()) + 1,
@@ -163,10 +173,11 @@ def pin_shared(cfg: Config, shas: dict[str, str], only: set[str] | None = None) 
     markers clean.
     """
     changed = 0
-    for f in sorted(cfg.paper.glob("*.tex")):
+    for f in paper_files(cfg):
         text = orig = read(f)
+        rel = f.relative_to(cfg.root).as_posix()
         for m in reversed(list(MARKER_RE.finditer(orig))):
-            key = f"{f.name}:{orig.count(chr(10), 0, m.start()) + 1}"
+            key = f"{rel}:{orig.count(chr(10), 0, m.start()) + 1}"
             if only is not None and key not in only:
                 continue
             refs = []
