@@ -61,6 +61,7 @@ def statement(
     status: str | None = "T",
     note: str | None = None,
     proof: str | None = None,
+    proof_leanok: bool = False,
 ) -> str:
     r"""One blueprint statement environment (plus a trailing proof), as LaTeX source.
 
@@ -91,7 +92,8 @@ def statement(
         lines.append(tag)
     lines.append(f"\\end{{{env}}}")
     if proof is not None:
-        lines.append(r"\begin{proof}" + proof + r"\end{proof}")
+        lines.append(r"\begin{proof}" + (r"\leanok " if proof_leanok else "")
+                     + proof + r"\end{proof}")
     return "\n".join(lines) + "\n"
 
 

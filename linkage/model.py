@@ -44,6 +44,16 @@ class Node:
     notready: bool = False
     """The node asserts it is not ready to formalise."""
 
+    proof_leanok: bool = False
+    """The node's *proof* environment asserts it is formalised — a different flag from
+    `leanok`, which is its statement's.
+
+    leanblueprint colours the dependency graph from both: the statement flag paints a
+    node's green border, the proof flag its green background. A node carrying only the
+    first paints green-bordered on blue, which the generated legend reads as "ready to
+    be formalized" — i.e. not done — while `linkage` counted it as proved. The graph is
+    the artifact readers look at, so the two must agree (check 10)."""
+
     status: str | None = None
     """`T` (proved-target) or `A` (analytic interface); None means undeclared (check 5)."""
 

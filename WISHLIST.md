@@ -152,6 +152,29 @@ lacks it is incoherent rather than merely under-reported.
 which is rather the point. It should not be twenty lines that each article rediscovers after a
 reader notices a wrong colour.
 
+**Resolved 2026-09-15** — shipped as rule 10 / check 10, with the exemptions as listed. The parser
+already captured the proof body; it only had to read the flag off it before `normalize_statement`
+strips it (`Node.proof_leanok`), so the check is policy over the IR like every other one, and no
+published sha moves — the normalization that strips `\leanok` is the same on both sides, which a
+test pins.
+
+Two adjustments to the requested shape:
+
+- **The converse is fatal, not advisory.** You were right that it is worth reporting more loudly;
+  it is also mechanically unambiguous — a formalised proof of a statement that is not itself
+  formalised — and it paints a border/background combination the legend has no reading for. The
+  missing proof flag stays advisory, as asked: a proof may legitimately be unformalised.
+- **Located by label, not `path:line`.** Every other check in this module reports by label, and
+  nodes do not carry line numbers; adding them for one rule would have been a parser change of its
+  own. The label is what `\leanok` is edited by.
+
+Measured before shipping, as rule 9 was: all three articles are clean on it today (hcs 67 `\leanok`
+statements / 61 `\leanok` proofs, Paper V 54 / 45 — every difference a definition or a node with no
+proof environment, i.e. exempt). So it starts with no backlog and cannot be waived on day one. The
+summary line now prints both counts, which is the disagreement made visible: `106 statement nodes
+(67 \leanok, 61 with a \leanok proof)`.
+
+
 ---
 
 ## A second paper directory in one article repository
