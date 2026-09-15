@@ -211,15 +211,11 @@ second paper, `--pin-shared` reaching it, and the breakdown line.
 
 ---
 
-*No other open requests.*
-
 ## Relabel the dependency graph's orange border for the statement-first workflow
 
-leanblueprint's legend describes the orange border (`
-otready`) as "the statement of this result
+leanblueprint's legend describes the orange border (`\notready`) as "the statement of this result
 is not ready to be formalized; the blueprint needs more work". Under the constellation's
-statement-first convention (`Formalization/Skeleton/`, the `notready` middle state), a `
-otready`
+statement-first convention (`Formalization/Skeleton/`, the `notready` middle state), a `\notready`
 node is one whose statement is typed and reviewed and whose proof is pending or whose interface is
 unadmitted — the opposite of "needs more work on the blueprint". The colouring is right; only the
 description misleads a reader of the published graph (raised on Paper V's graph, 2026-09-10).
@@ -229,3 +225,7 @@ leanblueprint lets a document redefine a colour and its description (its `bluepr
 so the fix is one line in the framework's scaffolding, not in any article: override the
 `not_ready` description to read "statement typed and reviewed; proof pending, or an interface not
 yet admitted". Keep the colour. Every article gets it on the next scaffold sync.
+
+---
+
+*No other open requests.*
