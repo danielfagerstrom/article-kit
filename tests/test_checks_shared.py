@@ -54,7 +54,7 @@ def test_divergent_text_is_reported_with_the_point_of_divergence(article):
     assert "drifted from the blueprint after 14 chars" in msg
     assert "paper     : continuous" in msg
     assert f.stats["shared_drift"] == 1
-    assert [m.file for m in f.unpinned] == ["paper.tex"]
+    assert [m.file for m in f.unpinned] == ["paper/paper.tex"]
 
 
 def test_drift_is_fatal_under_strict_shared(article):

@@ -82,7 +82,7 @@ def test_a_freshly_scaffolded_article_passes_linkage_check(tmp_path):
     rc, out, err = run_cli("--root", str(root), "check")
     assert rc == 0, out + err
     assert "LINKAGE CHECK OK" in out
-    assert "3 statement nodes (1 \\leanok)" in out
+    assert "3 statement nodes (1 \\leanok, 1 with a \\leanok proof)" in out
     assert "1 verbatim" in out
 
 

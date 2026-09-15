@@ -61,6 +61,7 @@ def statement(
     status: str | None = "T",
     note: str | None = None,
     proof: str | None = None,
+    proof_leanok: bool = False,
 ) -> str:
     r"""One blueprint statement environment (plus a trailing proof), as LaTeX source.
 
@@ -91,7 +92,8 @@ def statement(
         lines.append(tag)
     lines.append(f"\\end{{{env}}}")
     if proof is not None:
-        lines.append(r"\begin{proof}" + proof + r"\end{proof}")
+        lines.append(r"\begin{proof}" + (r"\leanok " if proof_leanok else "")
+                     + proof + r"\end{proof}")
     return "\n".join(lines) + "\n"
 
 
@@ -149,8 +151,15 @@ class Article:
     def lean(self, text: str, name: str = "Main.lean") -> Article:
         return self.file(f"Formalization/{name}", text)
 
-    def paper(self, text: str, name: str = "paper.tex") -> Article:
-        return self.file(f"paper/{name}", text)
+    def paper(self, text: str, name: str = "paper.tex", dir: str = "paper") -> Article:
+        return self.file(f"{dir}/{name}", text)
+
+    def papers(self, *dirs: str) -> Article:
+        """Re-declare `paths.paper` as a list, for the several-papers-per-repo case."""
+        toml = self.root.joinpath("linkage.toml").read_text(encoding="utf-8")
+        listed = ", ".join(f'"{d}"' for d in dirs)
+        return self.file("linkage.toml",
+                         toml.replace('paper     = "paper"', f"paper     = [{listed}]"))
 
     # --- readers ---------------------------------------------------------------
     @property

@@ -88,10 +88,19 @@ def cmd_check(args) -> int:
     s = f.stats
     drift, verb = s.get("shared_drift", 0), s.get("shared_verbatim", 0)
     trk, noenv = s.get("shared_tracked", 0), s.get("shared_no_env", 0)
-    print(f"Blueprint: {s['nodes']} statement nodes ({s['leanok']} \\leanok), "
+    # Both flags, because leanblueprint colours the graph from both and they can
+    # disagree (check 10): a statement-only \leanok paints green-on-blue, which the
+    # legend reads as not done.
+    print(f"Blueprint: {s['nodes']} statement nodes ({s['leanok']} \\leanok, "
+          f"{s['leanok_proofs']} with a \\leanok proof), "
           f"{s['ledger_refs']} ledger refs, {s['paper_shared']} paper shared-statements "
           f"({verb} verbatim, {trk} tracked by sha, {drift} needing attention"
           + (f", {noenv} on prose" if noenv else "") + ").")
+    if len(cfg.papers) > 1:
+        # One line per paper only when there is more than one: with a single directory
+        # it would repeat the count just printed.
+        print("  papers: " + ", ".join(f"{d} ({n})"
+                                       for d, n in s["paper_shared_by_dir"].items()))
     print(f"Dependency closure: {s['reached_unproved']} statement(s) proved nowhere reached "
           f"by a \\leanok node, {s['reached_on_paper']} proved on paper only; "
           f"{len(s['unproved'])} [T] statement(s) proved nowhere in all "

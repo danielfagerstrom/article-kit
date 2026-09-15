@@ -205,6 +205,11 @@ def blueprint_nodes(tex: str, cfg: Config) -> list[Node]:
                 lean=decls,
                 uses=uses,
                 leanok=r"\leanok" in body,
+                # Read off the proof environment, not the statement: leanblueprint
+                # colours the graph from two independent flags -- the statement's
+                # gives a node its green border, the proof's its green background --
+                # and `normalize_statement` strips both, so it has to be read here.
+                proof_leanok=bool(pm) and r"\leanok" in pm.group(1),
                 notready=r"\notready" in body,
                 # [T]/[A] and the node's ledger refs — projected so the hub's generated
                 # status line can say "cited interface (ledger A3)" instead of the

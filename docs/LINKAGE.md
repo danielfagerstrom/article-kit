@@ -99,6 +99,26 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    memory: the check reports *where* two statements part company, which a sha cannot.
    (`statement_sha` remains the hub's wire format and is untouched by any of this — the reduction is
    a comparison key, never projected, so no published sha moves.)
+
+   **A repository may hold several papers** (2026-09-15). `paths.paper` in `linkage.toml` takes a
+   directory *or a list of them*:
+
+   ```toml
+   paper = ["paper", "paper-b", "paper-c"]
+   ```
+
+   Every listed directory is read for markers, compared with the blueprint, written by `--pin-shared`,
+   and counted — the summary adds a `papers:` line breaking the shared-statement count down per
+   directory when there is more than one. Markers are located by **repo-relative path**
+   (`paper-b/sections.tex:41`), so two papers may hold a file of the same name. There is one blueprint
+   whichever paper a statement is shared with: the modules of an article are different renderings of
+   the same body of results, and a second blueprint would be a second article.
+
+   Requested by `spatial-hemigroup-scale-space`, whose Paper V drafts two modules alongside a released
+   line paper, each with its own release tag and verification export; with one directory their shared
+   statements were invisible to this rule and `--strict-shared` could not be turned on for them. **The
+   reusable `docs.yml` still builds one paper** (`paper_tex`): a second module is built locally with
+   `tectonic` and released through its export, and a per-paper CI job is a separate change.
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no
@@ -196,6 +216,7 @@ It enforces the **in-repo** edges and fails (exit 1) on:
 - a `\leanok` node whose `\lean{Decl}` is not declared in `Formalization/` (rule 3);
 - a `\ledger{AXX}` / "ledger AXX" with no `## AXX` entry in `AXIOMS.md`, or an entry with no `**Cite:**` line (rule 2);
 - a paper `% shared with blueprint <label>` naming a label the blueprint does not have (rule 4);
+- a `\leanok` on a node's *proof* whose statement carries none (rule 10);
 - under `--strict-shared`: a shared paper statement whose text has drifted from its blueprint
   node (rule 4). Advisory without the flag, so an article can adopt the check before its
   existing drift is cleared;
@@ -226,8 +247,42 @@ It enforces the **in-repo** edges and fails (exit 1) on:
    Scope is every `.tex` / `.md` / `.lean` file under the repo, with build output and `.claude/`
    worktrees excluded. That includes `paper/`, which the article-side script this replaced did not
    cover — and the paper is both the tree an author edits most and the one `--pin-shared` writes to.
+10. **A node's two `\leanok` flags agree** (2026-09-15). leanblueprint colours the dependency
+   graph from **two independent flags**, and a node may carry either:
+
+   | flag | where | graph effect |
+   |---|---|---|
+   | `\leanok` in the statement environment | node body | **green border** — the statement is formalised |
+   | `\leanok` inside the following `proof` environment | the proof | **green background** — the proof is formalised |
+
+   A node with the first and not the second paints green-bordered on *blue*, which the generated
+   legend reads as "the proof of this result is ready to be formalized" — i.e. **not done**. Until
+   this rule `linkage` modelled the statement flag only: it counted such a node in its `\leanok`
+   total and passed, so the graph and the check disagreed silently. The graph is the artifact the
+   hub and human readers actually look at.
+
+   **The missing proof flag is an advisory; the converse is fatal.** A `\leanok` proof under a
+   statement that carries none is incoherent rather than under-reported — a formalised proof of an
+   unformalised statement — and paints a combination the legend has no reading for.
+
+   **Three exemptions, all mechanical:** a node with no `proof` environment (nothing to flag —
+   definitions colour from the statement flag alone), a `\notready` node (stated but unproved by
+   construction), and a label that is not a claim kind. The rule properly concerns a `\lean{}`
+   naming a Lean *theorem*; a declaration name cannot be told from a definition's without Lean, and
+   carrying a proof environment is the mechanical proxy.
+
+   Raised by a reader asking why a node they knew was proved was painting blue. Six nodes in
+   `hemigroup-causal-scale-space-kernels` were affected, every one machine-checked, sorry-free and
+   listed in that article's `#print axioms` guard; four had been wrong for weeks, and **two were
+   introduced in the session that fixed the other four.** That is the argument for a check rather
+   than for care: the flag is invisible at the point of writing, because the statement and the proof
+   are separate environments and only one of them is in front of the author. All three articles were
+   clean when the check shipped, so like rule 9 it starts with no backlog to grandfather. The summary
+   line now prints both counts (`N \leanok, M with a \leanok proof`).
 It also prints **advisories** (non-fatal): a paper shared statement whose own label differs from the
-blueprint key; a `\leanok` node with no `\lean{}`; a node marked both `\leanok` and `\notready`; and — the
+blueprint key; a `\leanok` node with no `\lean{}`; a node marked both `\leanok` and `\notready`; a
+`\leanok` statement whose proof environment carries no `\leanok` (rule 10 — the node paints
+green-bordered on blue, which the graph's legend reads as not done); and — the
 formalisation worklist — each statement a `\leanok` node reaches that is proved on paper but not in Lean,
 with its proof size and **both** dependent counts, those ahead of the trust boundary and those counting
 paths through an `[A]` interface (rule 8; the first is the headline, since it is the number formalising the

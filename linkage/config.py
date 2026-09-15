@@ -47,7 +47,18 @@ class Config:
     macros: Path
     allowlist: Path
     lean: Path
-    paper: Path
+    papers: tuple[Path, ...]
+    r"""The paper directories, in the order `linkage.toml` lists them.
+
+    **A tuple, because one repository can hold several papers.** `paths.paper` takes a
+    string or a list of strings; the string form is a one-element tuple, so an article
+    that has one paper reads exactly as before. The second form exists because an
+    article may publish a line paper and its modules from one repository, each with its
+    own release tag and verification export (requested by `spatial-hemigroup-scale-space`,
+    WISHLIST 2026-09-15, whose Paper V holds three). Everything that reads the paper --
+    `artifacts.paper_markers`, `artifacts.pin_shared`, `missing()` -- iterates this tuple,
+    so a second directory is checked, pinned and counted the same as the first.
+    """
     lean_packages: tuple[str, ...] = ()
     r"""Lake packages whose sources also count as "declared here".
 
@@ -79,7 +90,8 @@ class Config:
             for name, p in (
                 ("blueprint", self.blueprint), ("axioms", self.axioms),
                 ("macros", self.macros), ("allowlist", self.allowlist),
-                ("lean", self.lean), ("paper", self.paper),
+                ("lean", self.lean),
+                *(("paper", d) for d in self.papers),
             )
             if not p.exists()
         ]
@@ -116,6 +128,35 @@ def load(root: Path | None = None) -> Config:
     def p(key: str, default: str) -> Path:
         return root / paths.get(key, default)
 
+    def paper_dirs() -> tuple[Path, ...]:
+        """`paths.paper`: one directory, or a list of them.
+
+        A list is rejected when it is empty or repeats a directory. Neither is a
+        harmless no-op: an empty list would silently check no paper at all, and a
+        repeat would collect every marker twice and let `--pin-shared` rewrite the
+        same file twice in one pass.
+        """
+        raw_paper = paths.get("paper", "paper")
+        if isinstance(raw_paper, str):
+            raw_paper = [raw_paper]
+        if (not isinstance(raw_paper, list)
+                or not all(isinstance(d, str) for d in raw_paper)):
+            raise ConfigError(
+                f"{CONFIG_NAME}: `paths.paper` must be a directory or a list of "
+                f"directories, not {raw_paper!r}")
+        if not raw_paper:
+            raise ConfigError(
+                f"{CONFIG_NAME}: `paths.paper` is an empty list — name at least one "
+                f"paper directory, or omit the key for the default 'paper'")
+        seen: dict[str, None] = {}
+        for d in raw_paper:
+            if d in seen:
+                raise ConfigError(
+                    f"{CONFIG_NAME}: `paths.paper` lists {d!r} twice — every marker in "
+                    f"it would be read, reported and pinned twice")
+            seen[d] = None
+        return tuple(root / d for d in raw_paper)
+
     slug = raw.get("slug")
     if not slug:
         raise ConfigError(f"{CONFIG_NAME}: `slug` is required — it is the satellite id the "
@@ -129,7 +170,7 @@ def load(root: Path | None = None) -> Config:
         macros=p("macros", "blueprint/src/macros.tex"),
         allowlist=p("allowlist", "blueprint/render-allowlist.txt"),
         lean=p("lean", "Formalization"),
-        paper=p("paper", "paper"),
+        papers=paper_dirs(),
         lean_packages=tuple(paths.get("lean_packages", ())),
         statement_envs=tuple(bp.get("statement_envs", DEFAULT_STATEMENT_ENVS)),
         label_prefixes=tuple(bp.get("statement_label_prefixes", DEFAULT_LABEL_PREFIXES)),

@@ -28,6 +28,12 @@ article repository*.
        (the dependency invariant; [A] nodes and definitions are exempt as targets, but the
        fatal walk does traverse *through* [A] nodes: an [A] node's own statement may not be
        phrased in terms of an unproved one either)
+    9. no source file carries a stray control character (read as bytes -- the point is to
+       catch what a decoder would hide)
+   10. no node carries \\leanok on its *proof* while its statement lacks it. leanblueprint
+       colours the graph from both flags independently, and this combination is the one
+       the legend has no reading for (the converse -- a statement flag with no proof flag
+       -- is the advisory below, since a proof may legitimately be unformalised)
 
   ADVISORY (reported, non-fatal)
     - a paper statement that shares a blueprint node but carries a different \\label
@@ -41,6 +47,9 @@ article repository*.
     - a shared statement that has drifted from its blueprint node (fatal under
       --strict-shared; see 3b)
     - a \\leanok node with no \\lean{}, or a node marked both \\leanok and \\notready
+    - a \\leanok statement whose proof environment carries no \\leanok: the node paints
+      green-bordered on blue, which the graph's legend reads as "ready to be formalized"
+      -- i.e. not done -- while this checker counted it in its \\leanok total
     - a statement reached by a \\leanok node that is proved on paper but not in Lean: a
       formalisation debt (permitted -- ADR-0010 rule 2), and the list to read when choosing
       what to formalise next. Its dependent count stops at [A] nodes, unlike the fatal walk
@@ -226,6 +235,49 @@ def run(
                 fatal.append(
                     f"[lean]   {n.label}: \\lean{{{d}}} not declared in {cfg.lean.name}/"
                 )
+
+    # 10. the graph's two \leanok flags agree (2026-09-15)
+    #
+    # leanblueprint reads them independently: the statement's paints a node's green
+    # border ("the statement is formalized"), the proof's its green background ("the
+    # proof is formalized"). `linkage` modelled only the first, counted such a node in
+    # its \leanok total, and passed -- while the graph painted it green-on-blue, which
+    # the generated legend reads as "ready to be formalized", i.e. NOT done. The graph
+    # is the artifact the hub and human readers actually look at, so the disagreement
+    # was silent and visible at the same time.
+    #
+    # Requested by `hemigroup-causal-scale-space-kernels` (WISHLIST, 2026-08-15) after a
+    # reader asked why a node they knew was proved was painting blue. Six nodes were
+    # affected, every one machine-checked and sorry-free; four had been wrong for weeks,
+    # and two were introduced in the session that fixed the other four. That is the
+    # argument for a check rather than for care: the flag is invisible at the point of
+    # writing, because statement and proof are separate environments and only one of
+    # them is in front of the author when the node is tagged.
+    #
+    # Three exemptions, all mechanical: a node with no proof environment (nothing to
+    # flag -- a definition colours from the statement flag alone), a \notready node
+    # (stated but unproved by construction), and a label that is not a claim kind. The
+    # requester scoped the rule to a \lean{} naming a Lean *theorem*; a declaration name
+    # cannot be told from a definition's without Lean, and carrying a proof environment
+    # is the mechanical proxy for it.
+    for n in nodes:
+        if not n.label or n.proof is None:
+            continue
+        if n.proof_leanok and not n.leanok:
+            # Fatal, where the converse is advisory: a formalised proof OF a statement
+            # that is not itself formalised is incoherent rather than under-reported,
+            # and it paints a border/background combination the legend has no entry for.
+            fatal.append(
+                f"[leanok] {n.label}: its proof carries \\leanok but its statement does "
+                "not -- a proof cannot be formalised for a statement that is not; mark "
+                "the statement \\leanok, or drop the flag from the proof")
+        elif (n.leanok and not n.proof_leanok and not n.notready
+                and n.kind in cfg.statement_kinds):
+            advisory.append(
+                f"[leanok] {n.label}: \\leanok on the statement but not inside its proof "
+                "-- the graph paints this node green-bordered on BLUE, which its legend "
+                "reads as 'ready to be formalized'; add \\leanok to the proof "
+                "environment once the proof is formalised too")
 
     # 4. the clean-render gate: every command in a statement/proof is render-safe
     for n in nodes:
@@ -436,8 +488,18 @@ def run(
     f.stats = {
         "nodes": len(nodes),
         "leanok": sum(1 for n in nodes if n.leanok),
+        "leanok_proofs": sum(1 for n in nodes if n.proof_leanok),
         "ledger_refs": len(bp.ledger_refs),
         "paper_shared": len(markers),
+        # Per directory, because a repo may hold several papers (`Config.papers`). The
+        # totals above stay whole-repo: a shared statement is shared with the one
+        # blueprint wherever it is written.
+        "paper_shared_by_dir": {
+            d.relative_to(cfg.root).as_posix(): sum(
+                1 for mk in markers
+                if mk.file.startswith(d.relative_to(cfg.root).as_posix() + "/"))
+            for d in cfg.papers
+        },
         "shared_verbatim": verbatim,
         "shared_tracked": tracked,
         "shared_no_env": no_env,

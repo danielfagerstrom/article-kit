@@ -152,17 +152,93 @@ lacks it is incoherent rather than merely under-reported.
 which is rather the point. It should not be twenty lines that each article rediscovers after a
 reader notices a wrong colour.
 
+**Resolved 2026-09-15** — shipped as rule 10 / check 10, with the exemptions as listed. The parser
+already captured the proof body; it only had to read the flag off it before `normalize_statement`
+strips it (`Node.proof_leanok`), so the check is policy over the IR like every other one, and no
+published sha moves — the normalization that strips `\leanok` is the same on both sides, which a
+test pins.
+
+Two adjustments to the requested shape:
+
+- **The converse is fatal, not advisory.** You were right that it is worth reporting more loudly;
+  it is also mechanically unambiguous — a formalised proof of a statement that is not itself
+  formalised — and it paints a border/background combination the legend has no reading for. The
+  missing proof flag stays advisory, as asked: a proof may legitimately be unformalised.
+- **Located by label, not `path:line`.** Every other check in this module reports by label, and
+  nodes do not carry line numbers; adding them for one rule would have been a parser change of its
+  own. The label is what `\leanok` is edited by.
+
+Measured before shipping, as rule 9 was: all three articles are clean on it today (hcs 67 `\leanok`
+statements / 61 `\leanok` proofs, Paper V 54 / 45 — every difference a definition or a node with no
+proof environment, i.e. exempt). So it starts with no backlog and cannot be waived on day one. The
+summary line now prints both counts, which is the disagreement made visible: `106 statement nodes
+(67 \leanok, 61 with a \leanok proof)`.
+
+
 ---
 
-*No other open requests.*
+## A second paper directory in one article repository
+
+**Wanted by** `spatial-hemigroup-scale-space`, 2026-09-15.
+
+**What.** `linkage check` reads the paper from one directory, `paths.paper` in `linkage.toml`
+(`linkage/config.py`, a single `Path`; `linkage/artifacts.py` globs `cfg.paper/*.tex` in
+`paper_markers` and `pin_shared`). Paper V now holds three modules in one repository (its
+ADR-0004, ADR-0006): the released line paper in `paper/`, and modules B and C to be drafted in
+`paper-b/` and `paper-c/`, each with its own release tag and verification export. The markers of a
+second paper directory are invisible to check 3 (rule 4), so its shared statements are not
+compared with the blueprint, `--pin-shared` does not reach them, and `--strict-shared` cannot be
+turned on for it.
+
+**Why.** The gate before every commit of the article stage is `linkage check` with every shared
+statement `verbatim`; the line paper had 33 of them and the drift check caught real divergence at
+the mirror (its ledger rows R156–R157). Module B transcribes about 37 nodes. Drafting it without
+the check means either a private copy of the checker in the article repository or an unchecked
+paper, and the article's rule is that a framework gap is requested here, not worked around there.
+**This blocks the drafting of B** (its session prompt, step 1(c)).
+
+**Suggested shape.** `paths.paper` accepts a string or a list of strings; `Config` carries
+`papers: tuple[Path, ...]` (the string form is a one-element tuple, so every existing
+`linkage.toml` reads as before); `paper_markers`, `pin_shared` and `Config.missing` iterate over
+the tuple; the summary line's "N paper shared-statements" is the sum, or one count per directory
+if that reads better. Markers carry the file name already, so nothing else in the report changes.
+The reusable `docs.yml` has a single `paper_tex` input; a second entry point (a list input, or one
+job per paper) is the same request at the CI level, not blocking, since the article builds with
+`tectonic` locally and releases through the export. The callers' `paths:` filters (`paper/**`)
+are the article's own to widen.
+
+**Resolved 2026-09-15** — shipped as suggested. `paths.paper` takes a string or a list; `Config`
+carries `papers: tuple[Path, ...]` (the string form is a one-element tuple, so every existing
+`linkage.toml` reads as before); `artifacts.paper_files` is the one place the directories are walked,
+and `paper_markers`, `pin_shared` and `Config.missing` go through it. Three adjustments the
+framework's shape asked for:
+
+- **Markers are located by repo-relative path** (`paper-b/sections.tex:41`), not by file name. The
+  file name alone was unambiguous with one directory and would not have been with three — a module
+  that copies the line paper's `sections.tex` is the likely case, not the exotic one. The report
+  paths are also openable now, which the control-character check already did.
+- **The directories are walked in `linkage.toml` order**, not globally name-sorted, so a report reads
+  paper by paper rather than interleaving module B's findings with the line paper's.
+- **An empty list and a repeated directory are config errors.** Neither is a harmless no-op: the
+  first silently checks no paper at all, and the second reads, reports and pins every marker twice.
+
+The summary gains a `papers:` line with the per-directory breakdown, printed only when there is more
+than one — with a single paper it would repeat the count above it. The totals stay whole-repo: there
+is one blueprint whichever paper a statement is shared with.
+
+`docs.yml` is untouched, as the request allows. A second `paper_tex` is a matrix over the reusable
+workflow and would change the contract of all nine callers; it is worth doing when a second article
+wants it too, and B builds locally and releases through its export until then. `tests/test_papers.py`
+covers the config forms, collection order, same-named files in two directories, drift caught in the
+second paper, `--pin-shared` reaching it, and the breakdown line.
+
+---
 
 ## Relabel the dependency graph's orange border for the statement-first workflow
 
-leanblueprint's legend describes the orange border (`
-otready`) as "the statement of this result
+leanblueprint's legend describes the orange border (`\notready`) as "the statement of this result
 is not ready to be formalized; the blueprint needs more work". Under the constellation's
-statement-first convention (`Formalization/Skeleton/`, the `notready` middle state), a `
-otready`
+statement-first convention (`Formalization/Skeleton/`, the `notready` middle state), a `\notready`
 node is one whose statement is typed and reviewed and whose proof is pending or whose interface is
 unadmitted — the opposite of "needs more work on the blueprint". The colouring is right; only the
 description misleads a reader of the published graph (raised on Paper V's graph, 2026-09-10).
@@ -172,3 +248,7 @@ leanblueprint lets a document redefine a colour and its description (its `bluepr
 so the fix is one line in the framework's scaffolding, not in any article: override the
 `not_ready` description to read "statement typed and reviewed; proof pending, or an interface not
 yet admitted". Keep the colour. Every article gets it on the next scaffold sync.
+
+---
+
+*No other open requests.*
