@@ -43,17 +43,36 @@ name: Docs CI (reusable)
 # The web build is NOT force-pushed to the `artifacts` branch — that branch is for the PDFs;
 # a couple of megabytes of HTML and wasm rewritten on every build does not belong in git.
 #
-# The `deploy` job publishes the set to a Cloudflare Pages project, one per article (behind
-# Cloudflare Access — account-side setup in docs/CLOUD.md § "Private docs site"). On pull
-# requests pass dry_run: true — assemble dist/ and validate it, never deploy. Otherwise it
-# FAILS LOUDLY if the Cloudflare secrets are missing (the build and publish jobs stay green).
+# The `deploy` job publishes the set to the ONE research site, into this module's own channel
+# in its content bucket (hub ADR-0016). It replaced a Cloudflare Pages project per article on
+# 2026-09-18: a Pages deploy is atomic over a whole project, so several repositories could
+# never share one site, and each new article meant another pages.dev hostname plus an Access
+# application that had to be remembered by hand — a gate that failed OPEN when it was not.
+#
+# Now the repository publishes bytes under its slug and says nothing about who may read them.
+# The trigger picks the channel (`main` on a branch, the tag on a tag), and the hub's manifest
+# decides which channels the site serves where. So an article cannot publish itself by
+# accident, and an unreleased module has no public URL at all.
+#
+# On pull requests pass dry_run: true — assemble dist/ and validate it, never publish.
+# Otherwise it FAILS LOUDLY if the R2 secrets are missing (the build and publish jobs stay
+# green).
 
 on:
   workflow_call:
     inputs:
-      pages_project:
-        description: "Cloudflare Pages project for this article, e.g. 'ssf-docs'. One per article."
+      slug:
+        description: >-
+          This module's reader-facing slug on the research site, e.g.
+          'hemigroup-spatial-kernels-line'. It is the module's `site.slug` in the hub's
+          constellation.json — NOT its member slug — and it is a permanent public URL.
+          Content is published to <slug>/<channel>/ in the site's content bucket.
         required: true
+        type: string
+      bucket:
+        description: "The research site's content bucket (hub ADR-0016)."
+        required: false
+        default: research-content
         type: string
       dry_run:
         description: "Assemble and validate dist/, but never deploy or push the artifacts branch."
@@ -119,7 +138,12 @@ on:
         default: "0.15.0"
         type: string
     secrets:
-      CLOUDFLARE_API_TOKEN:
+      # An R2 *account* API token scoped to the bucket, object read & write. Account rather
+      # than user: a user token's effective permissions are the intersection of its scope and
+      # that person's membership, so it stops working for reasons unrelated to CI.
+      R2_ACCESS_KEY_ID:
+        required: false
+      R2_SECRET_ACCESS_KEY:
         required: false
       CLOUDFLARE_ACCOUNT_ID:
         required: false
@@ -413,13 +437,13 @@ jobs:
             "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             artifacts
 
-  # Deploy the pair to this article's gated Cloudflare Pages project — the private-view
-  # channel, one Access login alongside the hub's Quartz wiki. Same mechanism as the hub's
-  # quartz-deploy.yml (npx wrangler@3, same secret names, so the same values transfer).
-  # A dry run assembles dist/ and validates it but never deploys. Otherwise a missing
-  # secret fails this job loudly — designed red until the account-side setup in
-  # docs/CLOUD.md § "Private docs site" is done — while paper/blueprint/publish stay green.
-  # Each article needs its OWN Pages project and its own Access application.
+  # Publish the set into this module's channel on the research site. A dry run assembles
+  # dist/ and validates it but never publishes. Otherwise a missing secret fails this job
+  # loudly while paper/blueprint/publish stay green: an article whose R2 token is not yet in
+  # place should still build, and should still say so.
+  #
+  # Every module uses the same bucket and the same token. There is nothing per-article to
+  # create, and nothing to gate afterwards.
   deploy:
     needs: [paper, extra_paper, blueprint, web]
     # `web` is skipped when build_web is false and `extra_paper` when the list is empty, and
@@ -451,6 +475,12 @@ jobs:
         run: |
           cd dist
           BUILD_DATE="$(date -u +%F)"
+          # noindex on the development head, which is gated and must never be indexed even if
+          # a URL escapes; not on a release, which exists to be found. Same rule as the
+          # publish step derives the channel by, and derived the same way so the two cannot
+          # disagree: the trigger decides, not a caller.
+          ROBOTS='<meta name="robots" content="noindex">'
+          case "$GITHUB_REF" in refs/tags/*) ROBOTS="" ;; esac
           # The two web-blueprint list items are emitted only when that view was built, so
           # the landing page never advertises a link that 404s.
           WEB_LINKS=""
@@ -465,7 +495,7 @@ jobs:
           <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <meta name="robots" content="noindex">
+          ${ROBOTS}
           <title>${GITHUB_REPOSITORY##*/} — documents</title>
           <style>body{font-family:system-ui,sans-serif;max-width:36rem;margin:3rem auto;padding:0 1rem;line-height:1.5}footer{margin-top:2rem;color:#666;font-size:.85rem}</style>
           </head>
@@ -525,31 +555,62 @@ jobs:
         if: inputs.dry_run
         run: echo "dist/ assembled and validated; the deploy itself is skipped on a dry run."
 
-      - name: Require Cloudflare secrets
+      - name: Require the R2 secrets
         if: ${{ !inputs.dry_run }}
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not configured — cannot deploy the gated docs site. Account-side steps (docs/CLOUD.md § 'Private docs site'): (1) copy the hub's two Cloudflare repo secrets (notes-wiki → Settings → Secrets → Actions; same names, same values, same Cloudflare account) into this repo's Actions secrets; (2) re-run — the first deploy auto-creates the '${{ inputs.pages_project }}' Pages project; (3) IMMEDIATELY gate the assigned pages.dev domain (production AND *.preview subdomains) with a Cloudflare Access application, one-time-PIN policy, same as the wiki app."
+          if [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / CLOUDFLARE_ACCOUNT_ID not configured — cannot publish to the research site. Create an R2 *account* API token (Cloudflare dashboard → R2 → API → Manage API tokens → Create Account API token, Object Read & Write, scoped to the '${{ inputs.bucket }}' bucket) and put its two halves in this repository's Actions secrets, alongside CLOUDFLARE_ACCOUNT_ID. Nothing else is needed: there is no Pages project to create and no Access application to remember — the site's router decides what is public, from the hub's manifest."
             exit 1
           fi
-          echo "Cloudflare secrets present."
+          echo "R2 secrets present."
 
-      - name: Set up Node
-        if: ${{ !inputs.dry_run }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Deploy to Cloudflare Pages
+      # Publish into this module's channel. Which channel is decided by the trigger and by
+      # nothing else — a tag build writes that release, anything else writes the development
+      # head — so an article repository never has to know, or be able to say, whether it is
+      # public. That is the hub manifest's business (ADR-0016 §2, §6).
+      #
+      # The two channels differ in more than their name:
+      #
+      #   main        the development head. Mirrored with --delete, so a file that leaves the
+      #               build leaves the channel. Served ONLY at /drafts/<slug>/, behind Access.
+      #   <tag>       one release. Write-once: a DOI names it, and a reader who cites
+      #               /papers/<slug>/<version>/ must get the same bytes in five years. The
+      #               guard below refuses rather than overwrite, so a re-run of a tag build is
+      #               a loud failure and not a silent rewriting of history.
+      #
+      # `aws` is preinstalled on GitHub's Ubuntu runners; R2 speaks the S3 API, so no AWS
+      # account is involved and nothing here reaches AWS.
+      - name: Publish dist/ to the research site
         if: ${{ !inputs.dry_run }}
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          PAGES_PROJECT: ${{ inputs.pages_project }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BUCKET: ${{ inputs.bucket }}
+          SLUG: ${{ inputs.slug }}
         run: |
-          # idempotent: creates the project on first run, no-op afterwards (hub pattern)
-          npx wrangler@3 pages project create "$PAGES_PROJECT" --production-branch=main || true
-          npx wrangler@3 pages deploy dist --project-name="$PAGES_PROJECT" --branch=main --commit-dirty=true
+          set -euo pipefail
+          endpoint="https://${ACCOUNT}.r2.cloudflarestorage.com"
+          case "$GITHUB_REF" in
+            refs/tags/*) channel="${GITHUB_REF#refs/tags/}" ;;
+            *)           channel="main" ;;
+          esac
+          dest="s3://${BUCKET}/${SLUG}/${channel}/"
+
+          if [ "$channel" = "main" ]; then
+            aws s3 sync dist/ "$dest" --endpoint-url "$endpoint" --delete --no-progress
+            echo "published the development head to /drafts/${SLUG}/ (gated)"
+          else
+            if aws s3 ls "$dest" --endpoint-url "$endpoint" | grep -q .; then
+              echo "::error::${dest} already exists and a release channel is immutable — a DOI names these bytes. To correct a release, cut a new version; to republish deliberately, delete the channel by hand first."
+              exit 1
+            fi
+            aws s3 sync dist/ "$dest" --endpoint-url "$endpoint" --no-progress
+            echo "published release ${channel} to /papers/${SLUG}/${channel}/"
+            echo "It becomes visible once the hub's manifest names it: site.published.version = ${channel}."
+          fi
