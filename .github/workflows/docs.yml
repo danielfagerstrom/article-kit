@@ -74,6 +74,24 @@ on:
         required: false
         default: research-content
         type: string
+      source_ref:
+        description: >-
+          Ref to build from. Empty (the normal case) builds the triggering ref. Set, together
+          with `channel`, it builds a past release from its own sources using TODAY'S
+          workflow — which is the only way to publish a release whose tag predates this file,
+          because dispatching against a tag would run the workflow as it was at that tag.
+        required: false
+        default: ""
+        type: string
+      channel:
+        description: >-
+          Channel to write, overriding the one the trigger implies. Empty (the normal case)
+          means the trigger decides: a tag writes that release, anything else writes `main`.
+          Naming a release channel here is as deliberate an act as pushing a tag, and it is
+          still refused if that channel already exists — a release is write-once.
+        required: false
+        default: ""
+        type: string
       dry_run:
         description: "Assemble and validate dist/, but never deploy or push the artifacts branch."
         required: false
@@ -164,6 +182,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Empty means the triggering ref, which is the normal case. Set, it builds a past
+          # release from its own sources with TODAY'S workflow -- the only way to publish a
+          # release whose tag predates this file, since dispatching against a tag would run
+          # the workflow as it was at that tag.
+          ref: ${{ inputs.source_ref }}
 
       # Tectonic caches every package it fetches under ~/.cache/Tectonic; restoring it
       # turns the network fetches into no-ops. Keyed on the TeX sources so the cache is
@@ -215,6 +239,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Empty means the triggering ref, which is the normal case. Set, it builds a past
+          # release from its own sources with TODAY'S workflow -- the only way to publish a
+          # release whose tag predates this file, since dispatching against a tag would run
+          # the workflow as it was at that tag.
+          ref: ${{ inputs.source_ref }}
 
       - name: Cache the Tectonic package bundle
         uses: actions/cache@v4
@@ -252,6 +282,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Empty means the triggering ref, which is the normal case. Set, it builds a past
+          # release from its own sources with TODAY'S workflow -- the only way to publish a
+          # release whose tag predates this file, since dispatching against a tag would run
+          # the workflow as it was at that tag.
+          ref: ${{ inputs.source_ref }}
 
       - name: Cache the Tectonic package bundle
         uses: actions/cache@v4
@@ -293,6 +329,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Empty means the triggering ref, which is the normal case. Set, it builds a past
+          # release from its own sources with TODAY'S workflow -- the only way to publish a
+          # release whose tag predates this file, since dispatching against a tag would run
+          # the workflow as it was at that tag.
+          ref: ${{ inputs.source_ref }}
 
       # No `cache: pip` here: it keys the cache on a dependency file and fails the job
       # outright ("No file matched to [**/requirements.txt or **/pyproject.toml]") when the
@@ -472,6 +514,7 @@ jobs:
         env:
           BUILD_WEB: ${{ inputs.build_web }}
           EXTRA_PAPERS: ${{ inputs.extra_papers }}
+          CHANNEL_INPUT: ${{ inputs.channel }}
         run: |
           cd dist
           BUILD_DATE="$(date -u +%F)"
@@ -480,7 +523,11 @@ jobs:
           # publish step derives the channel by, and derived the same way so the two cannot
           # disagree: the trigger decides, not a caller.
           ROBOTS='<meta name="robots" content="noindex">'
-          case "$GITHUB_REF" in refs/tags/*) ROBOTS="" ;; esac
+          if [ -n "$CHANNEL_INPUT" ]; then
+            [ "$CHANNEL_INPUT" = "main" ] || ROBOTS=""
+          else
+            case "$GITHUB_REF" in refs/tags/*) ROBOTS="" ;; esac
+          fi
           # The two web-blueprint list items are emitted only when that view was built, so
           # the landing page never advertises a link that 404s.
           WEB_LINKS=""
@@ -593,13 +640,18 @@ jobs:
           ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           BUCKET: ${{ inputs.bucket }}
           SLUG: ${{ inputs.slug }}
+          CHANNEL_INPUT: ${{ inputs.channel }}
         run: |
           set -euo pipefail
           endpoint="https://${ACCOUNT}.r2.cloudflarestorage.com"
-          case "$GITHUB_REF" in
-            refs/tags/*) channel="${GITHUB_REF#refs/tags/}" ;;
-            *)           channel="main" ;;
-          esac
+          if [ -n "$CHANNEL_INPUT" ]; then
+            channel="$CHANNEL_INPUT"
+          else
+            case "$GITHUB_REF" in
+              refs/tags/*) channel="${GITHUB_REF#refs/tags/}" ;;
+              *)           channel="main" ;;
+            esac
+          fi
           dest="s3://${BUCKET}/${SLUG}/${channel}/"
 
           if [ "$channel" = "main" ]; then
