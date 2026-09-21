@@ -133,7 +133,7 @@ first round in another vendor's system, and saves each output verbatim into
 `records/<module>/reviews/` with the system in the filename. The prompt's template is
 [`templates/external-review-prompt.md`](templates/external-review-prompt.md). Every finding is
 verified against the text, the blueprint and the sources before anything is changed; the response
-plan (`records/<module>/response-plan-round<N>.md`) sorts them into decisions for the author and
+plan (`records/<module>/PLAN-review-response.md`, `-round<N>` for later rounds) sorts them into decisions for the author and
 batches of work. A change to the paper after a build is frozen means a new freeze.
 
 ### 10. Release

@@ -90,8 +90,8 @@ python scripts/zenodo-release.py publish --export <export>  # author; cannot be 
 
 EXPORT for a module names its chapters, paper directory, tag, headline declaration, interface roots,
 process account, response plans, review directory, title, repository URL and related identifiers;
-`export-release.py --help` lists them, and Paper V's `CHANGELOG.md` entries for `v0.1` and
-`cone-v0.1` show the two that were run. Paths through the Bash tool use forward slashes. The whole
+`export-release.py --help` lists them, and Paper V's `records/cone/RELEASE-procedure.md` holds the
+command as run for `cone-v0.1`. Paths through the Bash tool use forward slashes. The whole
 of the deposit can be rehearsed on sandbox.zenodo.org (`--sandbox`, `ZENODO_SANDBOX_TOKEN`).
 
 What the first runs taught, now built into the scripts: the release date line may span two lines
