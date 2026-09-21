@@ -25,6 +25,8 @@ Framework-owned (`linkage init --sync`); do not edit here. The phases are
 - **One Lean-building agent at a time** on this machine. In a fresh worktree, copy the main
   checkout's `Formalization/.lake/build` in before the first `lake build` (parallel elaboration
   against the shared store drops olean reads).
+- **A prover's scratch is its own directory** (`%TEMP%/<repo>-<name>/`), never the top of `%TEMP%`:
+  a stray `enum.py` there once shadowed the standard library for every script run from `%TEMP%`.
 - `Formalization/.lake/packages` holds junctions into the shared store
   (`C:/Users/danie/Documents/Notes/lake-store.py`): never `lake update` or `lake clean` in a linked
   project; after a pin bump, a gate failing on an undeclared shared name is a stale junction, fixed
