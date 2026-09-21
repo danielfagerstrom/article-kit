@@ -9,6 +9,27 @@ the hub's `RELEASES.md` and Paper V's `notes/RELEASE-procedure.md` on 2026-09-21
 Articles are **modules**: focused, versioned, importing each other by reference. Preprints are
 **releases**.
 
+## Versioning the framework
+
+article-kit is itself versioned, because every article calls its reusable workflows and installs
+its CLI. The rhythm:
+
+1. A framework change lands on `main` through a pull request; CI (`ruff`, `pytest`, the scaffolded
+   article) is green. `CHANGELOG.md` gets its line under Unreleased in the same change.
+2. It gets a tag when it is worth consuming: the Unreleased entry is headed `## vX.Y.Z — <date> —
+   <title>`, and the author tags the merge commit (`git tag vX.Y.Z <commit>`, `git push origin
+   vX.Y.Z`). Versions are `v0.x.y` until the framework is stable: a new check, workflow input or
+   rule is a minor bump; a fix is a patch; anything that makes a passing article fail (a check
+   turned from advisory to fatal, an input renamed) is a minor bump while `v0`, and says so in the
+   changelog.
+3. Each module moves its pin **when it next runs**, not when the tag appears: it changes the
+   `@vX.Y.Z` of every `uses: …/article-kit/.github/workflows/…` and the `linkage_ref` input beside
+   it, runs `linkage init --sync` for the rules, and reads the changelog entries between its old
+   and new tag. Nothing is pushed to the modules by the framework.
+4. The pin is held by a check: `linkage pins` fails on a call at `@main`, or a `linkage_ref` that is
+   not a tag or a full sha, and belongs in each article's CI beside `linkage check`. A module never
+   points at `@main`, not even to try an unreleased change; it pins the commit sha for that.
+
 ## The rules
 
 1. **Self-contained and correct at its scope.** A release states its axioms, proves its theorems in

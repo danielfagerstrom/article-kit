@@ -36,9 +36,12 @@ Steps 1, 2 and 4 of [ADR-0001](adr/0001-article-kit-owns-the-article-process.md)
 
 ### E-0003 — tag `v0.1.0` and repoint the `@main` references
 
-The article repositories consume the reusable workflows at `@main`; the hub's release rules ask for
-pinned versions, as `scale-space-lean` already has. The test suite and its CI (E-0001) exist, so the
-tag is tested.
+Prepared (Q-0027): `CHANGELOG.md` has its `v0.1.0` section, `docs/RELEASE.md` states the bump
+rhythm, and `linkage pins` fails on a call at `@main`. Open: the author tags the merge commit; then
+Paper I and Paper V move their `uses:` and `linkage_ref` to `v0.1.0` and add `linkage pins` to their
+CI (SSF's references wait, Q-0012); the pin is the last step of the item, and it is deleted with it.
+Making `linkage_ref` required in `lean.yml` and `manifest.yml` (it defaults to `main`) waits until
+every caller passes it.
 
 ---
 

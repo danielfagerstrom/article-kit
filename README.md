@@ -27,6 +27,7 @@ linkage shape [DIR]                             # instruction files that hold re
 linkage manifest                                # write blueprint-manifest-<slug>.json for the hub
 linkage demand                                  # unproved blueprint nodes the hub is asking for
 linkage axioms --check                          # the trust boundary against the ledger
+linkage pins                                    # fail if a workflow call or linkage_ref is at a branch, not a tag
 ```
 
 CI runs `linkage check --require-render --emit-manifest <path>`: `--require-render` makes a
