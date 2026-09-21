@@ -16,6 +16,8 @@ consistency with them" added at its head, and save each output.
 
 ---
 
+## Part A, a content review
+
 You are a referee for a mathematical-imaging journal (JMIV class), reviewing the attached
 manuscript, *<title>*. *One or two sentences placing it: a series it belongs to, what the earlier
 paper did, what section restates it; "say where it is not readable on its own".* *For a later
