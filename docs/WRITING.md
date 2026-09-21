@@ -9,8 +9,9 @@ It answers three questions, in the order they bind: **who is the reader** (upstr
 **what does the prose sound like** (neutral, and how that is enforced), and **what does the article
 say about how it was written**.
 
-**Nothing in this file is published.** The one thing that reaches a reader is the use-of-AI
-disclosure, and § 6 points at the statements of record rather than carrying a draft.
+**This file is not part of any article**, though it is readable by anyone: article-kit is a public
+repository. What reaches an article's reader is the use-of-AI disclosure, and § 6 points at the
+statements of record rather than carrying a draft.
 
 **Who reads this file.** A session drafting or revising a `.tex` section, a blueprint proof or a
 chapter note (the path-scoped rule `.claude/rules/article-kit/writing.md` sends it here); the
@@ -184,6 +185,10 @@ derivations and where they turn) must be on the page, not merely named.
   sentence.
 - **Let displayed equations do the work.** Connecting prose stays short and functional. Do not
   narrate a calculation you can show.
+- **Keep the tools to what the argument consumes.** Develop only the machinery the results in front
+  of the reader use; a general framework the article exercises only a slice of makes the text
+  harder, not more authoritative, and is deferred to the article that uses it (the author, on the
+  covariance framework in the SSF monograph: "keep the tools to what actually is needed").
 - **Illustrate generously.** The theory is geometric, and a schematic often carries a point better
   than a paragraph. A figure asserts nothing the text does not.
 - **No commentary on what is machine-checked in the body.** The trust-base subsection owns it (§ 4);
