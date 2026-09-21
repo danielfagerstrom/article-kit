@@ -106,6 +106,14 @@ node labels before starting.
   one.
 - Never write backslash-bearing content through a non-raw string (`\ref` → carriage return); the
   Edit tool or raw strings only.
+- **Admitting a name re-opens its card.** The verdict covers the interface names the review read;
+  it does not extend to a name admitted after it closed. A name added to `trust-boundary.txt`
+  later gets, before any declaration relies on it, the Tier-1 interface card: the F6 pass against
+  the anchored pages fetched as images, with the source's wording transcribed verbatim into the
+  ledger (`docs/LINKAGE.md` rule 5), and a row in the findings ledger. The same holds for a name
+  *restated*, since a restatement is a new statement. (Paper V: the three A10 names were admitted
+  five days after its review, never had this pass, and one was false as typed; an external referee
+  found it.)
 - Commit and push per phase, explicit paths, full gate (`lake build`, the axiom guard **run to
   completion with the exit code checked**, `build-blueprint.sh --quick`, `linkage check`).
 
@@ -123,3 +131,5 @@ article's nodes filled in (read `README.md`'s status table and the blueprint's `
 `/fidelity-review cards <tier|chapter>` — run the card pass for a tier or chapter with the prompts
 in `prompts/`, integrate into `REVIEW-fidelity.md`. `/fidelity-review sweep` — run
 `scripts/f7sweep.py` and the F8 diff. `/fidelity-review close` — P6.
+`/fidelity-review interface <name>` — the interface card for a name admitted or restated after the
+review closed (§ 5).

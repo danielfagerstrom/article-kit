@@ -45,19 +45,6 @@ factor, admitted as a false axiom and found by the first external review.
 
 ---
 
-## process: an interface admitted after the fidelity review re-opens its card
-
-**Wanted by** `spatial-hemigroup-scale-space` (module B, lesson 2), 2026-09-21.
-
-The fidelity review read each admitted interface against page images; the three A10 names were
-admitted five days later and never had that pass. **Suggested shape:** a standing rule in the
-`fidelity-review` skill (admitting a name re-opens its card, and the interface pass runs before the
-name is relied on). The rule is already in `scaffold/claude/rules/ledger.md` and `docs/PROCESS.md`
-§ 6; the skill's own text still lacks it. Not edited on 2026-09-21 because the skill had an
-uncommitted change from another session.
-
----
-
 ## process: the release and register scripts move into `linkage`
 
 **Wanted by** `spatial-hemigroup-scale-space` (module B, lessons 11 and 12; ADR-0001 step 5),
