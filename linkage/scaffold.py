@@ -8,14 +8,16 @@ by `linkage init` and their divergence is detected by `linkage check`.
 
 Two tiers:
 
-**Framework-owned** — `blueprint.sty`, `theorems.tex`, `linkage-macros.tex`, `latexmkrc`.
-Editing the article's copy is a mistake; `linkage check` reports it as an advisory naming
-the file. Change them in article-kit and re-run `linkage init --sync`.
+**Framework-owned** — `blueprint.sty`, `theorems.tex`, `linkage-macros.tex`, `latexmkrc`, and
+the session rules under `.claude/rules/article-kit/` (ADR-0001: the process reaches every
+article session through them). Editing the article's copy is a mistake; `linkage check` reports
+it as an advisory naming the file. Change them in article-kit and re-run `linkage init --sync`.
 
-**Seeded** — `plastex.cfg`, `extra_styles.css`, `render-allowlist.txt`, and the rendered
-templates (`web.tex`, `print.tex`, `macros.tex`, `linkage.toml`). Copied once as a starting
-point and then owned by the article: the allowlist grows with the article's vocabulary, the
-split-level depends on its chapter shape, the macros hold its notation.
+**Seeded** — `plastex.cfg`, `extra_styles.css`, `render-allowlist.txt`, the `adr/` and
+`records/` READMEs, and the rendered templates (`web.tex`, `print.tex`, `macros.tex`,
+`linkage.toml`, `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `notes/HANDOFF.md`). Copied once as a
+starting point and then owned by the article: the allowlist grows with the article's vocabulary,
+the split-level depends on its chapter shape, the macros hold its notation.
 """
 from __future__ import annotations
 
@@ -31,6 +33,11 @@ FRAMEWORK_OWNED = {
     "blueprint/theorems.tex": "blueprint/src/theorems.tex",
     "blueprint/linkage-macros.tex": "blueprint/src/linkage-macros.tex",
     "blueprint/latexmkrc": "blueprint/src/latexmkrc",
+    "claude/rules/core.md": ".claude/rules/article-kit/core.md",
+    "claude/rules/writing.md": ".claude/rules/article-kit/writing.md",
+    "claude/rules/blueprint.md": ".claude/rules/article-kit/blueprint.md",
+    "claude/rules/ledger.md": ".claude/rules/article-kit/ledger.md",
+    "claude/rules/lean.md": ".claude/rules/article-kit/lean.md",
 }
 
 # seeded once, then the article's
@@ -43,6 +50,8 @@ SEEDED = {
     "blueprint/plastex.cfg": "blueprint/src/plastex.cfg",
     "blueprint/extra_styles.css": "blueprint/src/extra_styles.css",
     "blueprint/render-allowlist.txt": "blueprint/render-allowlist.txt",
+    "repo/adr-README.md": "adr/README.md",
+    "repo/records-README.md": "records/README.md",
 }
 
 # template -> destination; rendered with @@NAME@@ substitution, never overwritten
@@ -51,6 +60,10 @@ TEMPLATES = {
     "blueprint/print.tex.in": "blueprint/src/print.tex",
     "blueprint/macros.tex.in": "blueprint/src/macros.tex",
     "linkage.toml.in": "linkage.toml",
+    "repo/CLAUDE.md.in": "CLAUDE.md",
+    "repo/README.md.in": "README.md",
+    "repo/CHANGELOG.md.in": "CHANGELOG.md",
+    "repo/HANDOFF.md.in": "notes/HANDOFF.md",
 }
 
 

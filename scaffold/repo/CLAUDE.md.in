@@ -1,0 +1,29 @@
+# @@SLUG@@ — Claude Code context
+
+This file holds **this article's standing rules and nothing else**, in the present tense. The
+process every article follows, and the rules every article shares, load from
+`.claude/rules/article-kit/` (framework-owned; `../article-kit/docs/PROCESS.md` is the map). The
+state is `README.md`; what the next session needs is `notes/HANDOFF.md`; history is `CHANGELOG.md`
+and git; decisions are `adr/`. Nothing dated, no status, no record of what a session did goes here:
+`linkage check` reports it.
+
+**What this is.** @@TITLE@@. *One paragraph: the article, its slug and label, what it is the
+counterpart or continuation of, its modules if there are several.*
+
+## Where this sits
+
+- **Framework**: `article-kit` (the `linkage` CLI, the scaffolding, the reusable CI, the session
+  rules). `linkage.toml` binds this repository to it.
+- **Shared Lean**: *the shared packages and their pins.*
+- **Hub**: `$WIKI_VAULT`, thread page `wiki/<thread>.md`.
+- **Librarian**: `$LIBRARY_DIR`; `library resolve <citekey> --json`.
+
+## This article's rules
+
+*Only rules specific to this article: its notation, its reference policy, its scope, the author's
+decisions in force that change how work is done here (each naming its ADR). A rule another article
+would also need belongs in article-kit.*
+
+## Commands
+
+*The build and gate commands, where they differ from `PROCESS.md`.*

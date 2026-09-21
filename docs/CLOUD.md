@@ -49,7 +49,7 @@ Add **two additional source repositories** to the environment (phase-3 lesson: t
 **not** clone unattached private repos, so the hook cannot fetch them itself):
 
 - `danielfagerstrom/notes-wiki` — the vault (`$WIKI_VAULT`): `wiki gate/show/demands`, the outline,
-  the source digests, the private writing-style guide.
+  the source digests. (The writing standard is article-kit's `docs/WRITING.md`.)
 - `danielfagerstrom/library` — the librarian: `library resolve`/`page` via the Drive-API fallback.
 
 They land under `/workspace/<name>`; the hook detects them by marker files, not by name.

@@ -125,6 +125,15 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no
    numbered check, and the checker's numbering runs one behind the rules' from here on.)
 
+   **An entry carries the source's wording verbatim** (2026-09-21, from Paper V's module B): the
+   statement as printed (the formula, its hypotheses, the sentence it sits in), transcribed from the
+   page image by the librarian, beside the "statement as used". An anchor is not verified until the
+   transcription is in the entry or in the repository's verbatim companion
+   (`blueprint/AXIOMS-verbatim.md`, one section per entry, written in the same commit as the entry).
+   A paraphrase alone dropped a slowly varying factor from Sato's (53.28), and the result was
+   printed, typed, reviewed and admitted as a false axiom. Not yet checked by `linkage axioms
+   --check`; a missing transcription is a review finding until it is (`WISHLIST.md`).
+
    **Ledger identifiers are opaque and stable** (2026-08-09, from `hcs`). Assign them in order of
    introduction; never reuse, never renumber. They are *published names* — `manifest` gives every node a
    `ledger` array and the hub reads it, so renumbering silently changes what an existing hub note means,

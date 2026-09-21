@@ -96,7 +96,10 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
 ### 4. Preliminaries / Mathematical framework  (~10–15%)
 - **Contract:** fix notation, definitions, standing assumptions, and cited results
   used as given. *This is where your axiom hygiene lives* — each imported result
-  documented with its exact source and transcribed hypotheses.
+  documented with its exact source and transcribed hypotheses. **A module that
+  follows another restates here what it uses of its predecessor** (the axioms,
+  the main theorem, the notation table, verbatim where shared), so that it reads
+  without the earlier paper open.
 - **Det.:** every symbol defined before first use; no symbol overloaded; each
   standing assumption labelled and referenced where invoked.
 - **LLM:** "For each definition sharing a name with a standard notion, does it
@@ -126,7 +129,10 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
 
 ### 7. Experiments / numerical validation  *(optional, ~10–15%)*
 - **Contract:** state which claim *each* experiment tests; report honestly;
-  ensure reproducibility.
+  ensure reproducibility. **Every number names the exact object computed**:
+  the variant, its parameters, the norm. (Paper V's module B reported the errors
+  of a variant with a Gaussian compensation under the description of the variant
+  without it; an external referee reproduced both.)
 - **Det.:** data-availability statement present; code/data DOIs resolve; every
   figure/table referenced in text; each experiment maps to a claim.
 - **LLM:** "Does any experiment test a claim the paper doesn't make (or vice

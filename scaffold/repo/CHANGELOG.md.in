@@ -1,0 +1,7 @@
+# Changelog
+
+One entry per release, headed `## <tag> — <date> — <title>`, saying what changed and why, and which
+statements were renumbered, strengthened, weakened or withdrawn (`../article-kit/docs/RELEASE.md`,
+rule 2). Work since the last release accumulates under Unreleased.
+
+## Unreleased
