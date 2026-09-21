@@ -25,7 +25,7 @@ separate from the blueprint (`draft/*.md`; nodes carry `% draft: Lemma X.Y` prov
 |---|---|---|---|
 | F1 | vacuous hypothesis | a hypothesis or structure field nothing satisfies | true and useless; `lake build` cannot tell |
 | F2 | junk-value conclusion | holds because a partial function returned its default: Bochner `∫ = 0` off integrability, `mellin` likewise, `Real.sSup ∅ = 0`, `x/0 = 0`, `ENNReal.toReal ⊤ = 0`, `deriv` off differentiability, `Real.log` at `≤ 0` | provable, and not the article's sentence |
-| F3 | weakened conclusion | a clause missing: "in the domain" without the domain conjunct; `∃` where the article says unique; a.e. for pointwise; the object concluded is not packaged in the type the next theorem starts from | each present clause reads right |
+| F3 | weakened conclusion | a clause missing: "in the domain" without the domain conjunct; `∃` where the article says unique; a.e. for pointwise; the object concluded is not packaged in the type the next theorem starts from; **a closing gloss** ("so the members with no ancestor are exactly those with…", "containing the Matérn, Student-t and stable families") that no declaration states — a summary sentence at the end of a clause is a claim, and an "exactly" is an iff; card C.3 of Paper V passed one that was false (2026-09-11), and a second of the same shape sat at a `\leanok` node (`prop:thorin-subclass`(5)) — grep every `\leanok` node for "exactly", "contains the", "in the smallest class" | each present clause reads right, glosses included |
 | F4 | strengthened hypothesis / narrowed domain | extra measurability, `Ioi` for `Ici`, `≤` vs `<`, a quantifier over more than the article demands, a normalisation as a field | a special case; whether the article's reader is in it is the question |
 | F5 | definitional divergence | the Lean object is not the article's (a definition widened or narrowed to make a proof go through) | every theorem is right and about something else |
 | F6 | interface fidelity | an `axiom` stronger than its cited source, or missing a hypothesis the source has | the only place an inconsistency can enter; everything downstream inherits |
@@ -106,6 +106,14 @@ node labels before starting.
   one.
 - Never write backslash-bearing content through a non-raw string (`\ref` → carriage return); the
   Edit tool or raw strings only.
+- **Admitting a name re-opens its card.** The verdict covers the interface names the review read;
+  it does not extend to a name admitted after it closed. A name added to `trust-boundary.txt`
+  later gets, before any declaration relies on it, the Tier-1 interface card: the F6 pass against
+  the anchored pages fetched as images, with the source's wording transcribed verbatim into the
+  ledger (`docs/LINKAGE.md` rule 5), and a row in the findings ledger. The same holds for a name
+  *restated*, since a restatement is a new statement. (Paper V: the three A10 names were admitted
+  five days after its review, never had this pass, and one was false as typed; an external referee
+  found it.)
 - Commit and push per phase, explicit paths, full gate (`lake build`, the axiom guard **run to
   completion with the exit code checked**, `build-blueprint.sh --quick`, `linkage check`).
 
@@ -123,3 +131,5 @@ article's nodes filled in (read `README.md`'s status table and the blueprint's `
 `/fidelity-review cards <tier|chapter>` — run the card pass for a tier or chapter with the prompts
 in `prompts/`, integrate into `REVIEW-fidelity.md`. `/fidelity-review sweep` — run
 `scripts/f7sweep.py` and the F8 diff. `/fidelity-review close` — P6.
+`/fidelity-review interface <name>` — the interface card for a name admitted or restated after the
+review closed (§ 5).
