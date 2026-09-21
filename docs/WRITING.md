@@ -9,8 +9,9 @@ It answers three questions, in the order they bind: **who is the reader** (upstr
 **what does the prose sound like** (neutral, and how that is enforced), and **what does the article
 say about how it was written**.
 
-**Nothing in this file is published.** The one thing that reaches a reader is the use-of-AI
-disclosure, and § 6 points at the statements of record rather than carrying a draft.
+**This file is not part of any article**, though it is readable by anyone: article-kit is a public
+repository. What reaches an article's reader is the use-of-AI disclosure, and § 6 points at the
+statements of record rather than carrying a draft.
 
 **Who reads this file.** A session drafting or revising a `.tex` section, a blueprint proof or a
 chapter note (the path-scoped rule `.claude/rules/article-kit/writing.md` sends it here); the
