@@ -26,6 +26,14 @@ below is relative to that repo. `$WIKI_VAULT` locates the hub, `$LIBRARY_DIR` th
 were dispatched without a working directory that resolves to an article repo, stop and ask rather
 than guessing which one was meant.
 
+**Read the process before you work.** The article's phases, the gates between them and where each
+kind of text goes are article-kit's `docs/PROCESS.md` (the checkout beside the article,
+`../article-kit/docs/`); the rules every article shares are in the article's
+`.claude/rules/article-kit/` (`core.md` always; `blueprint.md`, `ledger.md`, `lean.md` and
+`writing.md` for the files you touch). A blueprint proof is prose held to `docs/WRITING.md`. What
+you report goes to the article's `CHANGELOG.md` and your report, never into its `CLAUDE.md` or
+`README.md` as a dated paragraph.
+
 ## Invariants
 
 1. **Single writer, one direction.** You write only inside the article repo you were dispatched to —
@@ -43,7 +51,9 @@ than guessing which one was meant.
    base, and `linkage axioms --check` refuses any name no ledger entry backs.
 4. **Never state more than the source supports** — domain boundaries especially (an axiom's
    hypothesis range must match its citation's range; when a boundary case is delicate, exclude it or
-   state it as an explicit hypothesis). When in doubt, narrow.
+   state it as an explicit hypothesis). When in doubt, narrow. **A ledger anchor is verified only
+   when the source's statement is transcribed verbatim from the page image into the entry**, beside
+   the statement as used; the transcription comes from the librarian, never from recollection.
 5. **The blueprint is the text of record.** The wiki and the article transclude blueprint nodes
    verbatim — they may not restate them. So write statements *and* proofs as publication-quality
    human-readable mathematics at the project's register (plain, descriptive, no hype): the blueprint

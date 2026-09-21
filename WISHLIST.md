@@ -20,51 +20,86 @@ fulfilling it would mean editing `linkage/`, `scaffold/`, `.github/workflows/` o
 it belongs here.
 
 **Format.** One `##` section per request: what is wanted, who wants it, why (what it unblocks on
-their side), and — if the requester has one — a suggested shape. Date it. Leave fulfilled entries in
-place with a resolution line, so the channel keeps its history.
+their side), and — if the requester has one — a suggested shape. Date it. **A fulfilled entry is
+deleted** in the commit that fulfils it, whose message names it: git and `CHANGELOG`-style commit
+messages hold the history, and this file holds only what is still wanted (ADR-0001).
+
+**`process` items.** A general lesson an article session learns about the process (a rule the
+next article would need, a step that was missing, an instruction that was not found) is filed here
+as a `process` item at the close of the session that learned it, with its evidence. The
+maintainer turns it into a change to `docs/`, a session rule in `scaffold/claude/rules/`, an agent
+or a skill, and deletes the item. A lessons file inside an article repository means this failed.
 
 ---
 
-## Make the control-character check a `linkage check` fatal rule
+## process: `linkage axioms --check` requires the verbatim transcription
 
-**Wanted by** `hemigroup-causal-scale-space-kernels`, 2026-08-12.
+**Wanted by** `spatial-hemigroup-scale-space` (module B, lesson 1), 2026-09-21.
 
-**What.** `scaffold/scripts/check-control-chars.py` rejects stray control characters (anything but
-LF, or CR immediately before LF) in `.tex`, `.md` and `.lean` sources. It is currently a scaffolded
-script an article has to remember to wire into its own blueprint gate. It would be better as a
-fatal check inside `linkage check`, where every article gets it without wiring.
+`LINKAGE.md` rule 5 now requires every ledger entry to carry the source's wording verbatim, in the
+entry or in `blueprint/AXIOMS-verbatim.md`. Nothing checks it. **Suggested shape:** an entry that
+grounds an admitted interface name and has neither a `**Verbatim:**` block nor a section of the
+same id in the verbatim companion fails `linkage axioms --check`; an unadmitted entry gets an
+advisory. The evidence: ledger A10 of Paper V, a paraphrase that dropped Sato's slowly varying
+factor, admitted as a false axiom and found by the first external review.
 
-**Why.** Writing LaTeX or Lean through a non-raw Python string literal silently turns `\begin`
-into U+0008, `\texttt` into a TAB and `\ref` into a CR. This happened three times in one session.
-Each time the diff looked almost right, `linkage check` passed, and `latexmk` failed several
-hundred lines later with *"Unicode character ^^H (U+0008) not set up for use with LaTeX"* — a
-message that names the character and not the cause, in a file the author had not knowingly touched
-at that point. The failure is cheap to detect and expensive to diagnose, which is the profile a
-fatal check wants.
+---
 
-**Suggested shape.** A fatal check alongside the existing render-safety check (they scan the same
-files), reporting `path:line` and a byte-context snippet, plus the one-line remedy: use a raw
-string or `bytes([92])`. The script is written to be lifted as-is — it takes paths, defaults to the
-tracked source trees, and returns a non-zero exit code.
+## process: an interface admitted after the fidelity review re-opens its card
 
-**Resolved 2026-08-15** — shipped as fatal check 9 (`LINKAGE.md` rule 9). Implemented as suggested,
-with three adjustments the framework's own shape asked for:
+**Wanted by** `spatial-hemigroup-scale-space` (module B, lesson 2), 2026-09-21.
 
-- The scan is I/O, so it lives in `artifacts.py` with the other side inputs and is passed into
-  `checks.run()`; `checks.py` holds only the policy and still touches no files.
-- Paths come from `linkage.toml` rather than hardcoded globs, since article layouts differ — and the
-  scope now includes **`paper/`**, which the script's globs omitted. That is the tree an author edits
-  most, and the one `--pin-shared` writes to.
-- Fatal with no grace period, unlike check 3b: there is no legitimate use of these characters, and
-  measuring first showed neither article carried one.
+The fidelity review read each admitted interface against page images; the three A10 names were
+admitted five days later and never had that pass. **Suggested shape:** a standing rule in the
+`fidelity-review` skill (admitting a name re-opens its card, and the interface pass runs before the
+name is relied on). The rule is already in `scaffold/claude/rules/ledger.md` and `docs/PROCESS.md`
+§ 6; the skill's own text still lacks it. Not edited on 2026-09-21 because the skill had an
+uncommitted change from another session.
 
-It earned its place on the first run, in the *other* article: `scale-space-foundations`'
-`blueprint/PROOFS-PLAN.md:63` had `\varphi` corrupted to U+000B (`\v` → vertical tab), undetected
-since the framework split. Repaired in the same pass.
+---
 
-The scaffolded `scripts/check-control-chars.py` stays: it is wired into `build-blueprint.sh`, where
-it fails fast before `latexmk` and without needing the framework importable. `linkage check` now
-covers the same ground more broadly; the duplication is deliberate and cheap.
+## process: the release and register scripts move into `linkage`
+
+**Wanted by** `spatial-hemigroup-scale-space` (module B, lessons 11 and 12; ADR-0001 step 5),
+2026-09-21.
+
+`scripts/export-release.py` (the verification export, parameterized per module),
+`scripts/zenodo-release.py` (deposits through the Zenodo API with a reserved DOI, and the
+first-page gate) and `scripts/count-register.py` (the register counts by zone) exist only in Paper
+V and are needed by every article. **Suggested shape:** `linkage release export|zenodo` and
+`linkage prose register`, with the per-module parameters in `linkage.toml` (`[[modules]]`: name,
+chapters, paper directory, tag prefix, headline, roots, records directory), so that
+`docs/RELEASE.md`'s commands stop naming one repository's scripts.
+
+---
+
+## process: summaries and numbers get a scope audit before a frozen build
+
+**Wanted by** `spatial-hemigroup-scale-space` (module B, lessons 8 and 9), 2026-09-21.
+
+Every pass that restated claims from their statements and compared them with the prose found a
+dropped hypothesis (rows R167, R168, R170), and a numerical example reported the errors of one
+variant under the description of another. `WRITING.md` § 5 and `PROCESS.md` § 8 now require the
+audit; **suggested shape:** a mode of the `draft-reviewer` contract (`REVIEWER-CONTRACT.md`) that
+takes the abstract, the introduction's result paragraphs, the conclusion, the tables and the
+captions, restates each claim from the statement it cites, and flags every mismatch in scope, and a
+tag for a number that does not name the object computed.
+
+---
+
+## process: skills and agents as a Claude Code plugin
+
+**Wanted by** ADR-0001 step 6, 2026-09-21.
+
+The shared skills (`fidelity-review`, `tighten`) reach an article session only through user-level
+junctions (`tighten`'s is not installed on this machine), and the shared agents through the hub's
+`sync-agents.sh`, which runs only when a hub session starts. **Suggested shape:** article-kit as a
+plugin (`.claude-plugin/plugin.json`, `skills/`, `agents/`) in a marketplace declared by each
+article's scaffolded `.claude/settings.json` (`extraKnownMarketplaces`, `enabledPlugins`). The docs
+say this loads in single-repository cloud sessions too. Pilot on one repository, locally and in the
+cloud, before any other depends on it; note that plugin agents rank below `~/.claude/agents/`, so
+the synced copies must be removed when the plugin takes over, and that plugin skills are
+namespaced (`/article-kit:fidelity-review`).
 
 ---
 
@@ -101,136 +136,6 @@ framework data, which may be where it belongs anyway.
 **Not urgent, and the hub is not blocked.** `--check` still reports staleness, and the local failure is
 a stale agent rather than a missing one. Recorded now because it is the kind of gap that is obvious
 while the context is fresh and invisible six weeks later.
-
----
-
-## Check that a proved node carries `\leanok` on its *proof*, not only on its statement
-
-**Wanted by** `hemigroup-causal-scale-space-kernels`, 2026-08-15.
-
-**What.** A `linkage check` rule: if a node's `\lean{...}` names a Lean *theorem* and its statement
-carries `\leanok`, its `proof` environment should carry `\leanok` too. Advisory is probably the
-right severity — there are legitimate exemptions, listed below.
-
-**Why.** leanblueprint colours the dependency graph from **two independent flags**, and `linkage`
-models only one of them:
-
-| flag | where | graph effect |
-|---|---|---|
-| `\leanok` in the statement environment | node body | **green border** — "the statement is formalized" |
-| `\leanok` inside the `proof` environment | the following proof | **green background** — "the proof is formalized" |
-
-A node with the first and not the second paints green-bordered with a *blue* background, which the
-generated legend reads as "the proof of this result is ready to be formalized" — i.e. **not done**.
-`linkage check` counts statement-level `\leanok` only, includes the node in its `\leanok` total,
-and passes. So the graph and the linkage count disagree, silently, and the graph is the artifact
-the hub and human readers actually look at.
-
-Found by a reader asking why a node they knew was proved was painting blue. Six nodes in this
-article were affected — `prop:moments`, `lem:potential-kernel`, `prop:sonine-pair-exists`,
-`lem:delay-core`, `lem:generator-properties`, `lem:local-polynomial-symbol` — every one of them
-machine-checked, sorry-free, and listed in the article's `#print axioms` guard. Four had been wrong
-for weeks. **Two were introduced in a single session by an author who had just fixed the other
-four**, which is the argument for a check rather than for care: the flag is invisible at the point
-of writing, because the statement and the proof are separate environments and only one of them is
-in front of you when you tag the node.
-
-**Suggested shape.** In the pass that already parses `\leanok` / `\notready` / `\lean{}`, record
-whether the `proof` environment immediately following a statement contains `\leanok`, and report
-the mismatch as `path:line`. Three exemptions, all mechanical:
-
-- **definitions** — no proof environment, so nothing to flag; they colour from the statement flag
-  alone;
-- **`\notready` nodes** — stated but unproved by construction;
-- **nodes with no proof environment at all** — though in this constellation that is already
-  disallowed by the "the blueprint is the text of record" rule.
-
-The converse mismatch is worth reporting too, and more loudly: `\leanok` on a proof whose statement
-lacks it is incoherent rather than merely under-reported.
-
-**Not blocking.** The six are fixed here by hand, and a one-off audit script took twenty lines —
-which is rather the point. It should not be twenty lines that each article rediscovers after a
-reader notices a wrong colour.
-
-**Resolved 2026-09-15** — shipped as rule 10 / check 10, with the exemptions as listed. The parser
-already captured the proof body; it only had to read the flag off it before `normalize_statement`
-strips it (`Node.proof_leanok`), so the check is policy over the IR like every other one, and no
-published sha moves — the normalization that strips `\leanok` is the same on both sides, which a
-test pins.
-
-Two adjustments to the requested shape:
-
-- **The converse is fatal, not advisory.** You were right that it is worth reporting more loudly;
-  it is also mechanically unambiguous — a formalised proof of a statement that is not itself
-  formalised — and it paints a border/background combination the legend has no reading for. The
-  missing proof flag stays advisory, as asked: a proof may legitimately be unformalised.
-- **Located by label, not `path:line`.** Every other check in this module reports by label, and
-  nodes do not carry line numbers; adding them for one rule would have been a parser change of its
-  own. The label is what `\leanok` is edited by.
-
-Measured before shipping, as rule 9 was: all three articles are clean on it today (hcs 67 `\leanok`
-statements / 61 `\leanok` proofs, Paper V 54 / 45 — every difference a definition or a node with no
-proof environment, i.e. exempt). So it starts with no backlog and cannot be waived on day one. The
-summary line now prints both counts, which is the disagreement made visible: `106 statement nodes
-(67 \leanok, 61 with a \leanok proof)`.
-
-
----
-
-## A second paper directory in one article repository
-
-**Wanted by** `spatial-hemigroup-scale-space`, 2026-09-15.
-
-**What.** `linkage check` reads the paper from one directory, `paths.paper` in `linkage.toml`
-(`linkage/config.py`, a single `Path`; `linkage/artifacts.py` globs `cfg.paper/*.tex` in
-`paper_markers` and `pin_shared`). Paper V now holds three modules in one repository (its
-ADR-0004, ADR-0006): the released line paper in `paper/`, and modules B and C to be drafted in
-`paper-b/` and `paper-c/`, each with its own release tag and verification export. The markers of a
-second paper directory are invisible to check 3 (rule 4), so its shared statements are not
-compared with the blueprint, `--pin-shared` does not reach them, and `--strict-shared` cannot be
-turned on for it.
-
-**Why.** The gate before every commit of the article stage is `linkage check` with every shared
-statement `verbatim`; the line paper had 33 of them and the drift check caught real divergence at
-the mirror (its ledger rows R156–R157). Module B transcribes about 37 nodes. Drafting it without
-the check means either a private copy of the checker in the article repository or an unchecked
-paper, and the article's rule is that a framework gap is requested here, not worked around there.
-**This blocks the drafting of B** (its session prompt, step 1(c)).
-
-**Suggested shape.** `paths.paper` accepts a string or a list of strings; `Config` carries
-`papers: tuple[Path, ...]` (the string form is a one-element tuple, so every existing
-`linkage.toml` reads as before); `paper_markers`, `pin_shared` and `Config.missing` iterate over
-the tuple; the summary line's "N paper shared-statements" is the sum, or one count per directory
-if that reads better. Markers carry the file name already, so nothing else in the report changes.
-The reusable `docs.yml` has a single `paper_tex` input; a second entry point (a list input, or one
-job per paper) is the same request at the CI level, not blocking, since the article builds with
-`tectonic` locally and releases through the export. The callers' `paths:` filters (`paper/**`)
-are the article's own to widen.
-
-**Resolved 2026-09-15** — shipped as suggested. `paths.paper` takes a string or a list; `Config`
-carries `papers: tuple[Path, ...]` (the string form is a one-element tuple, so every existing
-`linkage.toml` reads as before); `artifacts.paper_files` is the one place the directories are walked,
-and `paper_markers`, `pin_shared` and `Config.missing` go through it. Three adjustments the
-framework's shape asked for:
-
-- **Markers are located by repo-relative path** (`paper-b/sections.tex:41`), not by file name. The
-  file name alone was unambiguous with one directory and would not have been with three — a module
-  that copies the line paper's `sections.tex` is the likely case, not the exotic one. The report
-  paths are also openable now, which the control-character check already did.
-- **The directories are walked in `linkage.toml` order**, not globally name-sorted, so a report reads
-  paper by paper rather than interleaving module B's findings with the line paper's.
-- **An empty list and a repeated directory are config errors.** Neither is a harmless no-op: the
-  first silently checks no paper at all, and the second reads, reports and pins every marker twice.
-
-The summary gains a `papers:` line with the per-directory breakdown, printed only when there is more
-than one — with a single paper it would repeat the count above it. The totals stay whole-repo: there
-is one blueprint whichever paper a statement is shared with.
-
-`docs.yml` is untouched, as the request allows. A second `paper_tex` is a matrix over the reusable
-workflow and would change the contract of all nine callers; it is worth doing when a second article
-wants it too, and B builds locally and releases through its export until then. `tests/test_papers.py`
-covers the config forms, collection order, same-named files in two directories, drift caught in the
-second paper, `--pin-shared` reaching it, and the breakdown line.
 
 ---
 

@@ -77,6 +77,9 @@ def cmd_check(args) -> int:
             f"[scaffold] {rel} differs from the framework's copy — edit it in the linkage "
             "repo and re-run `linkage init --sync`, or the change is lost on the next sync"
         )
+    # Instruction files hold instructions, not the record (ADR-0001). Advisory only.
+    from . import shape
+    f.advisory.extend(shape.check(cfg.root))
 
     if args.pin_shared and f.unpinned:
         shas = {n.label: n.shared_sha for n in bp.nodes if n.label}
@@ -238,6 +241,16 @@ def cmd_prose_stats(args) -> int:
     return 0
 
 
+def cmd_shape(args) -> int:
+    from . import shape
+    root = (args.dir or args.root or Path.cwd()).resolve()
+    found = shape.check(root)
+    for a in found:
+        print("  advisory " + a)
+    print(f"\nshape: {len(found)} advisory(ies) under {root}")
+    return 0
+
+
 def cmd_init(args) -> int:
     from . import scaffold
     root = args.root or Path.cwd()
@@ -320,6 +333,12 @@ def build_parser() -> argparse.ArgumentParser:
     ps.add_argument("--instances", metavar="FAMILY",
                     help="drill down: located occurrences of one family")
     ps.set_defaults(func=cmd_prose_stats)
+
+    sh = sub.add_parser("shape", help="instruction files that hold records (advisory; "
+                                      "needs no linkage.toml)")
+    sh.add_argument("dir", nargs="?", type=Path, default=None,
+                    help="repository root (default: --root, else the current directory)")
+    sh.set_defaults(func=cmd_shape)
 
     i = sub.add_parser("init", help="scaffold linkage.toml + blueprint skeleton here")
     i.add_argument("--slug", help="satellite id, e.g. 'hcs' (omit with --sync)")

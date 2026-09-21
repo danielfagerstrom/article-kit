@@ -1,0 +1,9 @@
+# @@TITLE@@
+
+*One paragraph for a reader of the repository: what the article is, and where the paper, the
+blueprint and the Lean development are.*
+
+## State
+
+*Rewritten when it changes, never appended to: the modules and their releases, the node counts, the
+trust base in one sentence. History is `CHANGELOG.md`.*

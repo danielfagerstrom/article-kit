@@ -1,0 +1,22 @@
+# Handoff
+
+For the next session in this repository. **Rewritten at every session close, never appended to**:
+it says what is true now, not what a session did (that is `CHANGELOG.md`). If it grows past a page,
+something in it belongs elsewhere (`../article-kit/docs/PROCESS.md`, "Where each kind of text
+lives").
+
+## Where the work is
+
+*The phase (`PROCESS.md` § N) and the module; the one or two numbers that locate it.*
+
+## Read first
+
+*The files the next session needs, in order, each with one line on why.*
+
+## Open
+
+*What is to be done next, in order, each item one to three lines with a pointer.*
+
+## Waiting on the author
+
+*Decisions only the author can take, each one line with a pointer to where it is argued.*
