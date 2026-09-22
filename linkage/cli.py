@@ -251,6 +251,18 @@ def cmd_shape(args) -> int:
     return 0
 
 
+def cmd_pins(args) -> int:
+    from . import pins
+    found = pins.check(args.root or Path.cwd())
+    for p in found:
+        print("  FAIL " + p)
+    if found:
+        print(f"\nPIN CHECK FAILED: {len(found)} call(s) not at a release")
+        return 1
+    print("PIN CHECK OK: every article-kit workflow call is at a release.")
+    return 0
+
+
 def cmd_init(args) -> int:
     from . import scaffold
     root = args.root or Path.cwd()
@@ -339,6 +351,10 @@ def build_parser() -> argparse.ArgumentParser:
     sh.add_argument("dir", nargs="?", type=Path, default=None,
                     help="repository root (default: --root, else the current directory)")
     sh.set_defaults(func=cmd_shape)
+
+    pn = sub.add_parser("pins", help="fail when an article-kit workflow is called at a branch "
+                                     "(@main) instead of a release tag")
+    pn.set_defaults(func=cmd_pins)
 
     i = sub.add_parser("init", help="scaffold linkage.toml + blueprint skeleton here")
     i.add_argument("--slug", help="satellite id, e.g. 'hcs' (omit with --sync)")
