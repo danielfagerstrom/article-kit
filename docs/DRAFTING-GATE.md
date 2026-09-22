@@ -68,7 +68,7 @@ A section may be drafted as prose only when every applicable box is checked.
 - [ ] Numerical claims (tail rates, masses, verifications) have a reproducible script.
 
 ### 5. Register — the writing target is fixed
-*owner: [`WRITING.md`](WRITING.md) (audience + voice + technical register), with the module's row in its § 0 table written*
+*owner: [`WRITING.md`](WRITING.md) (audience + voice + technical register), with the module checked against § 0's default list and a "beyond the default" line added only if it goes beyond that list*
 - [ ] Every concept the section uses that sits below the audience floor has a background-then-use plan
       (a sentence or two of what it is and why it's the right tool, then use).
 

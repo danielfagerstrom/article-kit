@@ -46,22 +46,28 @@ tradition: the JMIV and SSVM readership, in the lineage of Koenderink, Lindeberg
 - **Don't gloss:** measure-theoretic probability from scratch, basic harmonic analysis, or what a
   Gaussian is.
 - **Teach — a sentence or two of what it is and why it is the right tool here, then use it:**
-  everything a module needs that sits below that floor. The list is **per module**, not per
-  repo: a repository that holds several modules gets a row per module, **written before that
-  module's first section is drafted**, listing only what its module uses:
+  everything a module needs that sits below that floor. **One default list covers the whole
+  programme**, not a row per module: the reader is not assumed to know the more advanced parts of
+  probability theory or Lie theory, so the tools from them that the programme uses are taught when
+  first used.
 
-  | module | teach |
+  **The default list:** hemigroups and the cascade, negative-definite functions (Schoenberg), Lévy
+  exponents, Bernstein functions, self-decomposability, subordination, the Thorin class,
+  generalized gamma convolutions, type G laws, the stable and Matérn families, Pólya frequency
+  functions, total positivity and the variation-diminishing property.
+
+  **Beyond the default, per module, only where a module genuinely goes beyond it:**
+
+  | module | beyond the default |
   |---|---|
-  | the causal hemigroup articles | hemigroups and the cascade, negative-definite functions (Schoenberg), Bernstein functions, self-decomposability, the Thorin class |
-  | the spatial line characterization (Paper V, `v0.1`) | hemigroups and the cascade, negative-definite functions, Lévy exponents, self-decomposability, the stable and Matérn families |
-  | the spatial cone, bridge and corners (Paper V, `cone-v0.1`) | the line paper's list, plus Bernstein functions, subordination, the Thorin class and generalized gamma convolutions, type G laws |
-  | the spatial selection of the Gaussian (Paper V, module C) | to be written before drafting |
   | the infinitesimal theory (SSF, parked) | Lie-group and Lie-wedge/semigroup machinery, the covariance-bracket method, pseudodifferential symbol calculus |
   | anything on the probabilistic route | self-similar Markov and Lévy processes (Lamperti, Dufresne) |
 
-  A term below the floor that its module's list does not cover is a defect, not a shortcut: see the
-  undischarged-referent audit in the hub's `wiki/ai-prose-patterns.md` § 3, which is the
-  machine-checkable form of this rule.
+  A module checks the default list before drafting its first section and adds a line to the table
+  above only for what it uses that goes beyond it; most modules add nothing. A term below the floor
+  that neither the default list nor the module's "beyond the default" line covers is a defect, not
+  a shortcut: see the undischarged-referent audit in the hub's `wiki/ai-prose-patterns.md` § 3,
+  which is the machine-checkable form of this rule.
 
 A strong graduate student in mathematical imaging should be able to read the article linearly,
 fetching none of the original papers. **A module that follows another restates what it uses of
