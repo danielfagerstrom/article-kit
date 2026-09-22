@@ -28,6 +28,13 @@ handoff carries no dated record blocks and no heading that names a record (Statu
 Progress); each stays under its word budget; and a finished session prompt is deleted, not kept.
 When a file drifts from its purpose, it is rewritten to it; git holds the old text.
 
+A source read is a record with two parts, not one: the full read,
+`records/<module>/READING-<citekey>.md` here, page by page with anchors, is this session's to write;
+the wiki source page, `wiki/sources/@<citekey>.md`, is a synthesis of what the programme takes from
+it — not a copy of the note — written in the hub, either by the session that closes or by a queue
+entry that `wiki queue harvest` raises for a reading note left without one (hub `CLAUDE.md` §
+"Session close", step 5).
+
 ## The phases
 
 Each phase lists its entry condition, what runs it, and what it leaves.
@@ -161,7 +168,9 @@ are already loaded. `git status` first after any crash.
 4. `notes/HANDOFF.md`: rewritten for the next session. It says what to read, what is open and
    what waits on the author, as of now. It does not say what this session did.
 5. A general lesson: a `process` item in article-kit's `WISHLIST.md`.
-6. The hub: pull, the pin in `constellation.json`, one `wiki/log.md` line, `wiki lint`, commit, push.
+6. A source read this session: its wiki source page, written in the hub (see "Where each kind of
+   text lives" above) — if the session does not close it, `wiki queue harvest` picks it up.
+7. The hub: pull, the pin in `constellation.json`, one `wiki/log.md` line, `wiki lint`, commit, push.
 
 ## Agents, skills and models
 
