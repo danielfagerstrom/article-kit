@@ -53,6 +53,28 @@ its CLI. The rhythm:
    first page carries the release date, the version and the version DOI; the export refuses a build
    that says "working draft" or lacks them. (Two first tags went on "working draft" builds with the
    checklist item already written.)
+6. **A later version names its first release, and closes with a version history** (the author's
+   decision, 2026-09-22). Priority is carried by the timestamped public record — each Zenodo version
+   DOI with its date, arXiv-style — and per result: a theorem first appears in the version that adds
+   it. The PDF travels alone, so a later version says both things itself, since the version and the
+   first release are both facts about the same PDF and neither substitutes for the other:
+   - **The date line names the first release.** For every version after the first, the frozen
+     `\date{...}` reads: this version, its date and version DOI, then "first released as
+     `<first version>`, `<date>` (DOI …)", with the concept DOI as the thing to cite. The first
+     release's date line is as now (just the release form).
+   - **A version history at the end of the paper, not on the first page** (a first-page footnote
+     grows with every version, and a growing footnote is exactly the shape rule 5 exists to keep off
+     the first page). An unnumbered section, placed **after the conclusions and before the
+     references** (not an appendix: `PUBLICATION-TEMPLATE.md` § B.10 reserves appendices for long
+     proofs, and version history is metadata about the record, read the way a reader looks for an
+     errata note just before the bibliography, not a proof to check), one entry per version, newest
+     first, substantive changes only: results added (with their statement numbers), results
+     corrected or strengthened, the renumbering map when numbers moved (old → new, since versioned
+     statement numbers are citable), and a change to the trust base (an axiom proved or added, a
+     Lean refactor that changes what the machine-checked perimeter covers). Drawn from the module's
+     `CHANGELOG.md` entries, reworded for a reader of the paper; the full history stays in
+     `CHANGELOG.md`, git and Zenodo. A first release has no version history section. Template:
+     [`scaffold/paper/version-history.tex.in`](../scaffold/paper/version-history.tex.in).
 
 ## The checklist
 
@@ -72,8 +94,12 @@ In order; a release is not done until the last item.
    versions under it. The token is the author's and stays in the author's terminal: an assistant
    never reads, stores or asks for it.
 4. **Freeze the paper.** The `\date` in `main.tex` becomes the release form (date, version, DOI
-   link), the draft line kept in a comment for the next cycle. The PDF is built into the paper's own
-   directory and its first page read. Commit.
+   link); for a version after the first, it also names the first release (rule 6). The draft line is
+   kept in a comment for the next cycle. For a version after the first, add this version's entry to
+   the version history section (rule 6; `scaffold/paper/version-history.tex.in` on the first later
+   version), reworded from the `CHANGELOG.md` entry already written in checklist item 2. The PDF is
+   built into the paper's own directory and its first page — and, for a later version, the version
+   history entry — read. Commit.
 5. **Export, build, tag.** Where the repository stays private (it holds unreleased modules), the
    release is a **verification export**: a separate public repository holding the Lean modules the
    released statements rest on, the trust boundary and the ledger, the released blueprint chapters,
@@ -121,3 +147,9 @@ qualified name; exported review records have local paths replaced by `<local pat
 re-export that changes the guard file, the guard is run again in the export so that the published
 `axioms.txt` is its output. A release takes about three hours, most of it the Lean build from
 scratch in the export.
+
+**The rule 6 gate** belongs here too, in `export-release.py` (Q-0049; not yet built — this repository
+only states what it must check): for a version after the first, the build fails unless the date line
+names the first release (its date and version DOI, beside the concept DOI) and the version-history
+section has an entry for the version being exported. The first version is exempt from both, the same
+way it is exempt from having a version history section at all.

@@ -1,0 +1,23 @@
+% Version history — `\input` at the end of the paper, after the conclusions and before the
+% references (never as an appendix or a first-page footnote; docs/RELEASE.md rule 6 says why).
+% One entry per released version, newest first, substantive changes only: results added (with
+% their statement numbers), results corrected or strengthened, the renumbering map when numbers
+% moved (old -> new), and a change to the trust base. Reworded from the module's CHANGELOG.md
+% entries for a reader of the paper, not copied verbatim; the full history stays in CHANGELOG.md,
+% git and Zenodo.
+%
+% Copy this file in at the first version after @@TITLE@@'s first release (a first release carries
+% no version history section at all), rename it to drop ".in", and replace the worked example
+% below with the module's own entries.
+
+\section*{Version history}
+\addcontentsline{toc}{section}{Version history}
+
+% Worked example — delete before filling in the module's own entries.
+%
+% \paragraph{v0.2 (2026-11-03, DOI 10.5281/zenodo.222222).}
+% Added Theorem~4.3 (subordination preserves the causality cone) and its proof. Strengthened
+% Proposition~3.1 from a bound on the half-line to all of $\mathbb{R}_{>0}$. Renumbering: the
+% former Theorem~4.3 (boundary continuity) is now Theorem~4.4; no other statement moved. Trust
+% base: the analytic interface at Lemma~2.5 (bounded increments) was discharged by a Lean proof
+% and is no longer an axiom.
