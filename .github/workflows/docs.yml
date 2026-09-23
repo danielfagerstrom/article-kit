@@ -97,6 +97,15 @@ on:
         required: false
         default: false
         type: boolean
+      push_artifacts:
+        description: >-
+          Force-push the built PDFs to the orphan `artifacts` branch. A development repository
+          wants this: it is how the current build is read without a local TeX. A frozen export
+          does not — the release's own PDF is already committed there, and a CI-built second
+          copy beside it is a copy a reader could mistake for the released one.
+        required: false
+        default: true
+        type: boolean
       build_blueprint:
         description: "Build the blueprint PDF. Callers may skip it on paper-only pull requests."
         required: false
@@ -435,7 +444,7 @@ jobs:
     needs: [paper, extra_paper, blueprint]
     # `extra_paper` is skipped when the list is empty, and a skipped need must not block the
     # publish — hence != failure rather than == success.
-    if: ${{ !cancelled() && !inputs.dry_run && needs.paper.result == 'success' && needs.blueprint.result == 'success' && needs.extra_paper.result != 'failure' && needs.extra_paper.result != 'cancelled' }}
+    if: ${{ !cancelled() && !inputs.dry_run && inputs.push_artifacts && needs.paper.result == 'success' && needs.blueprint.result == 'success' && needs.extra_paper.result != 'failure' && needs.extra_paper.result != 'cancelled' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

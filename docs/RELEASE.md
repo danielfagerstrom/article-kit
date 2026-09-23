@@ -112,9 +112,28 @@ In order; a release is not done until the last item.
 7. **The library.** The librarian deposits the PDF and markdown so later sessions read the release
    by citekey, and in the same dispatch reports what the library holds on the module's subjects
    that the module does not cite.
-8. **The hub**: the items of its `RELEASES.md` (the manifest pin and `release.latest`, the thread
+8. **The site.** A release that is not on the research site is not published where a reader
+   looks. Three things, in this order:
+   - **The export publishes its channel.** Give the export repository
+     `.github/workflows/docs.yml` calling article-kit's reusable workflow with the module's
+     `slug`, `channel: <version>`, `push_artifacts: false` (a frozen export's released PDF is
+     already committed; a CI-built copy beside it invites a mistake), and the three R2 secrets
+     (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_ACCOUNT_ID`). Dispatch it. The
+     channel is **write-once**: a second successful run is refused, because a DOI names those
+     bytes.
+   - **The hub's `constellation.json` names it.** A whole repository's paper gets a `site`
+     entry; a module of a multi-module repository gets one naming `module: <its slug>`, which
+     takes the title, version, export and DOI from that module's record in `modules` rather
+     than restating them. `site` is a list when a repository publishes more than one paper.
+     **The `slug` is a permanent public URL** — reader-facing, chosen once, never reused.
+   - **The routing table follows.** In `research-site`: `npm run routes`, read the diff (it is
+     the diff that publishes an article), commit, push; CI deploys. Then `npm run verify`,
+     which fetches every channel the manifest promises and fails on one that does not answer.
+     Until the manifest names it, the channel exists and nothing serves it — which is the
+     order to want, not a defect.
+9. **The hub**: the items of its `RELEASES.md` (the manifest pin and `release.latest`, the thread
    page, the programme page, the log, the citation check of importing modules, the postdoc round).
-9. **Open the next cycle.** Restore the draft date line at the first edit after the release; move
+10. **Open the next cycle.** Restore the draft date line at the first edit after the release; move
    the module's records to `records/<module>/`; file the general lessons to article-kit's
    `WISHLIST.md`; rewrite `notes/HANDOFF.md` for the next module.
 
@@ -133,6 +152,10 @@ EXPORT --doi 10.5281/zenodo.N --build                       # links the Lean sto
 python scripts/zenodo-release.py upload  --export <export> --tag v0.1
 python scripts/zenodo-release.py status  --export <export>
 python scripts/zenodo-release.py publish --export <export>  # author; cannot be undone
+#   then the site (step 8), from the export repository and the hub:
+gh workflow run docs.yml --repo <owner>/<export>            # writes the write-once release channel
+#   add the site entry to the hub's constellation.json, then in research-site:
+npm run routes && npm run verify                            # regenerate, then check it answers
 ```
 
 EXPORT for a module names its chapters, paper directory, tag, headline declaration, interface roots,
