@@ -62,6 +62,7 @@ tradition: the JMIV and SSVM readership, in the lineage of Koenderink, Lindeberg
   |---|---|
   | the infinitesimal theory (SSF, parked) | Lie-group and Lie-wedge/semigroup machinery, the covariance-bracket method, pseudodifferential symbol calculus |
   | anything on the probabilistic route | self-similar Markov and Lévy processes (Lamperti, Dufresne) |
+  | the selection of the Gaussian (Paper V, module C) | the modified Bessel equation with its solution basis and behaviour at the origin; generalized axially symmetric potential theory, that is the half-plane Dirichlet problem for $z_{xx} + z_{yy} + (k/y)z_y = 0$ and its Poisson kernel |
 
   A module checks the default list before drafting its first section and adds a line to the table
   above only for what it uses that goes beyond it; most modules add nothing. A term below the floor
