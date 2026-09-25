@@ -1,0 +1,54 @@
+\section{The kernels}
+\label{sec:kernels}
+
+% SEED: point — a bare section pointer with nothing that would resolve it.
+The setting is the one of § 4.2, restated for the half-line and carried out with no
+smoothness assumption whatsoever, which is the whole of the difference between the two
+treatments of this otherwise elementary material and the reason the argument below is
+short enough to be read in one sitting by anybody at all.
+
+A kernel is a measurable map from the half-line to itself, following
+\cite{author2020kernels}.
+
+% SEED: cite — `nobody2020` is in no .bib.
+The construction is the one of \cite{nobody2020}.
+
+\begin{proposition}
+  \label{prop:two}
+  Let $K_t$ be admissible. Then
+  \begin{enumerate}
+    \item $K_t$ has a finite first moment, and
+    \item $K_t$ is determined by that moment.
+  \end{enumerate}
+\end{proposition}
+
+% SEED: item — prop:two has two items, so (3) names an item that is not there.
+By Proposition~\ref{prop:two}(3) the family is a curve rather than a surface.
+
+% SEED: ref — thm:vanished is a \label in no source.
+The classification is Theorem~\ref{thm:vanished}.
+
+% SEED: orphan — lem:moment is numbered and nothing \ref's it.
+\begin{lemma}
+  \label{lem:moment}
+  The first moment of $K_t$ is affine in $t$.
+\end{lemma}
+
+\section{Consequences}
+\label{sec:consequences}
+
+% SEED: doi — writer2019tails carries no DOI in refs.bib.
+The tail bound is the form \cite{writer2019tails} states for the stable case:
+% SEED: tag — a hand-written 1.4 inside section 2.
+\begin{equation}
+  \int_x^\infty K_t(s)\,\mathrm{d}s \le C\,\mathrm{e}^{-x/t}.
+  \tag{1.4}
+\end{equation}
+
+\begin{theorem}
+  \label{thm:criterion}
+  A candidate kernel is admissible if and only if its first two moments satisfy the
+  affine relation.
+\end{theorem}
+
+Theorem~\ref{thm:criterion} is the criterion promised in the abstract.
