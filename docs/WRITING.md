@@ -161,8 +161,8 @@ direction, by the session that owns it, and the paper re-transcribes; a pass tha
 reports them to that session with the counts rather than editing the copy. Calibration from
 Paper V's pass (2026-09-12): the prose came in at 98 em-dashes and 117 semicolons in 12,900 words
 and the proofs at 43 and 93 in 7,250. The proofs were the denser zone, and they were not the one the
-review reached. Count by zone (Paper V's `scripts/count-register.py`, until it moves into
-`linkage`) so that the two numbers are not confused.
+review reached. Count by zone (`linkage prose register`, which reports prose, statement and proof
+apart) so that the two numbers are not confused.
 
 ---
 

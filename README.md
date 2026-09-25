@@ -23,10 +23,12 @@ linkage init --slug <slug> --title "<title>"   # a new article: scaffolding, rul
 linkage init --sync                             # refresh the framework-owned files
 linkage check                                   # every in-repo edge, plus drift and shape advisories
 linkage check --wiki $WIKI_VAULT                # also the \notes{} edge to the hub
+linkage paper                                   # the paper sources: refs, cite keys, pointers, front matter
 linkage shape [DIR]                             # instruction files that hold records (no linkage.toml needed)
 linkage manifest                                # write blueprint-manifest-<slug>.json for the hub
 linkage demand                                  # unproved blueprint nodes the hub is asking for
 linkage axioms --check                          # the trust boundary against the ledger
+linkage boundary                                # per-theorem axiom pins, probes, adversarial goals, shadowed names
 linkage pins                                    # fail if a workflow call or linkage_ref is at a branch, not a tag
 linkage review <review>.jsonl …                 # pool the reviewers' flags by defect, rank by breadth
 ```
@@ -44,7 +46,7 @@ manifest without transclusion fields a hard failure, so one can never reach the 
 | `docs/LINKAGE.md` | the spec the checks enforce, the ledger's format |
 | `docs/DRAFTING-GATE.md`, `docs/PUBLICATION-TEMPLATE.md`, `docs/REVIEWER-CONTRACT.md` | is a section ready to draft; the section contracts and exposition rubric; the reviewer's flag format |
 | `docs/REVIEW.md`, `docs/CLOUD.md` | the interactive Lean review tour; cloud sessions |
-| `docs/templates/` | the external review prompt |
+| `docs/templates/` | the external review prompt; adopting the boundary harness (`boundary-harness.md`, with the pilot's worked example) |
 | `scaffold/claude/rules/` | the **session rules**, framework-owned, copied into each article's `.claude/rules/article-kit/`: `core.md` at every session start, `writing.md`, `blueprint.md`, `ledger.md`, `lean.md` when a matching file is read |
 | `scaffold/repo/` | the templates of a new article's `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `notes/HANDOFF.md`, `adr/` and `records/` |
 | `scaffold/blueprint/` | the LaTeX scaffolding: theorem environments, plasTeX config, the linkage macros, the render allowlist |
@@ -65,6 +67,8 @@ parse_latex.py one blueprint dialect -> model  (the only LaTeX-aware module)
 model.py       Node / LedgerEntry / PaperMarker / Blueprint — the IR
 artifacts.py   Lean decls, the axiom ledger, paper markers, git provenance
 checks.py      the fatal checks + advisories, over the IR alone
+trust.py       the declared trust boundary, cross-checked against the ledger
+boundary.py    the boundary harness: axiom pins, probes, adversarial goals, shadowed names
 render.py      pinned-pandoc rendering for the transclusion fields
 manifest.py    the projection the hub consumes
 demand.py      `wiki demands --json` joined against live \leanok status
