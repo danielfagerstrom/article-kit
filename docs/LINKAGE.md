@@ -253,6 +253,10 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    [boundary.shadows]
    "Hemigroup.laplace" = "the one-sided transform of a measure on [0,∞) — not the Laplacian"
    ```
+
+   The shape of the adopting edit, what makes a probe or an adversarial goal a good one, and the
+   pilot run over `hemigroup-causal-scale-space-kernels` are in
+   [`templates/boundary-harness.md`](templates/boundary-harness.md).
 6. **Every statement node declares `\statusT` or `\statusA`.** The hub's confidence grading keys on the
    projected status, so a node without one is a node the hub cannot grade.
 7. **Every `[A]` node declares its assignment** (ADR-0011, 2026-07-30): a `\textbf{Assignment.}` clause

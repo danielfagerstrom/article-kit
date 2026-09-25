@@ -107,8 +107,9 @@ What the review concludes by hand, the **boundary harness** then keeps true by m
 `#guard_msgs` axiom pins, a positive probe apiece, and the adversarial goals that must stay
 unprovable. Set it up as the review closes — its four findings are the review's own questions
 asked on every push — and run `linkage boundary` beside `linkage check`. The rules and the
-table's shape are in [`LINKAGE.md`](LINKAGE.md) rule 5; `lean.yml` runs it beside the axiom
-guard, on source text alone, so it costs seconds and needs no toolchain.
+table's shape are in [`LINKAGE.md`](LINKAGE.md) rule 5, the adopting edit and a worked example in
+[`templates/boundary-harness.md`](templates/boundary-harness.md); `lean.yml` runs it beside the
+axiom guard, on source text alone, so it costs seconds and needs no toolchain.
 
 ### 7. The article — `paper/`
 
