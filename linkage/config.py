@@ -23,6 +23,12 @@ from pathlib import Path
 
 CONFIG_NAME = "linkage.toml"
 
+DEFAULT_LICENSE = "cc-by-4.0"
+DEFAULT_UPLOAD_TYPE = "publication"
+DEFAULT_PUBLICATION_TYPE = "preprint"
+DEFAULT_SHARED_NODES = "omit"
+DEFAULT_AXIOMS_SECTION = "1.1"
+
 DEFAULT_STATEMENT_ENVS = ("definition", "lemma", "proposition", "theorem", "corollary")
 # Label prefixes that denote a statement (as opposed to a section/equation).
 DEFAULT_LABEL_PREFIXES = ("thm", "prop", "def", "lem", "cor")
@@ -35,6 +41,99 @@ DEFAULT_PANDOC_TARGET = "commonmark+tex_math_dollars"
 
 class ConfigError(RuntimeError):
     pass
+
+
+@dataclass
+class Release:
+    """`[release]`: what every deposit of this repository says, whichever module it is.
+
+    The creators, the licence and the copyright line are the repository's, not a module's —
+    a second module of the same repository does not get a second author list. What differs
+    per module (title, keywords, related identifiers) lives in `[[modules]]`.
+    """
+    creators: tuple[dict[str, str], ...] = ()
+    license: str = DEFAULT_LICENSE
+    upload_type: str = DEFAULT_UPLOAD_TYPE
+    publication_type: str = DEFAULT_PUBLICATION_TYPE
+    copyright: str | None = None
+    """The copyright line of generated Lean files, e.g. `2026 Daniel Fagerström`; the first
+    creator's name with the current year when absent."""
+
+
+@dataclass
+class Module:
+    r"""`[[modules]]`: one releasable module of this repository.
+
+    A module is what gets a tag, an export and a DOI: its blueprint chapters, its paper
+    directory, the Lean modules its paper names directly, the records that travel with it.
+    A single-paper article declares one; `spatial-hemigroup-scale-space` declares three
+    (the line paper, module B, module C), which is why every one of these was a constant
+    in that repository's `scripts/export-release.py` before the move here (ADR-0001 step 5).
+    """
+    name: str
+    chapters: tuple[str, ...] = ()
+    paper: str = "paper"
+    """The paper directory, relative to the root — one of `paths.paper`'s entries."""
+    tag: str | None = None
+    roots: tuple[str, ...] = ()
+    r"""Lean modules the paper names directly, exported whatever the `\lean{}` tags say."""
+    headline: str | None = None
+    r"""The declaration whose `#print axioms` block the paper prints."""
+    stem: str | None = None
+    """Stem of the PDF at the export's root; `<stem>-<tag>.pdf`."""
+    title: str = ""
+    repo_url: str = ""
+    """The EXPORT repository's URL — never the development repository's."""
+    records: str | None = None
+    """The module's records directory; the default process account, response plan and
+    reviews are read from it."""
+    process: str | None = None
+    response_plans: tuple[str, ...] = ()
+    reviews: str | None = None
+    shared_nodes: str = DEFAULT_SHARED_NODES
+    keywords: tuple[str, ...] = ()
+    related: tuple[str, ...] = ()
+    """Related identifiers for the deposit, each `DOI:relation` (Zenodo's relations)."""
+    abstract_macros: dict[str, str] = field(default_factory=dict)
+    r"""Article macros the plain-text abstract expands, e.g. `Matern = "Matérn"`; a macro
+    not named here and taking no argument is dropped."""
+    axioms_section: str = DEFAULT_AXIOMS_SECTION
+    """The paper section that says what the theorems rest on, named by the export's README."""
+    releases: dict[str, dict] = field(default_factory=dict)
+    """Per-tag overrides of `chapters`/`paper`/`roots`, for a release whose parameters have
+    since moved: `linkage release export --cites <tag>` recomputes *that* release's closure,
+    so it must read the parameters as they stood, not today's."""
+
+    def records_path(self, name: str) -> str | None:
+        return f"{self.records}/{name}" if self.records else None
+
+    def process_file(self) -> str | None:
+        return self.process or self.records_path("PROCESS.md")
+
+    def response_plan_files(self) -> tuple[str, ...]:
+        if self.response_plans:
+            return self.response_plans
+        one = self.records_path("PLAN-review-response.md")
+        return (one,) if one else ()
+
+    def reviews_dir(self) -> str | None:
+        return self.reviews or self.records_path("reviews")
+
+    def parameters_at(self, tag: str) -> tuple[tuple[str, ...], str, tuple[str, ...]]:
+        """(chapters, paper, roots) as they stood at `tag` — the `releases` override where
+        the module declares one, today's parameters otherwise."""
+        over = self.releases.get(tag, {})
+        return (
+            tuple(over.get("chapters", self.chapters)),
+            over.get("paper", self.paper),
+            tuple(over.get("roots", self.roots)),
+        )
+
+
+def module_prefix(tag: str) -> str:
+    """The module prefix of a tag: `cone-` for `cone-v0.1`, empty for `v0.1`."""
+    head, sep, _ = tag.rpartition("v")
+    return head if sep else ""
 
 
 @dataclass
@@ -80,6 +179,12 @@ class Config:
     pandoc_pin: str = DEFAULT_PANDOC_PIN
     pandoc_target: str = DEFAULT_PANDOC_TARGET
 
+    lean_libraries: tuple[str, ...] = ()
+    """The Lake libraries of this repository's own tree (`paths.lean_libraries`). Empty
+    means: infer them — a directory `X/` under `paths.lean` beside a root file `X.lean`."""
+    modules: tuple[Module, ...] = ()
+    release: Release = field(default_factory=Release)
+
     _label_re: re.Pattern = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -87,6 +192,44 @@ class Config:
 
     def is_statement_label(self, label: str) -> bool:
         return bool(self._label_re.match(label))
+
+    def module(self, name: str | None = None) -> Module:
+        """The named module, or the only one there is.
+
+        A repository with one module need not name it on every release command; one with
+        several must, because picking for the author would pick the wrong tag.
+        """
+        if not self.modules:
+            raise ConfigError(
+                f"{CONFIG_NAME} declares no `[[modules]]` table — a release command needs "
+                f"the module's chapters, paper directory, tag, roots and headline "
+                f"declaration; see docs/RELEASE.md")
+        if name is None:
+            if len(self.modules) > 1:
+                raise ConfigError(
+                    f"{CONFIG_NAME} declares {len(self.modules)} modules "
+                    f"({', '.join(m.name for m in self.modules)}) — name one with --module")
+            return self.modules[0]
+        for m in self.modules:
+            if m.name == name:
+                return m
+        raise ConfigError(
+            f"{CONFIG_NAME} declares no module {name!r} (known: "
+            f"{', '.join(m.name for m in self.modules) or '-'})")
+
+    def module_of_tag(self, tag: str) -> Module:
+        """The module a released tag belongs to, by tag prefix: `cone-v0.1` is the module
+        whose own `tag` is prefixed `cone-`. `--cites` resolves a cited tag this way, so
+        that the cited release's closure is recomputed with ITS parameters, never the
+        citing module's."""
+        prefix = module_prefix(tag)
+        hits = [m for m in self.modules if m.tag and module_prefix(m.tag) == prefix]
+        if len(hits) != 1:
+            raise ConfigError(
+                f"the tag {tag!r} names no single module of {CONFIG_NAME}: "
+                f"{len(hits)} module(s) carry the tag prefix {prefix or '(none)'!r}. "
+                f"Give the module a `tag` in its `[[modules]]` table")
+        return hits[0]
 
     def missing(self) -> list[str]:
         """Configured paths that do not exist — reported together, not one at a time."""
@@ -162,6 +305,75 @@ def load(root: Path | None = None) -> Config:
             seen[d] = None
         return tuple(root / d for d in raw_paper)
 
+    def release_table() -> Release:
+        rel = raw.get("release", {})
+        if not isinstance(rel, dict):
+            raise ConfigError(f"{CONFIG_NAME}: `[release]` must be a table")
+        creators = []
+        for c in rel.get("creators", ()):
+            if not isinstance(c, dict) or not c.get("name"):
+                raise ConfigError(
+                    f"{CONFIG_NAME}: every `release.creators` entry is a table with a "
+                    f"`name` (surname first, as a deposit prints it), not {c!r}")
+            creators.append({k: str(v) for k, v in c.items()})
+        return Release(
+            creators=tuple(creators),
+            license=rel.get("license", DEFAULT_LICENSE),
+            upload_type=rel.get("upload_type", DEFAULT_UPLOAD_TYPE),
+            publication_type=rel.get("publication_type", DEFAULT_PUBLICATION_TYPE),
+            copyright=rel.get("copyright"),
+        )
+
+    def modules_table() -> tuple[Module, ...]:
+        rows = raw.get("modules", ())
+        if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
+            raise ConfigError(f"{CONFIG_NAME}: `[[modules]]` must be a list of tables")
+        out: list[Module] = []
+        seen: set[str] = set()
+        for r in rows:
+            name = r.get("name")
+            if not name:
+                raise ConfigError(
+                    f"{CONFIG_NAME}: every `[[modules]]` table needs a `name` — it is what "
+                    f"`--module` selects and what the export's reports call the module")
+            if name in seen:
+                raise ConfigError(f"{CONFIG_NAME}: two `[[modules]]` tables named {name!r}")
+            seen.add(name)
+            releases = r.get("releases", {})
+            if not isinstance(releases, dict) or not all(
+                    isinstance(v, dict) for v in releases.values()):
+                raise ConfigError(
+                    f"{CONFIG_NAME}: module {name!r}: `releases` maps a tag to the "
+                    f"parameters as they stood at it, e.g. "
+                    f"[modules.releases.\"{name}-v0.1\"] chapters = [...]")
+            shared = r.get("shared_nodes", DEFAULT_SHARED_NODES)
+            if shared not in ("omit", "whole"):
+                raise ConfigError(
+                    f"{CONFIG_NAME}: module {name!r}: `shared_nodes` is 'omit' or 'whole', "
+                    f"not {shared!r}")
+            out.append(Module(
+                name=str(name),
+                chapters=tuple(str(c) for c in r.get("chapters", ())),
+                paper=r.get("paper", "paper"),
+                tag=r.get("tag"),
+                roots=tuple(r.get("roots", ())),
+                headline=r.get("headline"),
+                stem=r.get("stem"),
+                title=r.get("title", ""),
+                repo_url=r.get("repo_url", ""),
+                records=r.get("records"),
+                process=r.get("process"),
+                response_plans=tuple(r.get("response_plans", ())),
+                reviews=r.get("reviews"),
+                shared_nodes=shared,
+                keywords=tuple(r.get("keywords", ())),
+                related=tuple(r.get("related", ())),
+                abstract_macros=dict(r.get("abstract_macros", {})),
+                axioms_section=str(r.get("axioms_section", DEFAULT_AXIOMS_SECTION)),
+                releases={str(k): dict(v) for k, v in releases.items()},
+            ))
+        return tuple(out)
+
     slug = raw.get("slug")
     if not slug:
         raise ConfigError(f"{CONFIG_NAME}: `slug` is required — it is the satellite id the "
@@ -184,6 +396,9 @@ def load(root: Path | None = None) -> Config:
         ledger_key=bp.get("ledger_key", DEFAULT_LEDGER_KEY),
         pandoc_pin=rd.get("pandoc_pin", DEFAULT_PANDOC_PIN),
         pandoc_target=rd.get("pandoc_target", DEFAULT_PANDOC_TARGET),
+        lean_libraries=tuple(paths.get("lean_libraries", ())),
+        modules=modules_table(),
+        release=release_table(),
     )
     if missing := cfg.missing():
         raise ConfigError(
