@@ -47,6 +47,19 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    Legacy prose "ledger AXX" is still recognised; migrate it to the macro when you touch a node.
 3. **`[T]` nodes name their Lean decl** with `\lean{}` and mark `\leanok` once proved. A `\notready`
    node need not have a Lean decl yet.
+
+   **What `\notready` means here, and what the rendered legend says it means.** In this programme a
+   `\notready` node is one whose *statement* is typed and reviewed and whose **proof** is pending or
+   deliberately unscheduled — a debt with a date, not a doubt about the statement. leanblueprint's
+   dependency-graph legend says the opposite: "the statement of this result is not ready to be
+   formalized". That sentence cannot be overridden — `make_legend` hard-codes it
+   (`leanblueprint/Packages/blueprint.py`, lines 261-263, registered as a post-parse callback at
+   priority 150), and `\graphcolor{not_ready}{…}{…}` sets only the colour and the colour's *name*.
+   So the orange border is read against this rule, not against the legend, and a repository's
+   `Formalization/Skeleton.lean` says the same thing to the reader who arrives from the Lean side.
+   (Established 2026-09-25 after a queue item tried to relabel it; the alternatives were a plasTeX
+   package of our own hooked above priority 150, or a patch upstream, and neither is worth coupling
+   this framework to another project's internals for one sentence.)
 4. **A paper statement shared with the blueprint** carries `% shared with blueprint <label>`, and
    `<label>` must be a real blueprint label. **Target (strong single-sourcing):** when the paper renders
    the statement as a *labelled* theorem, its own `\label` *equals* `<label>`, so the correspondence is
