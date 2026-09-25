@@ -1,0 +1,23 @@
+{
+  "name": "article-kit",
+  "description": "The article process's shared skills and agents: the fidelity review, the length pass, and the mathematician who writes blueprint nodes and their Lean.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Daniel Fagerstrom"
+  },
+  "homepage": "https://github.com/danielfagerstrom/article-kit",
+  "repository": "https://github.com/danielfagerstrom/article-kit",
+  "keywords": [
+    "blueprint",
+    "lean",
+    "latex",
+    "writing"
+  ],
+  "skills": [
+    "./.claude/skills/fidelity-review",
+    "./.claude/skills/tighten"
+  ],
+  "agents": [
+    "./.claude/agents/mathematician.md"
+  ]
+}

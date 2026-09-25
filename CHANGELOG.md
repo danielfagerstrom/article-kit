@@ -7,6 +7,20 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **article-kit is a Claude Code plugin** (ADR-0001 step 6, [`docs/PLUGIN.md`](docs/PLUGIN.md)):
+  `.claude-plugin/plugin.json` ships the two shared skills and the `mathematician` agent, and
+  `.claude-plugin/marketplace.json` publishes the plugin as the marketplace `article-kit`, which
+  `scaffold/claude/settings.json` now declares (`extraKnownMarketplaces`) and enables
+  (`enabledPlugins`) in every article scaffolded from it. The skills become
+  `/article-kit:fidelity-review` and `/article-kit:tighten`. The manifest *points at* the files
+  under `.claude/` rather than holding copies, so the framework's own sessions and every article
+  session read one file (hub ADR-0008); `tests/test_plugin.py` fails on a component path that no
+  longer exists and on a version that drifts from `pyproject.toml`'s. The hub-owned agents
+  (`draft-reviewer`, `archivist`) and the librarian's are deliberately *not* in the plugin: they
+  keep arriving through the hub's sync table and the scaffolded `SessionStart` hook, which is why
+  that hook stays. Migration off the user-level junction and the synced `mathematician` copy —
+  both of which outrank a plugin component — is `docs/PLUGIN.md` § Migration, and is the author's:
+  it is under `~/.claude/` and in the hub.
 - The release and register scripts are `linkage`'s (ADR-0001 step 5): `linkage release export`
   writes a module's verification export, `linkage release zenodo {reserve,upload,status,publish,
   discard}` deposits it through the Zenodo API with a reserved DOI, and `linkage prose register`

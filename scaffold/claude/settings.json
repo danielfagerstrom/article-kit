@@ -1,4 +1,15 @@
 {
+  "extraKnownMarketplaces": {
+    "article-kit": {
+      "source": {
+        "source": "github",
+        "repo": "danielfagerstrom/article-kit"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "article-kit@article-kit": true
+  },
   "hooks": {
     "SessionStart": [
       {
