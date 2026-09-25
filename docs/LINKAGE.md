@@ -412,6 +412,61 @@ statement would actually discharge). Its summary line reports the whole dependen
 including `[T]` statements proved nowhere that nothing proved reaches: those are our open conjectures, and
 naming them keeps the difference between "open" and "leaned on while open" visible.
 
+11. **The inferred `\uses` — `linkage closure`** (2026-09-25). Rules 3 and 8 check the *declared*
+   dependency graph: the `\uses{}` edges an author wrote, and what they imply. A `\leanok` node makes
+   two claims at once — "this is proved" and "here is what it rests on" — and the Lean declaration it
+   points at knows the second one for a fact. `linkage closure` computes it and diffs the two, **as an
+   audit, never as a source**: authorship stays blueprint-first, the LaTeX is the deliverable, `\uses{}`
+   is written for the reader and for leanblueprint's graph, and nothing here proposes or writes an edge.
+   It is a separate command, not part of `linkage check`, and it always exits 0 (2 only when it could
+   not read its input): it reports judgement calls, and a gate that fails on them would be waived rather
+   than fixed.
+
+   **Two routes to the constant set.** An exact answer needs Lean's environment, which needs a build,
+   which this package deliberately does not have (`manifest.yml` runs on source text, offline, with no
+   elan). So:
+
+   | route | input | when |
+   |---|---|---|
+   | **export** | `paths.lean_uses` (default `Formalization/lean-uses.json`), `{"Decl.Name": ["Const", …]}` written by a Lean meta program over a built environment | used when the file exists, or `--export PATH` |
+   | **source scan** | the declaration's own source text, identifier tokens resolved against this article's declarations only | the default, and what the tests exercise |
+
+   The source scan is the coarse-to-fine descendant of `f7sweep.py`, which asks the file-level version
+   of the same question (is a `\uses` target's declaration in the Lean file's transitive *import*
+   closure?) and which this supersedes for `\leanok` nodes.
+
+   **Four advisories**, the two directions of the diff and two whole-node flags:
+
+   | tag | meaning |
+   |---|---|
+   | `[declared]` | a `\uses{}` target whose declaration is nowhere in the **transitive** inferred closure — the blueprint cites it and the Lean proof appears not to |
+   | `[inferred]`| a declaration the node's Lean proof cites **directly**, owned by a node no `\uses` path from here reaches — a route the blueprint does not tell the reader about |
+   | `[empty]` | a proved claim node whose declaration cites nothing of this article's *while* its `\uses{}` names formalised nodes — the two accounts have nothing in common (wrong tag, or a proof carried entirely by automation) |
+   | `[orphan]` | a `lem` node nothing depends on in **either** graph — dead weight, a missing `\uses` edge, or a result that has become a theorem in its own right |
+
+   **Direct versus transitive is deliberately asymmetric**, for rule 8's reason. A `\uses{}` label counts
+   as supported if its declaration is anywhere in the transitive inferred closure: the Lean proof may
+   reach a cited ingredient through a private helper that has no blueprint node, and that is a route,
+   not a finding. An inferred dependency counts as missing only when the node's transitive `\uses`
+   closure does not reach it at all: `\uses{}` records *direct* edges, so an indirect dependency is
+   legitimately absent. `[empty]` is the total form of `[declared]`, and suppresses that node's
+   per-label lines — one finding per node, since they have one cause. `[orphan]` is `lem` only: a `thm`,
+   `prop` or `cor` that nothing uses is the ordinary shape of a headline result, while a lemma exists to
+   be used.
+
+   **What the source scan cannot see**, i.e. the false positives of the `[declared]` direction: a lemma
+   pulled in by a **`simp` set** (`@[simp]` at the lemma, `simp` at the use site names nothing); a fact
+   used through **notation**, a `macro`/`syntax` expansion or an `abbrev`; an **instance** found by
+   typeclass resolution, which is what instances are for; anything reached by `omega`, `aesop`,
+   `positivity`, `gcongr` or `fun_prop`; and defeq unfolding, where `rfl` consumes a definition without
+   naming it. Each makes a real use look absent — which is why this direction is advisory, and why the
+   export route exists for an article that wants the exact answer. The `[inferred]` direction has the
+   opposite profile: a token match is evidence of a real citation, and its own false positive is a name
+   collision with a Mathlib declaration of the same short name (an ambiguous short name resolves to
+   nothing rather than to a guess). A node whose `\lean{}` points into a shared Lake package is reported
+   as unreadable, not scored as citing nothing; a `\uses` target with no `\lean{}` — an `[A]` or
+   untagged node — has no declaration to look for and is left to the reader.
+
 The **wiki edge** is cross-repo: pass `--wiki <path-to-Notes>` to also check that every `\notes{slug}`
 resolves to a `slug.md` under the wiki.
 

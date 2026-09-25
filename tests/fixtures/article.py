@@ -14,6 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from linkage import artifacts, checks, config, parse_latex
+from linkage import closure as closure_mod
 
 DEFAULT_TOML = """\
 slug = "test"
@@ -151,6 +152,11 @@ class Article:
     def lean(self, text: str, name: str = "Main.lean") -> Article:
         return self.file(f"Formalization/{name}", text)
 
+    def lean_uses(self, export: dict) -> Article:
+        r"""The Lean-side constant map `linkage closure` believes instead of scanning."""
+        import json
+        return self.file("Formalization/lean-uses.json", json.dumps(export, indent=2))
+
     def paper(self, text: str, name: str = "paper.tex", dir: str = "paper") -> Article:
         return self.file(f"{dir}/{name}", text)
 
@@ -177,6 +183,12 @@ class Article:
 
     def parse(self):
         return parse_latex.parse(self.cfg)
+
+    def closure(self, export: Path | None = None) -> closure_mod.Audit:
+        r"""The inferred-uses audit over this fixture, end to end (scan or export route)."""
+        cfg = self.cfg
+        index, _route = closure_mod.build_index(cfg, export)
+        return closure_mod.audit(self.parse(), cfg, index)
 
     def check(self, **kw) -> checks.Findings:
         """The whole in-repo check, end to end over this fixture."""

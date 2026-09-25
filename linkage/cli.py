@@ -2,6 +2,7 @@
 
     linkage check [--wiki PATH] [--emit-manifest PATH] [--require-render]
     linkage paper
+    linkage closure [--export PATH] [--json]
     linkage manifest [PATH] [--require-render]
     linkage demand [--wiki PATH]
     linkage release export [--module NAME] [--out DIR] [--doi DOI] [--build|--dry-run]
@@ -21,7 +22,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import artifacts, checks, config, parse_latex
+from . import artifacts, checks, closure, config, parse_latex
 from . import manifest as manifest_mod
 from . import release as release_mod
 from . import zenodo as zenodo_mod
@@ -159,6 +160,37 @@ def cmd_paper(args) -> int:
             print("  FAIL " + p)
         return 1
     print("\nPAPER LINT OK: every reference, cite key, item pointer and \\tag resolves.")
+    return 0
+
+
+def cmd_closure(args) -> int:
+    r"""Diff each \leanok node's inferred constant closure against its \uses{} (advisory).
+
+    Always exit 0 when it could answer: this is an audit, not a gate. Its two directions
+    have genuine false positives (a `simp` set, an instance, notation), so failing CI on
+    them would buy a waiver rather than a fix -- the same argument that made rule 4's text
+    comparison advisory until `--strict-shared`. Exit 2 only when the tooling could not
+    answer at all (an unreadable export).
+    """
+    cfg, bp = _load(args.root)
+    index, route = closure.build_index(cfg, args.export)
+    a = closure.audit(bp, cfg, index)
+    s = a.stats
+    if args.json:
+        print(json.dumps({"route": route, "advisory": a.advisory, **s}, indent=2))
+        return 0
+    print(f"Inferred uses: {s['declarations']} declaration(s) indexed under {cfg.lean.name}/ "
+          f"by {route}; {s['audited']} \\leanok node(s) with a \\lean{{}} tag audited.")
+    for line in a.advisory:
+        print("  advisory " + line)
+    print(f"\n{s['declared_gaps']} \\uses target(s) not in the inferred closure, "
+          f"{s['inferred_gaps']} inferred dependenc(ies) no \\uses path reaches, "
+          f"{len(s['empty'])} proved node(s) citing nothing of ours, "
+          f"{len(s['orphans'])} lemma(s) used by nothing"
+          + (f", {len(s['unlocatable'])} node(s) whose declaration could not be read"
+             if s["unlocatable"] else "") + ".")
+    print("  (advisory by construction: uses through a simp set, an instance or notation "
+          "are invisible to the source scan -- LINKAGE.md rule 11)")
     return 0
 
 
@@ -441,6 +473,14 @@ def build_parser() -> argparse.ArgumentParser:
                                       "keys, item pointers, \\tag numbering, the "
                                       "declarations and the abstract")
     pp.set_defaults(func=cmd_paper)
+    cl = sub.add_parser("closure", help="audit each \\leanok node's \\uses{} against what "
+                                        "its Lean declaration actually cites (advisory)")
+    cl.add_argument("--export", type=Path, metavar="PATH",
+                    help="a Lean-side constant map {decl: [constants]} to believe instead "
+                         "of scanning the declaration sources (default: paths.lean_uses, "
+                         "when that file exists)")
+    cl.add_argument("--json", action="store_true", help="machine-readable output")
+    cl.set_defaults(func=cmd_closure)
 
     m = sub.add_parser("manifest", help="write the manifest only")
     m.add_argument("path", nargs="?", type=Path, default=None,
@@ -617,6 +657,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     except release_mod.ReleaseError as e:
         print(f"EXPORT ERROR: {e}", file=sys.stderr)
+    except closure.ExportError as e:
+        print(f"CLOSURE INPUT ERROR: {e}", file=sys.stderr)
         return 2
 
 

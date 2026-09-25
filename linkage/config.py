@@ -192,6 +192,12 @@ class Config:
     `blueprint/AXIOMS-verbatim.md`): one `## AXX` section per entry holding the source's
     wording. It need not exist -- an article may keep every transcription in its entries --
     so it is not in `missing()`."""
+    lean_uses: Path | None = None
+    r"""An exported constant map for `linkage closure` (`paths.lean_uses`, default
+    `lean-uses.json` inside `paths.lean`): `{"Decl.Name": ["Const.One", …]}`, written by a Lean
+    meta program out of a built environment. It need not exist -- the audit falls back to
+    scanning the declaration sources -- so it is not in `missing()`."""
+
     lean_packages: tuple[str, ...] = ()
     r"""Lake packages whose sources also count as "declared here".
 
@@ -464,6 +470,11 @@ def load(root: Path | None = None) -> Config:
         lean=p("lean", "Formalization"),
         papers=paper_dirs(),
         axioms_verbatim=p("axioms_verbatim", "blueprint/AXIOMS-verbatim.md"),
+        # Defaulted *inside the Lean directory* rather than at a fixed path: it is written by
+        # a Lean meta program alongside the sources it describes, and `paths.lean` is
+        # configurable, so a hard-coded "Formalization/…" would miss it in any article that
+        # names its Lean project something else.
+        lean_uses=p("lean_uses", f"{paths.get('lean', 'Formalization')}/lean-uses.json"),
         lean_packages=tuple(paths.get("lean_packages", ())),
         boundary=boundary(),
         statement_envs=tuple(bp.get("statement_envs", DEFAULT_STATEMENT_ENVS)),
