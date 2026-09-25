@@ -182,6 +182,12 @@ class Config:
     lean_libraries: tuple[str, ...] = ()
     """The Lake libraries of this repository's own tree (`paths.lean_libraries`). Empty
     means: infer them — a directory `X/` under `paths.lean` beside a root file `X.lean`."""
+    shared_namespaces: tuple[str, ...] = ()
+    r"""Namespace prefixes of declarations that live in a shared package rather than this
+    tree (`paths.shared_namespaces`; default: `lean_packages`). A `\lean{}` tag naming one
+    is not looked for here, so a local declaration that happens to share its short name is
+    not mistaken for it. The package's *name* and its *namespace* need not agree —
+    `ScaleSpaceCore` declares `ScaleSpace.*` — which is why this is its own key."""
     modules: tuple[Module, ...] = ()
     release: Release = field(default_factory=Release)
 
@@ -397,6 +403,8 @@ def load(root: Path | None = None) -> Config:
         pandoc_pin=rd.get("pandoc_pin", DEFAULT_PANDOC_PIN),
         pandoc_target=rd.get("pandoc_target", DEFAULT_PANDOC_TARGET),
         lean_libraries=tuple(paths.get("lean_libraries", ())),
+        shared_namespaces=tuple(paths.get("shared_namespaces",
+                                          paths.get("lean_packages", ()))),
         modules=modules_table(),
         release=release_table(),
     )

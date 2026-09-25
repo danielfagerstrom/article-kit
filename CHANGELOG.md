@@ -14,7 +14,10 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   directory, tag, Lean roots, headline declaration, records directory, stem, title, export
   repository URL, keywords, related identifiers — is read from `linkage.toml`'s `[[modules]]`,
   with the creators, licence and copyright line in `[release]`. `docs/RELEASE.md` § "The commands"
-  names these; `spatial-hemigroup-scale-space`'s `scripts/` held them before.
+  names these; `spatial-hemigroup-scale-space`'s `scripts/` held them before. Two new `[paths]`
+  keys serve the export: `lean_libraries` (this tree's Lake libraries; inferred when absent) and
+  `shared_namespaces` (the namespaces a shared package declares, where they differ from its name,
+  as `ScaleSpaceCore` declares `ScaleSpace.*`; defaults to `lean_packages`).
 - `linkage release export` carries the rule 6 gate: for a release after the module's own first
   tag, the date line must name that first release's version and date, and the version-history
   section must have an entry for the version exported; a first release is exempt from both.

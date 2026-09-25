@@ -22,6 +22,14 @@ paper     = "paper"
 # Every paper directory is read for `% shared with blueprint` markers, compared with the
 # blueprint, and written by `--pin-shared`; the check reports them per directory.
 
+# `lean_packages` names the shared Lake packages whose sources also count as "declared here";
+# `shared_namespaces` names the namespace prefixes those packages declare, where they differ
+# from the package name (ScaleSpaceCore declares ScaleSpace.*), so that a `\lean{}` tag naming
+# a shared declaration is not resolved to a local one of the same short name:
+#
+#   lean_packages     = ["ScaleSpaceCore"]
+#   shared_namespaces = ["ScaleSpace"]
+
 # The releasable modules, read by `linkage release export` and `linkage prose register`
 # (docs/RELEASE.md, "The commands"). One table per module — a repository that publishes a
 # line paper and its modules declares one each, in the order they were first released; the

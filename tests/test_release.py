@@ -455,6 +455,17 @@ def test_register_counts_the_modules_paper_by_default(article_repo: Path) -> Non
     assert "TOTAL" in out
 
 
+def test_a_shared_namespace_is_not_looked_for_in_this_tree(article_repo: Path) -> None:
+    """`ScaleSpaceCore` declares `ScaleSpace.*`: the package's name and its namespace need not
+    agree, so a tag naming a shared declaration must not be resolved to a local module that
+    happens to define the same short name."""
+    mods = {"Lib.Later": "theorem elsewhere : True := trivial\n"}
+    assert release.find_modules("Shared.elsewhere", mods, ("Lib",), ("Shared",)) == []
+    assert release.find_modules("Lib.elsewhere", mods, ("Lib",), ("Shared",)) == ["Lib.Later"]
+    # The default is the package list, and `paths.shared_namespaces` overrides it.
+    assert config.load(article_repo).shared_namespaces == ("Shared",)
+
+
 # ---- the Zenodo steps (no network: the state file and the gate) ---------------------------------
 
 def test_a_step_without_a_reserved_draft_says_to_reserve_first(tmp_path: Path) -> None:

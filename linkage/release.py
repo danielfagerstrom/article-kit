@@ -107,14 +107,14 @@ def decl_pattern(short: str) -> re.Pattern[str]:
 
 
 def find_modules(name: str, mods: dict[str, str], libraries: tuple[str, ...] = (),
-                 shared_packages: tuple[str, ...] = ()) -> list[str]:
+                 shared_namespaces: tuple[str, ...] = ()) -> list[str]:
     """Modules defining the declaration's short name.
 
     A library prefix on the tag restricts the hits to that library (the interface axioms are
-    declared in both the real library and the skeleton). A prefix naming a *shared* Lake
-    package (`paths.lean_packages`) names a declaration that is not in this tree at all.
+    declared in both the real library and the skeleton). A prefix naming a shared package's
+    namespace (`paths.shared_namespaces`) names a declaration that is not in this tree at all.
     """
-    for pkg in shared_packages:
+    for pkg in shared_namespaces:
         if name.startswith(pkg + "."):
             return []
     short = name.split(".")[-1]
@@ -610,7 +610,7 @@ class Exporter:
         return mods
 
     def find(self, name: str, mods: dict[str, str]) -> list[str]:
-        return find_modules(name, mods, self.libraries(), self.cfg.lean_packages)
+        return find_modules(name, mods, self.libraries(), self.cfg.shared_namespaces)
 
     def closure_for(self, chapters: list[str], paper: Path, roots: list[str],
                     mods: dict[str, str]):
