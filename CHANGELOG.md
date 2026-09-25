@@ -7,6 +7,15 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The boundary harness — `linkage boundary`** ([`docs/LINKAGE.md`](docs/LINKAGE.md) rule 5), four
+  checks the repository-wide axiom guard cannot do, because it reads the *union* of what the guard
+  file prints: a `#guard_msgs`-pinned `#print axioms` per headline declaration (with the pinned
+  axioms cross-checked against `trust-boundary.txt`, so a pin cannot be widened on its own say-so);
+  a positive probe per headline result, `sorry`-free and not stated as `True`; adversarial goals
+  kept as isolated `sorry`s and checked to stay `sorry`s; and a definition sharing its name with a
+  standard notion. Source text only — no Lean, no toolchain. Opt-in per article through a
+  `[boundary]` table in `linkage.toml`, and a no-op without one; `lean.yml` runs it as guard 3,
+  with a new `boundary_strict_shadows` input.
 - `linkage check` prints a `[uses]` advisory per shared node whose paper proof never `\ref`s (or
   `\cref`s) some of the node's blueprint `\uses{}` targets. Advisory only; the exit code is
   unchanged ([`docs/LINKAGE.md`](docs/LINKAGE.md) rule 4).

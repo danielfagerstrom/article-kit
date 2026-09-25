@@ -102,6 +102,14 @@ Does the Lean prove what the article states, or something weaker, vacuous or jun
 closes, and again for every interface admitted after it: admitting a name re-opens its card.
 **Leaves** `blueprint/REVIEW-fidelity.md` with its verdict and the fixes landed.
 
+What the review concludes by hand, the **boundary harness** then keeps true by machine: a
+`[boundary]` table in `linkage.toml` naming the headline declarations, their per-theorem
+`#guard_msgs` axiom pins, a positive probe apiece, and the adversarial goals that must stay
+unprovable. Set it up as the review closes — its four findings are the review's own questions
+asked on every push — and run `linkage boundary` beside `linkage check`. The rules and the
+table's shape are in [`LINKAGE.md`](LINKAGE.md) rule 5; `lean.yml` runs it beside the axiom
+guard, on source text alone, so it costs seconds and needs no toolchain.
+
 ### 7. The article — `paper/`
 
 Before a section is written, the drafting gate: [`DRAFTING-GATE.md`](DRAFTING-GATE.md)

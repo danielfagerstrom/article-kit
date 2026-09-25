@@ -184,6 +184,75 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    the blueprint's proof, and which therefore grounds no `[A]` node. Such an entry is still fully
    reviewed; it is the `**Lean:**` segment, not a `\ledger{}` reference, that `trust-boundary.txt` is
    cross-checked against.
+
+   **The boundary harness** (`linkage boundary`, 2026-09-25, Q-0077). The allowlist check above reads
+   the *union* of what the guard file prints, which leaves four holes. The harness closes them, opt-in
+   per article through a `[boundary]` table in `linkage.toml`; an article without the table is reported
+   as unconfigured and exits 0, so adoption is a decision, not a migration.
+
+   | hole | what Lean enforces | what `linkage boundary` enforces |
+   |---|---|---|
+   | a headline theorem silently gains an axiom | `#guard_msgs` fails the build when the printed set differs from the pin | the pin exists per headline declaration, names the right declaration, and its axioms are inside the reviewed boundary |
+   | a theorem weakened into vacuity | the probe file builds, so the probe really holds | a probe exists per headline result, is `sorry`-free and is not stated as `True` |
+   | the development goes unsound | nothing — the file is never built | every adversarial goal is *still* a `sorry`, and nothing imports the file |
+   | a local definition shadows a standard notion | nothing | the name collision is reported unless the article has recorded what differs |
+
+   1. **Per-theorem axiom pins.** Each declaration in `[boundary] headline` carries, in the guard file,
+      Lean's own output as a doc comment under a `#guard_msgs in`:
+
+      ```lean
+      /-- info: 'Hemigroup.CascadeCore.main_analysis' depends on axioms:
+      [propext, Classical.choice, Quot.sound,
+       Hemigroup.exists_antitone_density_of_dilation_increments] -/
+      #guard_msgs in
+      #print axioms Hemigroup.CascadeCore.main_analysis
+      ```
+
+      The two halves only work together, which is the whole design. `#guard_msgs` alone would let an
+      author widen the pin by hand to whatever the build now prints. The allowlist alone sees the union,
+      so a theorem that has just picked up an interface axiom hides behind a sibling that legitimately
+      carries it — and the article's *asymmetry* claims ("the analysis direction crosses the boundary
+      where the constructive one does not") are exactly claims about the per-theorem breakdown. Pinned
+      and cross-checked, a new axiom can only land by editing a pin, and the edit only passes if a
+      reviewed ledger entry already grounds the name. An unpinned `#print axioms` on a *non*-headline
+      declaration is an advisory: a settled article prints axioms for every tagged declaration (`hcs`
+      has 366) and demanding a pin for all of them on day one is an edit nobody reviews.
+   2. **Positive probes** (`[boundary] probes`). A cheap should-hold consequence of each headline
+      result, proved from it, in the article's own vocabulary. It catches what no axiom check can: a
+      statement quietly *weakened* — a hypothesis strengthened, a clause dropped from a conjunction —
+      still type-checks, still reduces to Lean core, and still passes every other check here. Its probe
+      stops building. The lint refuses a probe that is a `sorry` or an `axiom`, and one stated as
+      `True`; that a probe *holds* is Lean's job, since the file is built with the library.
+   3. **Adversarial goals** (`[boundary] adversarial`). Known-false, in-domain statements — normally the
+      negations of the boundary conditions the article states in prose, the places where the paper says
+      a hypothesis is needed — kept as isolated `sorry`s in a file nothing imports and the build never
+      sees. The lint fails if one **stops** being a `sorry`: a goal here that becomes provable means the
+      development proves a falsehood, or the hypothesis it was testing is doing no work. Do not close
+      the goal or delete the line; find out what made it provable. The file must be outside `lean.yml`'s
+      `sorry_guard_dir`, and `linkage boundary` fails if any library source imports it.
+   4. **Definition scrutiny.** A declaration sharing its short name with a standard notion (`kernel`,
+      `laplace`, `conv`, `deriv`, …) is reported, because a reader — and an agent reading the proof —
+      will take it for the standard one. `unfold` or `#print` both, then either rename it or record it
+      under `[boundary.shadows]` with what differs; the entry is the review record, so an empty reason
+      fails. Advisory by default and fatal under `--strict-shadows`, the same adoption curve as
+      `--strict-shared`. The standard-notion list is curated in `linkage/boundary.py` (extend per
+      article with `[boundary] standard_notions_extra`), widened for free by any shared package in
+      `paths.lean_packages`, and `--with-mathlib` consults a checked-out Mathlib — thousands of files,
+      so a deliberate run, not a per-push check.
+
+   The whole harness reads source text only: no Lean, no toolchain, no network, so it runs in the same
+   offline job the manifest emitter runs in, and CI calls it before it ever starts a build.
+
+   ```toml
+   [boundary]
+   guard       = "Formalization/CIAxiomGuard.lean"
+   probes      = "Formalization/Probes.lean"
+   adversarial = "Formalization/Adversarial.lean"
+   headline    = ["Hemigroup.CascadeCore.main_analysis", ...]
+
+   [boundary.shadows]
+   "Hemigroup.laplace" = "the one-sided transform of a measure on [0,∞) — not the Laplacian"
+   ```
 6. **Every statement node declares `\statusT` or `\statusA`.** The hub's confidence grading keys on the
    projected status, so a node without one is a node the hub cannot grade.
 7. **Every `[A]` node declares its assignment** (ADR-0011, 2026-07-30): a `\textbf{Assignment.}` clause
@@ -267,6 +336,13 @@ It enforces the **in-repo** edges and fails (exit 1) on:
   is not LF, or CR immediately before LF (rule 9);
 - a statement node with no `\statusT` / `\statusA` (rule 6);
 - a `\statusA` node with no `\textbf{Assignment.}` clause, or whose clause names no ledger entry (rule 7);
+- (a sibling command, `linkage boundary` — linkage/boundary.py, rule 5's boundary harness: a headline
+  declaration with no `#guard_msgs`-pinned `#print axioms`, a pin naming an axiom outside
+  `trust-boundary.txt`, a headline result with no positive probe, an adversarial goal that has stopped
+  being a `sorry`, and — advisory, or fatal under `--strict-shadows` — a definition sharing its name
+  with a standard notion. Separate from `linkage check` because `linkage axioms --check`'s *stdout is
+  the allowlist* CI redirects into a file, so a finding printed there would be read as an allowed
+  axiom name);
 - a `\leanok` node whose transitive `\uses` closure contains a `[T]` statement proved nowhere (rule 8) —
   reported once per reached statement, naming the dependents and a shortest path to it. The walk is
   breadth-first with a visited set, so it terminates whatever the edges do (a `\uses` cycle is a modelling
