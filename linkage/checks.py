@@ -432,6 +432,16 @@ def run(
                 "prose, or a statement that has since been removed)")
             no_env += 1
             continue
+        # 3c. does the paper's proof still cite what the blueprint's proof uses?
+        # Advisory only: a paper may legitimately inline a lemma. Silent when no proof
+        # follows the paper statement (proof_refs is None) or the node lists no `\uses`.
+        if mk.proof_refs is not None:
+            for n in nodes_here:
+                if missing_uses := [u for u in n.uses if u not in mk.proof_refs]:
+                    advisory.append(
+                        f"[uses]   {mk.file}:{mk.line} {n.label}: the paper's proof never "
+                        f"\\ref's {len(missing_uses)} of {len(n.uses)} blueprint \\uses "
+                        f"target(s): {', '.join(missing_uses)}")
         if len(nodes_here) == 1 and mk.shared_statement == nodes_here[0].shared_statement:
             verbatim += 1
             continue

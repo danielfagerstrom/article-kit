@@ -7,6 +7,9 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage check` prints a `[uses]` advisory per shared node whose paper proof never `\ref`s (or
+  `\cref`s) some of the node's blueprint `\uses{}` targets. Advisory only; the exit code is
+  unchanged ([`docs/LINKAGE.md`](docs/LINKAGE.md) rule 4).
 - `linkage axioms --check` requires the source's verbatim transcription (LINKAGE.md rule 5): an
   entry that grounds an admitted interface name and has neither a `**Verbatim:**` block nor a
   same-id section in the companion file is an error; an unadmitted entry gets an advisory. The

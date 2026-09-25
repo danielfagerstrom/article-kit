@@ -100,6 +100,22 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    (`statement_sha` remains the hub's wire format and is untouched by any of this — the reduction is
    a comparison key, never projected, so no published sha moves.)
 
+   **The proof's context is compared too, as an advisory** (2026-09-25). Rule 4 sees only the
+   statement; the blueprint also carries the node's `\uses{}` set, the lemmas its proof invokes. For
+   each shared node with `\uses{}`, when a `proof` environment directly follows the paper's marked
+   statement, `linkage check` lists the `\uses{}` targets that proof never cites with `\ref`
+   (`\cref`, `\Cref`, `\autoref`, `\eqref`, `\vref` and comma lists are read too; comments are ignored):
+
+   ```
+   [uses]   paper/paper.tex:12 thm:x: the paper's proof never \ref's 3 of 4 blueprint \uses target(s): lem:b, lem:c, lem:d
+   ```
+
+   Never an error and never `--strict-shared`: a paper may legitimately inline a lemma, and the
+   check cannot tell that from a dropped reference, so it asks for a look. It is silent when the
+   paper states the result without a following proof (proved elsewhere, or by citation) and when the
+   node lists no `\uses{}`. Only `\uses{}` in the statement environment count, the ones the manifest
+   projects as edges.
+
    **A repository may hold several papers** (2026-09-15). `paths.paper` in `linkage.toml` takes a
    directory *or a list of them*:
 

@@ -169,6 +169,17 @@ def shared_statement(body: str) -> str:
 PROOF_AHEAD = re.compile(r"(?:\s|%[^\n]*)*\\begin\{proof\}(.*?)\\end\{proof\}", re.S)
 
 
+# `\ref{a}`, `\cref{a,b}`, `\Cref`, `\autoref`, `\eqref`, `\vref`, optionally starred
+_REF_CMD = re.compile(r"\\(?:[cC]ref|[vV]ref|autoref|eqref|ref)\*?\{([^}]*)\}")
+
+
+def proof_ref_labels(body: str) -> set[str]:
+    """Every label a proof body cites by a `\ref`-family command, comments ignored."""
+    body = re.sub(r"(?<!\\)%[^\n]*", "", body)
+    return {lab.strip() for m in _REF_CMD.finditer(body) for lab in m.group(1).split(",")
+            if lab.strip()}
+
+
 def blueprint_nodes(tex: str, cfg: Config) -> list[Node]:
     """One Node per statement environment (plus its trailing proof, if any)."""
     nodes: list[Node] = []
