@@ -15,7 +15,9 @@ Framework-owned (`linkage init --sync`); do not edit here. The ledger's format a
   "statement as used". A paraphrase alone is not a verification: one that dropped a slowly varying
   factor was printed, typed, reviewed and admitted as a false axiom (Paper V, ledger A10). Where the
   repository keeps the transcriptions in a companion (`blueprint/AXIOMS-verbatim.md`), a new or
-  changed entry gets its transcription there in the same commit.
+  changed entry gets its transcription there in the same commit. `linkage axioms --check` fails an
+  entry that grounds an admitted interface and has neither a `**Verbatim:**` block nor a same-id
+  section in the companion (`paths.axioms_verbatim`); an unadmitted entry only gets an advisory.
 - Page anchors and wordings are read by the `librarian` from a held copy, never from memory; OCR
   text renders `≤` as `<` and `α` as `ex`, so a range or an inequality is settled from the page
   image.

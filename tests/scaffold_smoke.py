@@ -63,6 +63,8 @@ Boundedness of the kernel, taken as an analytic interface.
 **Lean:** `Smoke.kernel_bounded`
 
 **Cite:** @author2020 — Thm 3.1, p. 88
+
+**Verbatim:** "For all t, the tail is bounded by C exp(-t)." (p. 88)
 """
 
 LEAN = """\

@@ -7,6 +7,11 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage axioms --check` requires the source's verbatim transcription (LINKAGE.md rule 5): an
+  entry that grounds an admitted interface name and has neither a `**Verbatim:**` block nor a
+  same-id section in the companion file is an error; an unadmitted entry gets an advisory. The
+  companion is `paths.axioms_verbatim` in `linkage.toml`, default `blueprint/AXIOMS-verbatim.md`.
+
 ## v0.1.0 — 2026-09-21 — the first pinned release
 
 The framework as it stands after the process home (ADR-0001) and its own test suite and CI. Before
