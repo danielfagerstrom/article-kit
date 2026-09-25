@@ -45,14 +45,16 @@ manifest without transclusion fields a hard failure, so one can never reach the 
 | `docs/LINKAGE.md` | the spec the checks enforce, the ledger's format |
 | `docs/DRAFTING-GATE.md`, `docs/PUBLICATION-TEMPLATE.md`, `docs/REVIEWER-CONTRACT.md` | is a section ready to draft; the section contracts and exposition rubric; the reviewer's flag format |
 | `docs/REVIEW.md`, `docs/CLOUD.md` | the interactive Lean review tour; cloud sessions |
+| `docs/PLUGIN.md` | this repository as a Claude Code plugin: what it ships, what an article declares, the migration off the junctions and the hub's sync |
 | `docs/templates/` | the external review prompt; adopting the boundary harness (`boundary-harness.md`, with the pilot's worked example) |
 | `scaffold/claude/rules/` | the **session rules**, framework-owned, copied into each article's `.claude/rules/article-kit/`: `core.md` at every session start, `writing.md`, `blueprint.md`, `ledger.md`, `lean.md` when a matching file is read |
 | `scaffold/repo/` | the templates of a new article's `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `notes/HANDOFF.md`, `adr/` and `records/` |
 | `scaffold/blueprint/` | the LaTeX scaffolding: theorem environments, plasTeX config, the linkage macros, the render allowlist |
 | `.github/workflows/` | reusable workflows (`workflow_call`) the article repos call |
-| `.claude/agents/mathematician.md` | the shared sub-agent; the hub's `sync-agents.sh` installs it user-wide |
-| `.claude/skills/fidelity-review/` | does the Lean prove what the article states, or something weaker or vacuous: the method, prompts, templates and `scripts/f7sweep.py`. Installed user-wide by a junction `~/.claude/skills/fidelity-review → <this dir>` |
-| `.claude/skills/tighten/` | shorten a document to a page limit by measuring which paragraphs are cheapest to shorten. Installed the same way |
+| `.claude-plugin/` | the plugin and marketplace manifests: the three components below reach an article session as the `article-kit` plugin ([`docs/PLUGIN.md`](docs/PLUGIN.md)) |
+| `.claude/agents/mathematician.md` | the shared sub-agent; shipped by the plugin, and a project agent in this repository's own sessions |
+| `.claude/skills/fidelity-review/` | does the Lean prove what the article states, or something weaker or vacuous: the method, prompts, templates and `scripts/f7sweep.py`. `/article-kit:fidelity-review` from the plugin |
+| `.claude/skills/tighten/` | shorten a document to a page limit by measuring which paragraphs are cheapest to shorten. `/article-kit:tighten` |
 | `adr/` | framework-wide decisions |
 | `ROADMAP.md`, `WISHLIST.md` | open work; requests and `process` lessons from the other members |
 

@@ -54,6 +54,12 @@ Add **two additional source repositories** to the environment (phase-3 lesson: t
 
 They land under `/workspace/<name>`; the hook detects them by marker files, not by name.
 
+Attach **`danielfagerstrom/article-kit`** as a third one if the session should have the shared
+skills and the `mathematician` agent: they arrive as a plugin from a marketplace this repository
+declares ([`PLUGIN.md`](PLUGIN.md)), and the same private-repo rule applies to the marketplace's
+source. Attaching it also makes `cloud-setup.sh` install `linkage` editable from the checkout
+rather than from git.
+
 ### 2. Network access → Custom
 
 Keep **"include default list of common package managers"** checked, then add (the hub's three plus

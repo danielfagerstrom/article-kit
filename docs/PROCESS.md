@@ -98,7 +98,7 @@ source's letter) carry a `% CHANGED` marker and a ledger row; a widening waits f
 ### 6. The fidelity review
 
 Does the Lean prove what the article states, or something weaker, vacuous or junk-valued? The
-`fidelity-review` skill (`.claude/skills/fidelity-review/`). Run when the formalization phase
+`/article-kit:fidelity-review` skill (`.claude/skills/fidelity-review/`). Run when the formalization phase
 closes, and again for every interface admitted after it: admitting a name re-opens its card.
 **Leaves** `blueprint/REVIEW-fidelity.md` with its verdict and the fixes landed.
 
@@ -134,7 +134,7 @@ In this order, each on the text as it then stands:
    counts by zone (prose, shared statements, proofs) are the register script's.
 3. **Scope audit**: restate every claim of the abstract, the introduction and the conclusion from
    its statement and compare. Every such pass so far has found a dropped hypothesis.
-4. **Length**, only where there is a page limit: the `tighten` skill.
+4. **Length**, only where there is a page limit: the `/article-kit:tighten` skill.
 5. **The AI statement**, from the session archive through the `archivist` (sonnet), on the rules of
    `WRITING.md` § 6; numbers re-derived, never restated.
 6. **The author's section-by-section review.** The session applies the comments; a comment that
@@ -189,8 +189,15 @@ are already loaded. `git status` first after any crash.
 | `librarian` (library repo) | every source, every page anchor; dispatch is pre-authorized | sonnet |
 | `draft-reviewer` (hub) | blind review of one section's prose | opus |
 | `archivist` (hub) | the process record, the AI statement's numbers | sonnet |
-| `fidelity-review` skill | phase 6 | opus reviewers |
-| `tighten` skill | page limits | — |
+| `/article-kit:fidelity-review` skill | phase 6 | opus reviewers |
+| `/article-kit:tighten` skill | page limits | — |
 
 Every `Agent` call sets `model`. Mechanical days run on opus, days that prove or draft new
 mathematics on fable (the rubric: `~/.claude/CLAUDE.md`).
+
+**How they reach a session.** article-kit's own — `mathematician` and the two skills — arrive as the
+`article-kit` **plugin**, from the marketplace each article's `.claude/settings.json` declares, which
+is why the skills are namespaced: [`PLUGIN.md`](PLUGIN.md), and the migration off the user-level
+junctions is there too. The hub's own (`draft-reviewer`, `archivist`) and the librarian's stay owned
+by their repositories and are kept current by the `SessionStart` hook
+(`.claude/sync-agents-hook.sh` → the hub's `sync-agents.sh`). No agent has two homes.
