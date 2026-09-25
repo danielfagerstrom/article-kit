@@ -1,0 +1,40 @@
+% The seeded side of the `linkage paper` fixture pair: ../clean/ with one defect seeded
+% per check, each marked `% SEED: <tag>` naming the tag the finding must carry. Two are
+% here (the abstract's length and a missing declaration); the rest are in section.tex.
+\documentclass[11pt]{article}
+\usepackage{amsmath,amsthm}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+
+\title{A Small Paper About Kernels}
+\author{A. Author}
+
+\begin{document}
+\maketitle
+
+% SEED: abstr — 30-odd words, far under the template's 150 floor.
+\begin{abstract}
+We study a family of smoothing kernels on the half-line and characterise the members
+that respect a prescribed scale covariance. Two consequences are recorded, and one
+question is left open.
+\end{abstract}
+
+\input{section}
+
+\section*{Author contributions}
+The author wrote the paper.
+
+\section*{Competing interests}
+The author declares none.
+
+\section*{Data availability}
+No data were generated.
+
+% SEED: decl — the funding declaration has no heading anywhere in this paper.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

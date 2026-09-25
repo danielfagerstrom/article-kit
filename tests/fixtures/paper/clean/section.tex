@@ -1,0 +1,42 @@
+\section{The kernels}
+\label{sec:kernels}
+
+A kernel is a measurable map from the half-line to itself, following
+\cite{author2020kernels}. The scale parameter is written $t$, and the family is
+admissible when composition stays inside it.
+
+\begin{proposition}
+  \label{prop:two}
+  Let $K_t$ be admissible. Then
+  \begin{enumerate}
+    \item $K_t$ has a finite first moment, and
+    \item $K_t$ is determined by that moment.
+  \end{enumerate}
+\end{proposition}
+
+By Proposition~\ref{prop:two}(2) the family is a curve rather than a surface, which is
+what makes the classification of Section~\ref{sec:consequences} finite.
+
+\begin{lemma}
+  \label{lem:moment}
+  The first moment of $K_t$ is affine in $t$.
+\end{lemma}
+
+\section{Consequences}
+\label{sec:consequences}
+
+Lemma~\ref{lem:moment} and Proposition~\ref{prop:two}(1) together give the tail bound,
+which is the form \cite{writer2019tails} states for the stable case:
+\begin{equation}
+  \int_x^\infty K_t(s)\,\mathrm{d}s \le C\,\mathrm{e}^{-x/t}.
+  \tag{2.1}
+\end{equation}
+
+\begin{theorem}
+  \label{thm:criterion}
+  A candidate kernel is admissible if and only if its first two moments satisfy the
+  relation of Lemma~\ref{lem:moment}.
+\end{theorem}
+
+Theorem~\ref{thm:criterion} is the criterion promised in the abstract; the worked
+example of \cite{author2020kernels} attains the bound.
