@@ -32,19 +32,6 @@ or a skill, and deletes the item. A lessons file inside an article repository me
 
 ---
 
-## process: `linkage axioms --check` requires the verbatim transcription
-
-**Wanted by** `spatial-hemigroup-scale-space` (module B, lesson 1), 2026-09-21.
-
-`LINKAGE.md` rule 5 now requires every ledger entry to carry the source's wording verbatim, in the
-entry or in `blueprint/AXIOMS-verbatim.md`. Nothing checks it. **Suggested shape:** an entry that
-grounds an admitted interface name and has neither a `**Verbatim:**` block nor a section of the
-same id in the verbatim companion fails `linkage axioms --check`; an unadmitted entry gets an
-advisory. The evidence: ledger A10 of Paper V, a paraphrase that dropped Sato's slowly varying
-factor, admitted as a false axiom and found by the first external review.
-
----
-
 ## process: an interface admitted after the fidelity review re-opens its card
 
 **Wanted by** `spatial-hemigroup-scale-space` (module B, lesson 2), 2026-09-21.

@@ -151,6 +151,19 @@ def cmd_axioms(args) -> int:
             print(f"  {b}", file=sys.stderr)
         return 1
     if args.check:
+        errors, advisories = trust.missing_verbatim(cfg)
+        companion = cfg.axioms_verbatim.relative_to(cfg.root).as_posix()
+        if advisories:
+            print(f"advisory: {len(advisories)} unadmitted entr(ies) with no source "
+                  f"transcription ({', '.join(advisories)}) — add a **Verbatim:** block or a "
+                  f"section in {companion}", file=sys.stderr)
+        if errors:
+            print(f"TRUST BOUNDARY: {len(errors)} entr(ies) grounding an admitted interface "
+                  f"have no source transcription (LINKAGE.md rule 5) — neither a "
+                  f"**Verbatim:** block nor a same-id section in {companion}:", file=sys.stderr)
+            for e in errors:
+                print(f"  {e}", file=sys.stderr)
+            return 1
         print(f"trust boundary OK: {len(names)} interface axiom(s), all grounded in "
               f"{cfg.axioms.name}.", file=sys.stderr)
     for n in trust.allowlist(cfg):
