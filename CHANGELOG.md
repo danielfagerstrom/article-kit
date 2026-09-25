@@ -7,6 +7,13 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage init --sync` works in a paper-only repository. It reads the slug from `linkage.toml`
+  without validating the artifact paths (`config.load(root, validate=False)`), so a repository with
+  no blueprint, ledger or Lean directory no longer stops with a CONFIG ERROR. Chosen: the rules for
+  artifacts the repository lacks are **skipped**, not copied — `blueprint.md` and `ledger.md`
+  without the blueprint, `lean.md` without the Lean directory — and with no blueprint the
+  `blueprint/` build files and the stamp are skipped too, so a paper-only repo gets only `core.md`,
+  `writing.md` and the `.claude/` seeds. `init` without `--sync` and `linkage check` are unchanged.
 - **article-kit is a Claude Code plugin** (ADR-0001 step 6, [`docs/PLUGIN.md`](docs/PLUGIN.md)):
   `.claude-plugin/plugin.json` ships the two shared skills and the `mathematician` agent, and
   `.claude-plugin/marketplace.json` publishes the plugin as the marketplace `article-kit`, which

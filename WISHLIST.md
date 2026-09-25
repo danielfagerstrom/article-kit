@@ -45,20 +45,6 @@ uncommitted change from another session.
 
 ---
 
-## process: `linkage init --sync` in a paper-only repository
-
-**Wanted by** `hemigroup-kernels-ssvm` (the ADR-0001 cleanup), 2026-09-21.
-
-`linkage init --sync` stops with a CONFIG ERROR in a repository with no blueprint (the conference
-extraction), because it loads the config with the default blueprint, ledger and Lean paths; the
-session rules had to be copied by hand, so `linkage check`'s drift detection is the only thing that
-will notice a stale copy there. **Suggested shape:** `--sync` needs only the slug, so it reads
-`linkage.toml` without validating the artifact paths; and the path-scoped rules for artifacts a
-repository does not have (`blueprint.md`, `ledger.md`, `lean.md`) are either skipped or harmless,
-since they load only when a matching file is read.
-
----
-
 ## process: summaries and numbers get a scope audit before a frozen build
 
 **Wanted by** `spatial-hemigroup-scale-space` (module B, lessons 8 and 9), 2026-09-21.

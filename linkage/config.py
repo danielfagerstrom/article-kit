@@ -300,7 +300,7 @@ def find_root(start: Path | None = None) -> Path:
     )
 
 
-def load(root: Path | None = None) -> Config:
+def load(root: Path | None = None, *, validate: bool = True) -> Config:
     root = (root or find_root()).resolve()
     # An explicit `--root` does no walking, so nothing has established that the file is
     # there: without this, a mistyped path reached tomllib as a FileNotFoundError and the
@@ -489,7 +489,7 @@ def load(root: Path | None = None) -> Config:
         modules=modules_table(),
         release=release_table(),
     )
-    if missing := cfg.missing():
+    if validate and (missing := cfg.missing()):
         raise ConfigError(
             f"{CONFIG_NAME} points at paths that do not exist: {'; '.join(missing)}"
         )

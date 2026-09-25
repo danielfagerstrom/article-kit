@@ -436,7 +436,8 @@ def cmd_init(args) -> int:
     slug = args.slug
     if slug is None:
         # --sync inside an existing article: take the slug from its config
-        slug = config.load(root).slug
+        # (only the slug: a paper-only repository has none of the artifact paths)
+        slug = config.load(root, validate=False).slug
     subs = {k: v for k, v in (
         ("TITLE", args.title), ("GITHUB", args.github),
         ("HOME", args.home), ("DOCHOME", args.dochome)) if v}
