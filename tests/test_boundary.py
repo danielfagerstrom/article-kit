@@ -95,11 +95,23 @@ def test_headline_without_a_pin_fails(article):
                for m in tagged(report(article).fatal, "axiom-pin"))
 
 
-def test_unguarded_print_axioms_fails(article):
+def test_unguarded_print_axioms_on_a_headline_fails(article):
     """The whole point of check 1: an unpinned line is the old union-only check."""
     built(article, guard="import Art\n\n#print axioms Art.main\n")
-    msgs = tagged(report(article).fatal, "axiom-pin")
+    rep = report(article)
+    msgs = tagged(rep.fatal, "axiom-pin")
     assert any("is not under a `#guard_msgs in`" in m for m in msgs)
+    # …and reported once, not also as "has no pinned block".
+    assert len(msgs) == 1
+
+
+def test_unguarded_print_axioms_elsewhere_is_an_advisory(article):
+    """Adoption stays affordable: a settled article prints axioms for hundreds of
+    declarations, and only the headline ones must be pinned to start with."""
+    built(article, guard=GUARD + "\n#print axioms Art.other\n")
+    rep = report(article)
+    assert tagged(rep.fatal, "axiom-pin") == []
+    assert any("Art.other" in m for m in tagged(rep.advisory, "axiom-pin"))
 
 
 def test_pin_on_an_undeclared_axiom_fails(article):
@@ -175,6 +187,17 @@ def test_probe_stated_as_True_fails(article):
     built(article, probes="import Art\n\ntheorem probe_main : True := trivial\n")
     msgs = tagged(report(article).fatal, "probe")
     assert any("stated as `True`" in m for m in msgs)
+
+
+def test_probe_reaching_the_headline_by_projection_counts(article):
+    """`F.main hF` is how a probe reaches a structure field — the usual spelling."""
+    built(article, probes="import Art\n\ntheorem p (F : T) : F.main 0 = 0 := rfl\n")
+    assert tagged(report(article).fatal, "probe") == []
+
+
+def test_probe_merely_named_after_the_headline_does_not_count(article):
+    built(article, probes="import Art\n\ntheorem probe_main_thing : 0 = 0 := rfl\n")
+    assert any("has no positive probe" in m for m in tagged(report(article).fatal, "probe"))
 
 
 def test_sorry_probe_fails(article):

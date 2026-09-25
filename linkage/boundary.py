@@ -311,14 +311,20 @@ def _check_pins(cfg: Config, rep: Report, guard: str | None,
     allowed = set(trust.allowlist(cfg))
     by_decl = {p.decl: p for p in found if p.guarded and p.axioms is not None}
 
+    headline = set(b.headline)
     for p in found:
         where = f"{rel}:{p.line}"
         if not p.guarded:
-            rep.fatal.append(
-                f"[axiom-pin] {where}: `#print axioms {p.decl}` is not under a "
-                f"`#guard_msgs in` — its output is read as part of the repository-wide "
-                f"union, so this declaration can gain an axiom another one already has "
-                f"and nothing fails. Pin it: `/-- info: … -/ #guard_msgs in`")
+            # Fatal for a headline result, advisory for anything else. A settled article
+            # prints axioms for every declaration its blueprint tags -- `hcs` has 366 --
+            # and demanding a pin for all of them on day one would make adoption a
+            # several-hundred-line edit nobody reviews. The manifest's `headline` list is
+            # where the article says which ones are worth that much.
+            msg = (f"[axiom-pin] {where}: `#print axioms {p.decl}` is not under a "
+                   f"`#guard_msgs in` — its output is read as part of the repository-wide "
+                   f"union, so this declaration can gain an axiom another one already has "
+                   f"and nothing fails. Pin it: `/-- info: … -/ #guard_msgs in`")
+            (rep.fatal if p.decl in headline else rep.advisory).append(msg)
             continue
         if p.axioms is None:
             rep.fatal.append(
@@ -346,8 +352,11 @@ def _check_pins(cfg: Config, rep: Report, guard: str | None,
                     f"base is a review decision: add a grounded {cfg.axioms.name} entry "
                     f"and the name to the boundary, or do not accept the pin")
 
+    printed = {p.decl for p in found}
     for h in b.headline:
-        if h not in by_decl:
+        # A headline whose line exists but is unpinned already has its fatal above;
+        # reporting it twice would only pad the failure list.
+        if h not in by_decl and h not in printed:
             rep.fatal.append(
                 f"[axiom-pin] headline `{h}` has no pinned `#print axioms` block in {rel} "
                 f"— the repository-wide axiom check sees the union and would not notice "
@@ -400,9 +409,15 @@ def _mentions(text: str, decl: str) -> bool:
 
     The short name counts because a probe file usually sits inside the namespace and
     writes `main_construction`, not `Hemigroup.main_construction`.
+
+    A dotted prefix is allowed, which is the whole point: `F.cascadeFamily hF` is how a
+    probe reaches a structure field, and `CascadeCore.main_analysis` how it reaches a
+    namespaced theorem. Excluding it made every such probe read as absent. What is *not*
+    allowed is a word character before or after, so a probe merely **named** after the
+    headline (`probe_cascadeFamily_cascade`) does not count as using it.
     """
     for name in (decl, _short(decl)):
-        if re.search(rf"(?<![\w'.]){re.escape(name)}(?![\w'])", text):
+        if re.search(rf"(?<![\w']){re.escape(name)}(?![\w'])", text):
             return True
     return False
 
