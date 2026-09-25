@@ -59,6 +59,17 @@ def test_the_clean_fixture_paper_reports_nothing(article):
     assert found.advisory == []
 
 
+def test_the_clean_fixture_paper_reaches_every_check(article):
+    """Silence is only worth something if the checks ran: a fixture that lost its `.bib`
+    or its front matter would pass the test above by having nothing to say."""
+    s = paper.lint(install(article, "clean").cfg).stats
+    assert s["main"] == "paper/main.tex"
+    assert s["bib_files"] == ["paper/refs.bib"] and s["cites"] == 2
+    assert s["statements"] == 3 and s["refs"] == 6 and s["tags_checked"] == 1
+    assert s["missing_declarations"] == []
+    assert paper.ABSTRACT_MIN <= s["abstract_words"] <= paper.ABSTRACT_MAX
+
+
 def seeded_tags() -> list[str]:
     """The tags the seeded fixture declares, read from its own `% SEED:` comments."""
     tags = []
