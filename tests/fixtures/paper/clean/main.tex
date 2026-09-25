@@ -1,0 +1,52 @@
+% The clean side of the `linkage paper` fixture pair: a whole small paper that every
+% check passes. Its twin, ../seeded/, is this paper with one defect seeded per check,
+% each marked `% SEED: <tag>`. Keeping the two in step is the point — a change here that
+% makes the clean paper fail is as much a finding as a seeded defect going unreported.
+\documentclass[11pt]{article}
+\usepackage{amsmath,amsthm}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+
+\title{A Small Paper About Kernels}
+\author{A. Author}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We study a family of smoothing kernels on the half-line and characterise the members
+that respect a prescribed scale covariance. The setting is elementary: a kernel is a
+measurable map, the family is indexed by a scale parameter, and the composition of two
+stages of smoothing is required to be a third stage of the same family. Under that
+requirement alone we show that the admissible kernels form a one-parameter class, that
+each member is determined by its first moment, and that the class is closed under the
+limits one would want it to be closed under. Two consequences are recorded. The first
+is a bound on the tail of every admissible kernel, uniform in the scale parameter and
+sharp at the endpoint. The second is a criterion, checkable on the first two moments
+alone, for a candidate kernel to belong to the class at all. Neither consequence needs
+the smoothness that earlier treatments assumed, and both are stated so that a reader who
+cares only about the criterion may stop after the first section of the development. We
+close with the two questions the elementary argument leaves open, and with a worked
+example that shows the bound is attained.
+\end{abstract}
+
+\input{section}
+
+\section*{Author contributions}
+The author wrote the paper.
+
+\section*{Competing interests}
+The author declares none.
+
+\section*{Data availability}
+No data were generated.
+
+\section*{Funding}
+This work received no funding.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

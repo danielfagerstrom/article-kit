@@ -1,6 +1,7 @@
 """`linkage` — the article-repo command line.
 
     linkage check [--wiki PATH] [--emit-manifest PATH] [--require-render]
+    linkage paper
     linkage manifest [PATH] [--require-render]
     linkage demand [--wiki PATH]
     linkage init [--slug SLUG]
@@ -118,6 +119,38 @@ def cmd_check(args) -> int:
             print("  FAIL " + p)
         return 1
     print("\nLINKAGE CHECK OK: all in-repo Lean / ledger / paper edges are consistent.")
+    return 0
+
+
+def cmd_paper(args) -> int:
+    """The deterministic paper lint — the paper sources, not the blueprint's edges."""
+    from . import paper
+    cfg = config.load(args.root)
+    f = paper.lint(cfg)
+    s = f.stats
+    where = ", ".join(d.relative_to(cfg.root).as_posix() for d in cfg.papers)
+    print(f"Paper: {s['files']} source file(s) under {where}, "
+          f"{s['statements']} numbered result(s), {s['refs']} reference(s), "
+          f"{s['cites']} cite key(s) against "
+          f"{', '.join(s['bib_files']) or 'no .bib'}.")
+    if s["main"]:
+        words = s["abstract_words"]
+        print(f"  main document {s['main']}: abstract {words} word(s), "
+              f"{4 - len(s['missing_declarations'])}/4 declarations, "
+              f"{s['tags_checked']} hand-written \\tag(s) checked.")
+    else:
+        # A directory of section fragments is a normal state (a module still being
+        # assembled, the scaffold smoke article), not a paper missing its front matter.
+        print("  no main document (no \\begin{document}) — the declarations, the "
+              "abstract and the \\tag numbering are not checked")
+    for a in f.advisory:
+        print("  advisory " + a)
+    if f.fatal:
+        print(f"\nPAPER LINT FAILED: {len(f.fatal)} problem(s)\n")
+        for p in f.fatal:
+            print("  FAIL " + p)
+        return 1
+    print("\nPAPER LINT OK: every reference, cite key, item pointer and \\tag resolves.")
     return 0
 
 
@@ -314,6 +347,11 @@ def build_parser() -> argparse.ArgumentParser:
                         "CI, where a manifest without transclusion fields must never reach "
                         "the hub")
     c.set_defaults(func=cmd_check)
+
+    pp = sub.add_parser("paper", help="the deterministic paper lint: references, cite "
+                                      "keys, item pointers, \\tag numbering, the "
+                                      "declarations and the abstract")
+    pp.set_defaults(func=cmd_paper)
 
     m = sub.add_parser("manifest", help="write the manifest only")
     m.add_argument("path", nargs="?", type=Path, default=None,

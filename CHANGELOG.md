@@ -7,6 +7,17 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage paper`** — a deterministic lint over the paper sources themselves, sibling to
+  `linkage check` and box 8 of [`docs/DRAFTING-GATE.md`](docs/DRAFTING-GATE.md). Fatal: a `\ref`
+  naming no `\label`, a `\cite` key in no `.bib`, an item pointer past the target's item count
+  (`Proposition~\ref{p}(3)` on a two-item statement), a hand-written `\tag{N.M}` carrying another
+  section's number. Advisory: the four mandatory declarations, the abstract against
+  `PUBLICATION-TEMPLATE.md` § A's 150–250 words, numbered results nothing refers to, cited entries
+  with no DOI, and a bare `§`/`Thm.` with neither a citation nor a label nearby. The last three
+  fatal checks are the pointer defects found by the blind reviews of Paper I, which no other check
+  can see. Reads every directory `paths.paper` names; the declarations, the abstract and the `\tag`
+  numbering need the main document (`\begin{document}`) and are skipped for a directory of section
+  fragments.
 - `linkage check` prints a `[uses]` advisory per shared node whose paper proof never `\ref`s (or
   `\cref`s) some of the node's blueprint `\uses{}` targets. Advisory only; the exit code is
   unchanged ([`docs/LINKAGE.md`](docs/LINKAGE.md) rule 4).

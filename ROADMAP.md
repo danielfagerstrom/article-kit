@@ -55,15 +55,6 @@ theorem gained an axiom, not only that one did); positive probes (cheap should-h
 adversarial goals, known-false in-domain statements kept as isolated `sorry`s that must never become
 provable; definition scrutiny (`unfold`/`#reduce` for terms sharing a name with a standard notion).
 
-### `linkage paper` — deterministic paper lint
-
-A sibling to `linkage check` over the paper sources: the declarations; the abstract's length;
-`\ref` integrity and orphaned numbered results; `\cite` keys resolving, entries without a DOI; and
-three pointer defects that every current check is blind to, found by the blind reviews of Paper I:
-an item number past the target's item count (`Proposition~\ref{…}(3)` on a two-item statement), a
-bare `§`/`Thm.` in prose with no adjacent `\cite` and no internal label, and a hand-written
-`\tag{N.M}` whose `N` is not the enclosing section. Becomes a deterministic box of the drafting gate.
-
 ### Dropped context around shared statements
 
 Shared statements are checked verbatim (`LINKAGE.md` rule 4). What the check cannot see is the
