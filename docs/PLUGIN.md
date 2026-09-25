@@ -156,7 +156,17 @@ what is left for the author, is recorded here rather than in a session note.
   (a renamed or deleted skill fails the test);
 - the manifest versions match `pyproject.toml`'s;
 - `scaffold/claude/settings.json` is valid JSON, declares the marketplace and enables
-  `article-kit@article-kit`, and still carries both `SessionStart` hooks.
+  `article-kit@article-kit`, and still carries both `SessionStart` hooks;
+- a fresh `linkage init` writes that declaration into the new article's `.claude/settings.json`.
+
+**Verified against the pilot, 2026-09-25**, as a dry run outside the repository (the change that
+introduced the plugin was allowed to edit article-kit only): the two keys merged into
+`spatial-hemigroup-scale-space`'s existing `.claude/settings.json` give valid JSON with its
+`cloud-setup.sh` hook intact. That repository was scaffolded before Q-0121, so it has **one**
+`SessionStart` hook and no `.claude/sync-agents-hook.sh`; it needs the file copied from
+`scaffold/claude/` and the second hook line added if the hub-owned agents are to stay current from
+its sessions (step 4 above), and until then `draft-reviewer` and `librarian` there are whatever a
+hub session last installed.
 
 **Left for the author** — these need the `claude` binary, which an unattended session may not run,
 and a cloud environment, which it cannot reach:
