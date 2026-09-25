@@ -73,6 +73,10 @@ comment and add `#guard_msgs in`:
 #print axioms Namespace.the_main_theorem
 ```
 
+(`#guard_msgs` normalises whitespace by default, so where the line wraps does not matter —
+but pasting Lean's own output is still the way to avoid a pin that was *typed* from what one
+expected rather than *read* from what is true.)
+
 From then on Lean fails the build when the real axiom set differs from the pin, and
 `linkage boundary` fails when the pin names an axiom `blueprint/trust-boundary.txt` does not
 declare. Neither half is enough alone — see rule 5 for why.
@@ -223,3 +227,11 @@ It does not run Lean, and it does not decide whether a probe is a *good* probe o
 goal is really false. Those are the fidelity review's judgments; the harness keeps them from
 rotting. A probe that holds vacuously for a reason the lint cannot see (a hypothesis nothing
 satisfies) is still the review's problem — see `.claude/skills/fidelity-review/`.
+
+Three specific limits, recorded as strict-xfail tests in `tests/test_boundary_blind_spots.py`
+so they fail the day one is closed: a probe stated as `X = X` passes check 2; an adversarial
+goal mis-stated into something *true* sits there passing forever; and `[boundary] headline` is
+cross-checked against nothing, so dropping a name from it silently exempts that theorem from
+both the pin and the probe. The third is the one to watch — it is the same hand-kept step the
+guard file's own header warns about — and the blueprint already knows the answer, since a
+`\leanok` node with a `\lean{}` tag and a `\statusT` is a proved headline claim.
