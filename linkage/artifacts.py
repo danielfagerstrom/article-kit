@@ -132,8 +132,7 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
     no *other* marker intervenes — a marker whose own statement was deleted must not
     silently adopt the following one's and report it as drift.
     """
-    from .parse_latex import (
-        PROOF_AHEAD, proof_ref_labels, shared_statement, split_env_title)
+    from .parse_latex import PROOF_AHEAD, proof_ref_labels, shared_statement, split_env_title
 
     env_re = re.compile(
         r"\\begin\{(" + "|".join(cfg.statement_envs) + r")\}(.*?)\\end\{\1\}", re.S)
