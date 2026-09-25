@@ -15,6 +15,12 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   same-id section in the companion file is an error; an unadmitted entry gets an advisory. The
   companion is `paths.axioms_verbatim` in `linkage.toml`, default `blueprint/AXIOMS-verbatim.md`.
 
+- The scaffold seeds `.claude/sync-agents-hook.sh` and a second `SessionStart` hook for it: it finds
+  the hub (`$WIKI_VAULT`, then `/workspace`, siblings, `~/dev`, `~/Documents/Notes`) and runs its
+  `sync-agents.sh`, so shared agents such as `draft-reviewer` stay current from an article session.
+  Silent when current; exits 0 always. Seeded once: an existing article copies the file and the
+  hook entry by hand.
+
 ## v0.1.0 — 2026-09-21 — the first pinned release
 
 The framework as it stands after the process home (ADR-0001) and its own test suite and CI. Before

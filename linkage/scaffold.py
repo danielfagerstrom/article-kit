@@ -46,6 +46,7 @@ SEEDED = {
     # the CLIs, so it cannot itself be fetched through the framework it installs. Each
     # article therefore carries its own copy, seeded here.
     "claude/cloud-setup.sh": ".claude/cloud-setup.sh",
+    "claude/sync-agents-hook.sh": ".claude/sync-agents-hook.sh",
     "claude/settings.json": ".claude/settings.json",
     "blueprint/plastex.cfg": "blueprint/src/plastex.cfg",
     "blueprint/extra_styles.css": "blueprint/src/extra_styles.css",
