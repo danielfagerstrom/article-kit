@@ -254,6 +254,27 @@ def cmd_prose_stats(args) -> int:
     return 0
 
 
+def cmd_review(args) -> int:
+    """Pool the reviewers' flags and rank them by how many reviews found each.
+
+    Config-free, like `prose`: it takes bare paths and a `--base` the flags' repo-relative
+    `file` fields resolve against, so one aggregate can be run over reviews collected
+    outside the article checkout. Exit 1 on any malformed record — the anchor rule and the
+    section-contract declaration are worth enforcing, or they decay into good intentions.
+    """
+    from . import review
+    base = (args.base or args.root or Path.cwd()).resolve()
+    doc, lines, rc = review.aggregate([Path(p) for p in args.paths], base, top=args.top)
+    if args.json:
+        print(json.dumps(doc, indent=2, ensure_ascii=False))
+    else:
+        print("\n".join(lines))
+    if rc:
+        print(f"\nREVIEW AGGREGATE: {len(doc['malformed'])} malformed record(s) — the "
+              "flags above are what survived", file=sys.stderr)
+    return rc
+
+
 def cmd_shape(args) -> int:
     from . import shape
     root = (args.dir or args.root or Path.cwd()).resolve()
@@ -358,6 +379,18 @@ def build_parser() -> argparse.ArgumentParser:
     ps.add_argument("--instances", metavar="FAMILY",
                     help="drill down: located occurrences of one family")
     ps.set_defaults(func=cmd_prose_stats)
+
+    rv = sub.add_parser("review", help="pool the draft-reviewer's flags across reviews "
+                                       "and rank them by breadth (REVIEWER-CONTRACT.md)")
+    rv.add_argument("paths", nargs="+", help="one JSONL file per review")
+    rv.add_argument("--base", type=Path, default=None,
+                    help="what the flags' repo-relative paths resolve against "
+                         "(default: --root, else the current directory)")
+    rv.add_argument("--json", action="store_true", help="machine-readable output")
+    rv.add_argument("--top", type=int, default=10, metavar="N",
+                    help="defects printed per layer; 0 for all (default 10 — a worklist "
+                         "is incorporated in proportion to how short it is)")
+    rv.set_defaults(func=cmd_review)
 
     sh = sub.add_parser("shape", help="instruction files that hold records (advisory; "
                                       "needs no linkage.toml)")
