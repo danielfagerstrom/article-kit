@@ -41,6 +41,16 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   standard notion. Source text only — no Lean, no toolchain. Opt-in per article through a
   `[boundary]` table in `linkage.toml`, and a no-op without one; `lean.yml` runs it as guard 3,
   with a new `boundary_strict_shadows` input.
+- `linkage review <review>.jsonl …` — the aggregator of
+  [`docs/REVIEWER-CONTRACT.md`](docs/REVIEWER-CONTRACT.md), which is no longer a draft. It validates
+  the reviewers' records (anchor unique in its file, tag in the vocabulary and agreeing with its
+  layer, a parseable `B.<n>` section-contract declaration, `refs` labels that resolve), pools flags
+  from different reviewers about one defect under one key, proposes cross-section threads, and ranks
+  both by the number of independent reviews that found them — severity is recorded and is only the
+  last tiebreak. `--json` for the whole aggregate, `--top` to bound the worklist. Exit 1 on a
+  malformed record. Adoption is the hub's step: `draft-reviewer` still emits prose, and what it has
+  to change is listed at the end of the contract.
+
 - `linkage closure` — the inferred half of the `\uses` edge ([`docs/LINKAGE.md`](docs/LINKAGE.md)
   rule 11). Per `\leanok` node it reads the Lean declaration the node points at — from the
   declaration source, or from an exported constant map (`paths.lean_uses`, default
