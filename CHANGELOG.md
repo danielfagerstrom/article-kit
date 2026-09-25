@@ -7,6 +7,40 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- The release and register scripts are `linkage`'s (ADR-0001 step 5): `linkage release export`
+  writes a module's verification export, `linkage release zenodo {reserve,upload,status,publish,
+  discard}` deposits it through the Zenodo API with a reserved DOI, and `linkage prose register`
+  prints the restraint-budget counts by zone. Every module-specific parameter — chapters, paper
+  directory, tag, Lean roots, headline declaration, records directory, stem, title, export
+  repository URL, keywords, related identifiers — is read from `linkage.toml`'s `[[modules]]`,
+  with the creators, licence and copyright line in `[release]`. `docs/RELEASE.md` § "The commands"
+  names these; `spatial-hemigroup-scale-space`'s `scripts/` held them before. Two new `[paths]`
+  keys serve the export: `lean_libraries` (this tree's Lake libraries; inferred when absent) and
+  `shared_namespaces` (the namespaces a shared package declares, where they differ from its name,
+  as `ScaleSpaceCore` declares `ScaleSpace.*`; defaults to `lean_packages`).
+- `linkage release export` carries the rule 6 gate: for a release after the module's own first
+  tag, the date line must name that first release's version and date, and the version-history
+  section must have an entry for the version exported; a first release is exempt from both.
+- **`linkage paper`** — a deterministic lint over the paper sources themselves, sibling to
+  `linkage check` and box 8 of [`docs/DRAFTING-GATE.md`](docs/DRAFTING-GATE.md). Fatal: a `\ref`
+  naming no `\label`, a `\cite` key in no `.bib`, an item pointer past the target's item count
+  (`Proposition~\ref{p}(3)` on a two-item statement), a hand-written `\tag{N.M}` carrying another
+  section's number. Advisory: the four mandatory declarations, the abstract against
+  `PUBLICATION-TEMPLATE.md` § A's 150–250 words, numbered results nothing refers to, cited entries
+  with no DOI, and a bare `§`/`Thm.` with neither a citation nor a label nearby. The last three
+  fatal checks are the pointer defects found by the blind reviews of Paper I, which no other check
+  can see. Reads every directory `paths.paper` names; the declarations, the abstract and the `\tag`
+  numbering need the main document (`\begin{document}`) and are skipped for a directory of section
+  fragments.
+- **The boundary harness — `linkage boundary`** ([`docs/LINKAGE.md`](docs/LINKAGE.md) rule 5), four
+  checks the repository-wide axiom guard cannot do, because it reads the *union* of what the guard
+  file prints: a `#guard_msgs`-pinned `#print axioms` per headline declaration (with the pinned
+  axioms cross-checked against `trust-boundary.txt`, so a pin cannot be widened on its own say-so);
+  a positive probe per headline result, `sorry`-free and not stated as `True`; adversarial goals
+  kept as isolated `sorry`s and checked to stay `sorry`s; and a definition sharing its name with a
+  standard notion. Source text only — no Lean, no toolchain. Opt-in per article through a
+  `[boundary]` table in `linkage.toml`, and a no-op without one; `lean.yml` runs it as guard 3,
+  with a new `boundary_strict_shadows` input.
 - `linkage closure` — the inferred half of the `\uses` edge ([`docs/LINKAGE.md`](docs/LINKAGE.md)
   rule 11). Per `\leanok` node it reads the Lean declaration the node points at — from the
   declaration source, or from an exported constant map (`paths.lean_uses`, default

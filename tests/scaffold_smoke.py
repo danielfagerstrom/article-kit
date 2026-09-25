@@ -84,6 +84,11 @@ PAPER = r"""\section{Smoothness}
   \label{thm:smooth}
   Every kernel is smooth on $\RR$.
 \end{theorem}
+
+% Theorem~\ref{thm:smooth} is picked up in the prose on purpose: `linkage paper` reports a
+% numbered result nothing refers to, and a fragment that states one and drops it is exactly
+% the shape it flags.
+By Theorem~\ref{thm:smooth}, every kernel is smooth.
 """
 
 

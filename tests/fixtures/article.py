@@ -160,6 +160,15 @@ class Article:
     def paper(self, text: str, name: str = "paper.tex", dir: str = "paper") -> Article:
         return self.file(f"{dir}/{name}", text)
 
+    def boundary(self, table: str) -> Article:
+        """Append a `[boundary]` table to linkage.toml — the harness's manifest."""
+        toml = self.root.joinpath("linkage.toml").read_text(encoding="utf-8")
+        return self.file("linkage.toml", toml + "\n" + table)
+
+    def trust(self, *names: str) -> Article:
+        """Declare the article's interface axioms (`blueprint/trust-boundary.txt`)."""
+        return self.file("blueprint/trust-boundary.txt", "".join(f"{n}\n" for n in names))
+
     def papers(self, *dirs: str) -> Article:
         """Re-declare `paths.paper` as a list, for the several-papers-per-repo case."""
         toml = self.root.joinpath("linkage.toml").read_text(encoding="utf-8")

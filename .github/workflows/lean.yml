@@ -4,13 +4,17 @@ name: Lean CI (reusable)
 # local; this re-verifies the proofs on every push and pull request, so verification does not
 # depend on the author's desktop.
 #
-# Three guards, in order of what they protect:
+# Four guards, in order of what they protect:
 #   1. the build itself (leanprover/lean-action, with `lake exe cache get` for Mathlib)
 #   2. no `sorry` in the library sources
-#   3. the trust boundary — `#print axioms` on the headline theorems must reduce to Lean core
+#   3. the boundary harness (`linkage boundary`) — a per-theorem `#guard_msgs` axiom pin, a
+#      positive probe per headline result, adversarial goals that must stay `sorry`, and a
+#      definition shadowing a standard notion. Source text only; opt-in per article through
+#      a `[boundary]` table in linkage.toml, and a no-op without one
+#   4. the trust boundary — `#print axioms` on the headline theorems must reduce to Lean core
 #      plus the article's declared analytic interfaces and nothing else
 #
-# Guard 3's allowlist used to be duplicated inline here. It now comes from the article's
+# Guard 4's allowlist used to be duplicated inline here. It now comes from the article's
 # `blueprint/trust-boundary.txt` via `linkage axioms`, which additionally refuses any name
 # that no AXIOMS.md entry mentions — so the boundary cannot be widened without a reviewed
 # ledger entry behind it. See linkage/trust.py for why it is not derived from the ledger.
@@ -57,10 +61,20 @@ on:
         default: ""
         type: string
       axiom_guard_file:
-        description: "Lean file whose `#print axioms` output is checked. Empty skips guard 3."
+        description: >-
+          Lean file whose `#print axioms` output is checked. Empty skips guards 3 and 4
+          (both need the linkage install this input gates).
         required: false
         default: CIAxiomGuard.lean
         type: string
+      boundary_strict_shadows:
+        description: >-
+          Fail the boundary harness on a declaration sharing its name with a standard
+          notion, instead of reporting it. Turn this on once the article's existing
+          collisions are recorded under `[boundary.shadows]` in linkage.toml.
+        required: false
+        default: false
+        type: boolean
       build_jobs:
         description: >-
           Value for `lake build -j`, capping how many Lean workers run at once. Empty uses
@@ -246,6 +260,16 @@ jobs:
           pipx install "$kit"
           linkage --help > /dev/null
           echo "linkage installed from article-kit@${{ inputs.linkage_ref }}"
+
+      # The four checks the union guard below cannot do (LINKAGE.md rule 5): a per-theorem
+      # `#guard_msgs` axiom pin, a positive probe, adversarial goals that must stay `sorry`,
+      # and a definition shadowing a standard notion. Source text only — no lake, no lean —
+      # so it costs seconds, and it exits 0 on an article with no `[boundary]` table, which
+      # is every article until it adopts the harness.
+      - name: Guard — the boundary harness (`linkage boundary`)
+        if: inputs.axiom_guard_file != ''
+        run: |
+          linkage boundary ${{ inputs.boundary_strict_shadows && '--strict-shadows' || '' }}
 
       # The allowlist is the article's declared trust boundary, and `--check` fails when any
       # declared name is not mentioned by a ledger entry — a name added to CI without review

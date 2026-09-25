@@ -83,6 +83,25 @@ A section may be drafted as prose only when every applicable box is checked.
       real blueprint label (target: the identical `\label`).
 - [ ] `linkage check` passes (exit 0).
 
+### 8. Paper surface — the drafted prose resolves
+*owner: [`PUBLICATION-TEMPLATE.md`](PUBLICATION-TEMPLATE.md) § B *Det.* + `linkage paper` (linkage/paper.py)*
+
+The one box that is checked **after** the prose exists, not before it: the others are readiness
+conditions on upstream artifacts, this one reads the paper sources. It is the deterministic half of
+the publication contract, so it belongs to the section's *done*, not to its *ready* — run it before
+the section is called finished and before any release.
+
+- [ ] `linkage paper` passes (exit 0): every `\ref` resolves, every `\cite` key is in the `.bib`,
+      no item pointer names an item the target does not have, and no hand-written `\tag{N.M}` carries
+      another section's number.
+- [ ] Its advisories are read and either fixed or accepted: the four mandatory declarations, the
+      abstract's length, numbered results nothing refers to, cited entries with no DOI, and bare
+      `§`/`Thm.` pointers with neither a citation nor a label.
+
+*The judgement half of the same contract — is the abstract's contribution specific, is prior work
+positioned, is each result interpreted — stays with the reviewer agents (`/review-draft`), which flag
+and never gate.*
+
 ---
 
 ## The rule
@@ -90,6 +109,8 @@ A section may be drafted as prose only when every applicable box is checked.
 - Draft prose only when **items 1–3, 5, 6** pass.
 - Item 4 should precede, but figures may be drafted alongside the prose.
 - Item 7 is enforced by `linkage check` (linkage/checks.py) (run it before drafting/publishing).
+- Item 8 is enforced by `linkage paper` (linkage/paper.py), and is read *after* drafting: it is the
+  only box whose subject is the prose itself.
 
 **Meta-rule:** when a box fails, **fix the upstream artifact — do not compensate in the prose.**
 Compensating in prose is the exact failure this gate prevents.
@@ -105,7 +126,8 @@ wiki gate --slot "§5" --worklist   # just what to go and do, merged with the ev
 wiki gate --check                  # exit 1 if a machine-checkable box fails
 ```
 
-It reports items 1–4 deterministically, hands items 5–6 to a reader, and leaves item 7 here.
+It reports items 1–4 deterministically, hands items 5–6 to a reader, and leaves items 7 and 8 to this
+repo's `linkage check` and `linkage paper`.
 **It never reports READY, by design:** items 5 and 6 are judgements about prose, and item 6's cached
 findings are free text that mixes violations with clearances — a tool that "read" them would be
 inventing authority it does not have. What it *can* assert is whether the audit behind item 6 is

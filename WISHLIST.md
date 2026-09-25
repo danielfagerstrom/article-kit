@@ -59,21 +59,6 @@ since they load only when a matching file is read.
 
 ---
 
-## process: the release and register scripts move into `linkage`
-
-**Wanted by** `spatial-hemigroup-scale-space` (module B, lessons 11 and 12; ADR-0001 step 5),
-2026-09-21.
-
-`scripts/export-release.py` (the verification export, parameterized per module),
-`scripts/zenodo-release.py` (deposits through the Zenodo API with a reserved DOI, and the
-first-page gate) and `scripts/count-register.py` (the register counts by zone) exist only in Paper
-V and are needed by every article. **Suggested shape:** `linkage release export|zenodo` and
-`linkage prose register`, with the per-module parameters in `linkage.toml` (`[[modules]]`: name,
-chapters, paper directory, tag prefix, headline, roots, records directory), so that
-`docs/RELEASE.md`'s commands stop naming one repository's scripts.
-
----
-
 ## process: summaries and numbers get a scope audit before a frozen build
 
 **Wanted by** `spatial-hemigroup-scale-space` (module B, lessons 8 and 9), 2026-09-21.

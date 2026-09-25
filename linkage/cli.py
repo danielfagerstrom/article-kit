@@ -1,9 +1,15 @@
 """`linkage` — the article-repo command line.
 
     linkage check [--wiki PATH] [--emit-manifest PATH] [--require-render]
+    linkage paper
     linkage closure [--export PATH] [--json]
     linkage manifest [PATH] [--require-render]
     linkage demand [--wiki PATH]
+    linkage release export [--module NAME] [--out DIR] [--doi DOI] [--build|--dry-run]
+    linkage release zenodo {reserve,upload,status,publish,discard} --export DIR
+    linkage prose register [PATHS...]
+    linkage axioms [--check]
+    linkage boundary [--strict-shadows] [--with-mathlib]
     linkage init [--slug SLUG]
 
 Run from anywhere inside an article repo; the config is found by walking up to
@@ -18,6 +24,9 @@ from pathlib import Path
 
 from . import artifacts, checks, closure, config, parse_latex
 from . import manifest as manifest_mod
+from . import release as release_mod
+from . import zenodo as zenodo_mod
+from .prose import register as prose_register
 
 
 def _warn(msg: str) -> None:
@@ -122,6 +131,38 @@ def cmd_check(args) -> int:
     return 0
 
 
+def cmd_paper(args) -> int:
+    """The deterministic paper lint — the paper sources, not the blueprint's edges."""
+    from . import paper
+    cfg = config.load(args.root)
+    f = paper.lint(cfg)
+    s = f.stats
+    where = ", ".join(d.relative_to(cfg.root).as_posix() for d in cfg.papers)
+    print(f"Paper: {s['files']} source file(s) under {where}, "
+          f"{s['statements']} numbered result(s), {s['refs']} reference(s), "
+          f"{s['cites']} cite key(s) against "
+          f"{', '.join(s['bib_files']) or 'no .bib'}.")
+    if s["main"]:
+        words = s["abstract_words"]
+        print(f"  main document {s['main']}: abstract {words} word(s), "
+              f"{4 - len(s['missing_declarations'])}/4 declarations, "
+              f"{s['tags_checked']} hand-written \\tag(s) checked.")
+    else:
+        # A directory of section fragments is a normal state (a module still being
+        # assembled, the scaffold smoke article), not a paper missing its front matter.
+        print("  no main document (no \\begin{document}) — the declarations, the "
+              "abstract and the \\tag numbering are not checked")
+    for a in f.advisory:
+        print("  advisory " + a)
+    if f.fatal:
+        print(f"\nPAPER LINT FAILED: {len(f.fatal)} problem(s)\n")
+        for p in f.fatal:
+            print("  FAIL " + p)
+        return 1
+    print("\nPAPER LINT OK: every reference, cite key, item pointer and \\tag resolves.")
+    return 0
+
+
 def cmd_closure(args) -> int:
     r"""Diff each \leanok node's inferred constant closure against its \uses{} (advisory).
 
@@ -200,6 +241,38 @@ def cmd_axioms(args) -> int:
               f"{cfg.axioms.name}.", file=sys.stderr)
     for n in trust.allowlist(cfg):
         print(n)
+    return 0
+
+
+def cmd_boundary(args) -> int:
+    """The boundary harness: axiom pins, positive probes, adversarial goals, shadowing.
+
+    A sibling of `linkage axioms --check`, not a flag on it: that command's *stdout is
+    the allowlist* CI redirects into a file, so anything printed there would be read as
+    an allowed axiom name.
+    """
+    from . import boundary
+    cfg = config.load(args.root)
+    rep = boundary.run(cfg, strict_shadows=args.strict_shadows,
+                       with_mathlib=args.with_mathlib)
+    if not rep.stats.get("configured"):
+        print("no `[boundary]` table in linkage.toml — the boundary harness is not "
+              "configured for this article; see docs/LINKAGE.md rule 5.", file=sys.stderr)
+        return 0
+    s = rep.stats
+    print(f"Boundary harness: {s.get('headline', 0)} headline declaration(s), "
+          f"{s.get('pins', 0)} pinned axiom block(s), {s.get('probes', 0)} probe(s), "
+          f"{s.get('adversarial', 0)} adversarial goal(s), "
+          f"{s.get('shadows', 0)} name collision(s).")
+    for a in rep.advisory:
+        print("  advisory " + a)
+    if rep.fatal:
+        print(f"\nBOUNDARY HARNESS FAILED: {len(rep.fatal)} problem(s)\n")
+        for p in rep.fatal:
+            print("  FAIL " + p)
+        return 1
+    print("\nBOUNDARY HARNESS OK: every headline result is pinned, probed and "
+          "un-shadowed, and every adversarial goal is still unprovable.")
     return 0
 
 
@@ -286,6 +359,36 @@ def cmd_prose_stats(args) -> int:
     return 0
 
 
+def cmd_prose_register(args) -> int:
+    """The restraint-budget counts by zone, over the module's paper (or the files given)."""
+    from .prose import register
+    if args.paths:
+        files = [Path(p) for p in args.paths]
+    else:
+        cfg = config.load(args.root)
+        paper = cfg.root / cfg.module(args.module).paper if cfg.modules else cfg.papers[0]
+        files = register.sources(paper)
+        if not files:
+            print(f"no .tex sources under {paper} besides main.tex", file=sys.stderr)
+            return 2
+    print("\n".join(register.report(files, args.runs, args.long_at)))
+    return 0
+
+
+def cmd_release_export(args) -> int:
+    from . import release
+    cfg = config.load(args.root)
+    if not args.dry_run and not args.out:
+        print("EXPORT ERROR: --out is required unless --dry-run", file=sys.stderr)
+        return 2
+    return release.export(cfg, args)
+
+
+def cmd_release_zenodo(args) -> int:
+    from . import zenodo
+    return zenodo.main(args)
+
+
 def cmd_shape(args) -> int:
     from . import shape
     root = (args.dir or args.root or Path.cwd()).resolve()
@@ -347,6 +450,10 @@ def build_parser() -> argparse.ArgumentParser:
                         "the hub")
     c.set_defaults(func=cmd_check)
 
+    pp = sub.add_parser("paper", help="the deterministic paper lint: references, cite "
+                                      "keys, item pointers, \\tag numbering, the "
+                                      "declarations and the abstract")
+    pp.set_defaults(func=cmd_paper)
     cl = sub.add_parser("closure", help="audit each \\leanok node's \\uses{} against what "
                                         "its Lean declaration actually cites (advisory)")
     cl.add_argument("--export", type=Path, metavar="PATH",
@@ -372,6 +479,19 @@ def build_parser() -> argparse.ArgumentParser:
                    help="also report the grounding verdict on stderr; fail if the "
                         "declaration file is missing")
     x.set_defaults(func=cmd_axioms)
+
+    b = sub.add_parser("boundary",
+                       help="the boundary harness: per-theorem axiom pins, positive "
+                            "probes, adversarial goals, shadowed definitions")
+    b.add_argument("--strict-shadows", action="store_true",
+                   help="fail (exit 1) on a declaration sharing a name with a standard "
+                        "notion, instead of reporting it as an advisory -- for CI, once "
+                        "an article's existing collisions are named in [boundary.shadows]")
+    b.add_argument("--with-mathlib", action="store_true",
+                   help="also treat every declaration in a checked-out Mathlib as a "
+                        "standard notion (reads thousands of files; a deliberate run, "
+                        "not a per-push check)")
+    b.set_defaults(func=cmd_boundary)
 
     k = sub.add_parser("packages", help="shared Lake packages: name, url, rev, destination")
     k.add_argument("--missing-only", action="store_true",
@@ -399,6 +519,76 @@ def build_parser() -> argparse.ArgumentParser:
     ps.add_argument("--instances", metavar="FAMILY",
                     help="drill down: located occurrences of one family")
     ps.set_defaults(func=cmd_prose_stats)
+
+    pr = psub.add_parser("register", help="restraint-budget counts (em-dashes, semicolons, "
+                                          "long-sentence runs) by zone")
+    pr.add_argument("paths", nargs="*", help=".tex sources (default: the module's paper)")
+    pr.add_argument("--module", help="which `[[modules]]` table's paper to count "
+                                     "(default: the only one)")
+    pr.add_argument("--runs", action="store_true",
+                    help="also locate runs of three or more long sentences in the prose zone")
+    pr.add_argument("--long-at", type=int, default=prose_register.DEFAULT_LONG,
+                    help="a sentence is long at this many words (default %(default)s)")
+    pr.set_defaults(func=cmd_prose_register)
+
+    r = sub.add_parser("release", help="the verification export and the Zenodo deposit")
+    rsub = r.add_subparsers(dest="release_cmd", required=True)
+
+    rx = rsub.add_parser("export", help="write a release's verification export",
+                         description=release_mod.__doc__,
+                         formatter_class=argparse.RawDescriptionHelpFormatter)
+    rx.add_argument("--module", help="which `[[modules]]` table to export (default: the only one)")
+    rx.add_argument("--out", help="export directory (a directory name under the dev root, for "
+                                  "lake-store); not needed with --dry-run")
+    rx.add_argument("--tag", help="release tag, named by the changelog entry "
+                                  "(default: the module's `tag`)")
+    rx.add_argument("--chapters", help="override the module's blueprint chapters, comma-separated "
+                                       "two-digit prefixes of the blueprint's parts/")
+    rx.add_argument("--roots", help="override the Lean modules the paper names directly, "
+                                    "comma-separated; exported whatever the tags say")
+    rx.add_argument("--doi", help="the version DOI reserved for this release "
+                                  "(`linkage release zenodo reserve`): checked to be printed on "
+                                  "the PDF's first page, and written into CITATION.cff")
+    rx.add_argument("--shared-nodes", choices=["omit", "whole"], default=None,
+                    help="blueprint sources for nodes the paper transcribes from chapters outside "
+                         "the release: `omit` ships the release's chapters only and reports the "
+                         "dependency edges that then leave the export; `whole` ships those "
+                         "chapters entire (default: the module's `shared_nodes`)")
+    rx.add_argument("--draft", action="store_true",
+                    help="export a build that is not a release (a test of the tooling, a sandbox "
+                         "deposit): the release gate's faults are printed and the export is "
+                         "written all the same, with a DRAFT file at its root that "
+                         "`linkage release zenodo` refuses outside the sandbox")
+    rx.add_argument("--cites", action="append", default=None, metavar="TAG",
+                    help="a released tag (e.g. cone-v0.1) whose export this one cites: every "
+                         "module of this export's closure that the tag's own export also carries "
+                         "must be byte-identical to it (line endings normalized) or the run fails "
+                         "and names it; repeatable; written into the README under the cited "
+                         "release")
+    rx.add_argument("--build", action="store_true",
+                    help="lake-store link, lake build, run the guard, check the paper's block")
+    rx.add_argument("--dry-run", action="store_true",
+                    help="print the closure, regenerate the Lean tree's INDEX.md, and stop")
+    rx.set_defaults(func=cmd_release_export)
+
+    rz = rsub.add_parser("zenodo", help="deposit an export on Zenodo (author-only steps)",
+                         description=zenodo_mod.__doc__,
+                         formatter_class=argparse.RawDescriptionHelpFormatter)
+    rz.add_argument("step", choices=sorted(zenodo_mod.STEPS),
+                    help="reserve a DOI, upload the files, show the draft, publish it "
+                         "(irreversible), or discard an unpublished draft")
+    rz.add_argument("--export", required=True, help="the export directory (forward slashes)")
+    rz.add_argument("--sandbox", action="store_true",
+                    help="reserve: use sandbox.zenodo.org (the later steps read the draft's own "
+                         "state, so they need no flag)")
+    rz.add_argument("--record", help="reserve: the id of the LATEST published version, to open a "
+                                     "new version of it")
+    rz.add_argument("--force", action="store_true",
+                    help="reserve: open another draft although one is open")
+    rz.add_argument("--tag", help="upload: the export repository's tag to archive as a zip")
+    rz.add_argument("--file", action="append",
+                    help="upload: upload these files instead of the defaults")
+    rz.set_defaults(func=cmd_release_zenodo)
 
     sh = sub.add_parser("shape", help="instruction files that hold records (advisory; "
                                       "needs no linkage.toml)")
@@ -435,6 +625,8 @@ def main(argv: list[str] | None = None) -> int:
     except artifacts.MissingLeanPackage as e:
         print(f"CONFIG ERROR: {e}", file=sys.stderr)
         return 2
+    except release_mod.ReleaseError as e:
+        print(f"EXPORT ERROR: {e}", file=sys.stderr)
     except closure.ExportError as e:
         print(f"CLOSURE INPUT ERROR: {e}", file=sys.stderr)
         return 2

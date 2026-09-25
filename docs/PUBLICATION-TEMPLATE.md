@@ -23,7 +23,7 @@ prose-judgement boxes). This template is the same discipline extended to the pap
 | Layer here | What owns it | Status in the repo |
 |---|---|---|
 | §A Formatting (fixed) | adopt Springer `sn-jnl.cls`; preprint-first | logistics — see `README.md` publish step |
-| §B *Det.* checks (deterministic structural lint) | a planned `scripts/check_paper.py`, sibling to `linkage check` | **backlog** — `ROADMAP.md` |
+| §B *Det.* checks (deterministic structural lint) | `linkage paper` (linkage/paper.py), sibling to `linkage check` | **exists** — box 8 of [`DRAFTING-GATE.md`](DRAFTING-GATE.md) |
 | §B *LLM* + §C voice (adversarial-reviewer flags) | the hub's `/review-draft` skill (flags, never verdicts) | **backlog** — hub `Notes/ROADMAP.md` |
 | Math correctness | Lean + the axiom-footprint **boundary harness** | `#print axioms` today; harness adoption in `ROADMAP.md` |
 
@@ -222,7 +222,10 @@ template; treat variants as documented optional slots. Don't overfit to one auth
 - **Deterministic structural layer** (the §B *Det.* items): parseable from the
   `.tex` AST — declarations present, abstract length, orphaned results, dangling
   refs, contribution↔section map, experiment↔claim map. Reliable; fail the build.
-  *(Home: a planned `scripts/check_paper.py`, the sibling to `linkage check`.)*
+  *(Home: `linkage paper`, the sibling to `linkage check`. It covers the declarations,
+  the abstract's length, orphaned results, dangling refs, unresolved cite keys, entries
+  with no DOI and three pointer defects; the contribution↔section and experiment↔claim
+  maps are not implemented.)*
 - **LLM structural + voice layer** (the §B *LLM* and §C items): adversarial
   reviewer emitting located flags with severity — triage, don't gate.
   *(Home: the hub's `/review-draft` skill.)*
