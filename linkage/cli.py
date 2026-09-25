@@ -3,6 +3,8 @@
     linkage check [--wiki PATH] [--emit-manifest PATH] [--require-render]
     linkage manifest [PATH] [--require-render]
     linkage demand [--wiki PATH]
+    linkage axioms [--check]
+    linkage boundary [--strict-shadows] [--with-mathlib]
     linkage init [--slug SLUG]
 
 Run from anywhere inside an article repo; the config is found by walking up to
@@ -171,6 +173,38 @@ def cmd_axioms(args) -> int:
     return 0
 
 
+def cmd_boundary(args) -> int:
+    """The boundary harness: axiom pins, positive probes, adversarial goals, shadowing.
+
+    A sibling of `linkage axioms --check`, not a flag on it: that command's *stdout is
+    the allowlist* CI redirects into a file, so anything printed there would be read as
+    an allowed axiom name.
+    """
+    from . import boundary
+    cfg = config.load(args.root)
+    rep = boundary.run(cfg, strict_shadows=args.strict_shadows,
+                       with_mathlib=args.with_mathlib)
+    if not rep.stats.get("configured"):
+        print("no `[boundary]` table in linkage.toml — the boundary harness is not "
+              "configured for this article; see docs/LINKAGE.md rule 5.", file=sys.stderr)
+        return 0
+    s = rep.stats
+    print(f"Boundary harness: {s.get('headline', 0)} headline declaration(s), "
+          f"{s.get('pins', 0)} pinned axiom block(s), {s.get('probes', 0)} probe(s), "
+          f"{s.get('adversarial', 0)} adversarial goal(s), "
+          f"{s.get('shadows', 0)} name collision(s).")
+    for a in rep.advisory:
+        print("  advisory " + a)
+    if rep.fatal:
+        print(f"\nBOUNDARY HARNESS FAILED: {len(rep.fatal)} problem(s)\n")
+        for p in rep.fatal:
+            print("  FAIL " + p)
+        return 1
+    print("\nBOUNDARY HARNESS OK: every headline result is pinned, probed and "
+          "un-shadowed, and every adversarial goal is still unprovable.")
+    return 0
+
+
 def cmd_packages(args) -> int:
     """Report the shared Lake packages this article needs, for a toolchain-free fetch."""
     cfg = config.load(args.root)
@@ -331,6 +365,19 @@ def build_parser() -> argparse.ArgumentParser:
                    help="also report the grounding verdict on stderr; fail if the "
                         "declaration file is missing")
     x.set_defaults(func=cmd_axioms)
+
+    b = sub.add_parser("boundary",
+                       help="the boundary harness: per-theorem axiom pins, positive "
+                            "probes, adversarial goals, shadowed definitions")
+    b.add_argument("--strict-shadows", action="store_true",
+                   help="fail (exit 1) on a declaration sharing a name with a standard "
+                        "notion, instead of reporting it as an advisory -- for CI, once "
+                        "an article's existing collisions are named in [boundary.shadows]")
+    b.add_argument("--with-mathlib", action="store_true",
+                   help="also treat every declaration in a checked-out Mathlib as a "
+                        "standard notion (reads thousands of files; a deliberate run, "
+                        "not a per-push check)")
+    b.set_defaults(func=cmd_boundary)
 
     k = sub.add_parser("packages", help="shared Lake packages: name, url, rev, destination")
     k.add_argument("--missing-only", action="store_true",

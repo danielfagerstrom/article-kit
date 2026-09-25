@@ -37,6 +37,35 @@ class ConfigError(RuntimeError):
     pass
 
 
+@dataclass(frozen=True)
+class Boundary:
+    r"""The `[boundary]` table: the boundary harness's manifest (`linkage boundary`).
+
+    Absent, `configured` is False and the harness reports nothing — adopting it is a
+    per-article decision, so every existing article keeps passing untouched.
+
+    The paths are **not** validated by `load()`. A repository mid-adoption has the table
+    before it has the files, and `linkage check` must keep working meanwhile; the harness
+    itself reports a missing file, where the message can say what the file is for.
+    """
+    configured: bool = False
+    guard: Path | None = None
+    """The Lean file CI elaborates, holding one `#guard_msgs`-pinned `#print axioms` per
+    headline declaration."""
+    probes: Path | None = None
+    """Positive probes: cheap should-hold consequences of the headline results."""
+    adversarial: Path | None = None
+    """Known-false, in-domain statements kept as isolated `sorry`s."""
+    headline: tuple[str, ...] = ()
+    """The declarations whose axiom set is pinned per declaration and which each need a
+    probe — fully qualified, spelled exactly as the guard file prints them."""
+    shadows: dict[str, str] = field(default_factory=dict)
+    """Declarations deliberately sharing a name with a standard notion, each mapped to
+    what differs. The entry is the review record, so an empty reason is an error."""
+    standard_notions_extra: tuple[str, ...] = ()
+    """Names this article adds to the standard-notion list (`boundary.STANDARD_NOTIONS`)."""
+
+
 @dataclass
 class Config:
     root: Path
@@ -71,6 +100,8 @@ class Config:
     Named explicitly rather than scanning every dependency: scanning Mathlib would make any
     Mathlib name satisfy check 1, and would read thousands of files on every run.
     """
+
+    boundary: Boundary = field(default_factory=Boundary)
 
     statement_envs: tuple[str, ...] = DEFAULT_STATEMENT_ENVS
     label_prefixes: tuple[str, ...] = DEFAULT_LABEL_PREFIXES
@@ -162,6 +193,44 @@ def load(root: Path | None = None) -> Config:
             seen[d] = None
         return tuple(root / d for d in raw_paper)
 
+    def boundary() -> Boundary:
+        bt = raw.get("boundary")
+        if bt is None:
+            return Boundary()
+        if not isinstance(bt, dict):
+            raise ConfigError(f"{CONFIG_NAME}: `[boundary]` must be a table")
+
+        def f(key: str) -> Path | None:
+            v = bt.get(key)
+            if v is None:
+                return None
+            if not isinstance(v, str):
+                raise ConfigError(
+                    f"{CONFIG_NAME}: `[boundary] {key}` must be a path, not {v!r}")
+            return root / v
+
+        def strs(key: str) -> tuple[str, ...]:
+            v = bt.get(key, [])
+            if not isinstance(v, list) or not all(isinstance(s, str) for s in v):
+                raise ConfigError(
+                    f"{CONFIG_NAME}: `[boundary] {key}` must be a list of strings")
+            return tuple(v)
+
+        shadows = bt.get("shadows", {})
+        if not isinstance(shadows, dict):
+            raise ConfigError(
+                f"{CONFIG_NAME}: `[boundary.shadows]` must be a table mapping a "
+                f"declaration to what makes it differ from the standard notion")
+        return Boundary(
+            configured=True,
+            guard=f("guard"),
+            probes=f("probes"),
+            adversarial=f("adversarial"),
+            headline=strs("headline"),
+            shadows={k: str(v) for k, v in shadows.items()},
+            standard_notions_extra=strs("standard_notions_extra"),
+        )
+
     slug = raw.get("slug")
     if not slug:
         raise ConfigError(f"{CONFIG_NAME}: `slug` is required — it is the satellite id the "
@@ -178,6 +247,7 @@ def load(root: Path | None = None) -> Config:
         papers=paper_dirs(),
         axioms_verbatim=p("axioms_verbatim", "blueprint/AXIOMS-verbatim.md"),
         lean_packages=tuple(paths.get("lean_packages", ())),
+        boundary=boundary(),
         statement_envs=tuple(bp.get("statement_envs", DEFAULT_STATEMENT_ENVS)),
         label_prefixes=tuple(bp.get("statement_label_prefixes", DEFAULT_LABEL_PREFIXES)),
         statement_kinds=tuple(bp.get("statement_kinds", DEFAULT_STATEMENT_KINDS)),
