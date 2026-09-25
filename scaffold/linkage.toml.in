@@ -22,6 +22,38 @@ paper     = "paper"
 # Every paper directory is read for `% shared with blueprint` markers, compared with the
 # blueprint, and written by `--pin-shared`; the check reports them per directory.
 
+# The releasable modules, read by `linkage release export` and `linkage prose register`
+# (docs/RELEASE.md, "The commands"). One table per module — a repository that publishes a
+# line paper and its modules declares one each, in the order they were first released; the
+# first one's closure is what the generated Lean INDEX.md marks. Uncomment and fill in when
+# the first release is prepared; `linkage check` does not read these.
+#
+#   [release]
+#   creators  = [{ name = "Family, Given", orcid = "0000-0000-0000-0000" }]
+#   license   = "cc-by-4.0"
+#   copyright = "2026 Given Family"          # the generated Lean header's line
+#
+#   [[modules]]
+#   name     = "line"                        # what `--module` selects
+#   chapters = ["02", "03", "04"]            # two-digit prefixes of blueprint/src/parts/
+#   paper    = "paper"                       # one of `paths.paper`
+#   tag      = "v0.1"                        # a later module prefixes its tags: "cone-v0.1"
+#   roots    = ["@@SLUG@@.Interfaces"]       # Lean modules the paper names directly
+#   headline = "@@SLUG@@.main_theorem"       # whose `#print axioms` block the paper prints
+#   stem     = "@@SLUG@@"                    # the export's PDF is <stem>-<tag>.pdf
+#   title    = "The article's title"
+#   repo_url = "https://github.com/<owner>/<export-repo>"   # the EXPORT's, never this one's
+#   records  = "records/line"                # PROCESS.md, PLAN-review-response.md, reviews/
+#   keywords = ["scale space"]
+#   related  = ["10.5281/zenodo.N:continues"]               # Zenodo related identifiers
+#   abstract_macros = { Matern = "Matérn" }  # expanded in the deposit's plain-text abstract
+#
+# `releases` records a tag's parameters where they have since moved, so that
+# `--cites <tag>` recomputes that release's closure as it stood:
+#
+#   [modules.releases."cone-v0.1"]
+#   chapters = ["08", "09", "10"]
+
 # Everything else is a framework default and is omitted deliberately — the statement
 # environments, statement label prefixes, ledger-id shape and pandoc pin all live in
 # linkage/config.py. Override here only if this article genuinely differs.

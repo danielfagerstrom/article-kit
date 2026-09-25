@@ -21,9 +21,10 @@ judgement boxes).
 
 ### The process home (ADR-0001)
 
-Steps 1, 2 and 4 of [ADR-0001](adr/0001-article-kit-owns-the-article-process.md) are done
+Steps 1, 2, 4 and 5 of [ADR-0001](adr/0001-article-kit-owns-the-article-process.md) are done
 (`docs/PROCESS.md`, `docs/WRITING.md`, `docs/RELEASE.md`, the session rules, the templates, the
-`shape` advisories). Open:
+`shape` advisories; and `linkage release export|zenodo` and `linkage prose register`, parameterized
+per module from `linkage.toml`, 2026-09-25). Open:
 
 - **Step 3, the cleanup, beyond the pilot.** `hemigroup-causal-scale-space-kernels`,
   `hemigroup-kernels-ssvm` and `scale-space-foundations`: `linkage init --sync` for the rules; each
@@ -31,8 +32,12 @@ Steps 1, 2 and 4 of [ADR-0001](adr/0001-article-kit-owns-the-article-process.md)
   prompts, plans and running records deleted or moved to `records/`; the general rules in their
   per-project memories moved into the rules and the memories deleted. `linkage shape` is the
   worklist. The hub's own `CLAUDE.md` (4,300 words) gets the same pass.
-- **Step 5**, the release and register scripts into `linkage` (`WISHLIST.md`).
 - **Step 6**, skills and agents as a plugin (`WISHLIST.md`).
+- **Step 5's follow-through in the articles.** `spatial-hemigroup-scale-space` declares its three
+  `[[modules]]` in `linkage.toml` and deletes its `scripts/export-release.py`,
+  `zenodo-release.py`, `count-register.py` and `scripts/tests/` once a release has been rehearsed
+  through `linkage release` (its own item; article-kit's copy is the one of record from
+  2026-09-25).
 
 ### E-0003 — tag `v0.1.0` and repoint the `@main` references
 

@@ -139,30 +139,40 @@ In order; a release is not done until the last item.
 
 ## The commands
 
-Paper V (`spatial-hemigroup-scale-space`) holds the scripts until they move into `linkage`
-(ADR-0001, step 5): `scripts/export-release.py` and `scripts/zenodo-release.py`. With the module's
-parameters as EXPORT:
+The commands are `linkage`'s (ADR-0001 step 5; they were `spatial-hemigroup-scale-space`'s
+`scripts/export-release.py` and `scripts/zenodo-release.py` until 2026-09-25). `<M>` is the
+module's name in `linkage.toml` and `<export>` the export directory, forward slashes always:
 
 ```
-EXPORT --draft                                              # a first export carries the metadata
-python scripts/zenodo-release.py reserve --export <export>  # author; prints the reserved DOI
+linkage release export --module <M> --draft --out <export>   # a first export carries the metadata
+linkage release zenodo reserve --export <export>             # author; prints the reserved DOI
 #   date line and DOI into main.tex; build into the paper's directory; read page 1; commit
-EXPORT --doi 10.5281/zenodo.N --build                       # links the Lean store, builds, runs the guard
+linkage release export --module <M> --doi 10.5281/zenodo.N --build --out <export>
 #   tag here; commit and tag the export; create the public repository (author's word); push
-python scripts/zenodo-release.py upload  --export <export> --tag v0.1
-python scripts/zenodo-release.py status  --export <export>
-python scripts/zenodo-release.py publish --export <export>  # author; cannot be undone
+linkage release zenodo upload  --export <export> --tag v0.1
+linkage release zenodo status  --export <export>
+linkage release zenodo publish --export <export>             # author; cannot be undone
 #   then the site (step 8), from the export repository and the hub:
-gh workflow run docs.yml --repo <owner>/<export>            # writes the write-once release channel
+gh workflow run docs.yml --repo <owner>/<export>             # writes the write-once release channel
 #   add the site entry to the hub's constellation.json, then in research-site:
-npm run routes && npm run verify                            # regenerate, then check it answers
+npm run routes && npm run verify                             # regenerate, then check it answers
 ```
 
-EXPORT for a module names its chapters, paper directory, tag, headline declaration, interface roots,
-process account, response plans, review directory, title, repository URL and related identifiers;
-`export-release.py --help` lists them, and Paper V's `records/cone/RELEASE-procedure.md` holds the
-command as run for `cone-v0.1`. Paths through the Bash tool use forward slashes. The whole
-of the deposit can be rehearsed on sandbox.zenodo.org (`--sandbox`, `ZENODO_SANDBOX_TOKEN`).
+**The module's parameters are read from `linkage.toml`, not typed on the command line.** One
+`[[modules]]` table per releasable module names its `chapters`, `paper` directory, `tag`, Lean
+`roots`, `headline` declaration, `records` directory (the process account, the response plans and
+the reviews the export carries as `notes/`), `stem`, `title`, `repo_url` and `related`
+identifiers; `[release]` names the creators, the licence and the copyright line, which are the
+repository's and not a module's. `linkage release export --help` lists the flags that override a
+parameter for one run (`--tag`, `--chapters`, `--roots`, `--shared-nodes`), and
+`spatial-hemigroup-scale-space`'s `records/cone/RELEASE-procedure.md` holds the command as run for
+`cone-v0.1`, in the older spelling. A repository with one module needs no `--module`.
+
+Two more: `linkage release export --dry-run` prints the closure and regenerates the Lean tree's
+`INDEX.md` without writing an export, and `linkage prose register` prints the restraint-budget
+counts by zone (checklist item 1). The whole of the deposit can be rehearsed on
+sandbox.zenodo.org (`linkage release zenodo reserve --sandbox`, `ZENODO_SANDBOX_TOKEN`); the
+later steps read the draft's own state and need no flag.
 
 What the first runs taught, now built into the scripts: the release date line may span two lines
 (the gate reads the whole braced `\date{...}`); guard lines are matched to exported modules by
@@ -171,8 +181,10 @@ re-export that changes the guard file, the guard is run again in the export so t
 `axioms.txt` is its output. A release takes about three hours, most of it the Lean build from
 scratch in the export.
 
-**The rule 6 gate** belongs here too, in `export-release.py` (Q-0049; not yet built — this repository
-only states what it must check): for a version after the first, the build fails unless the date line
-names the first release (its date and version DOI, beside the concept DOI) and the version-history
-section has an entry for the version being exported. The first version is exempt from both, the same
-way it is exempt from having a version history section at all.
+**The rule 6 gate** is part of `linkage release export`: for a version after the first — the
+module's own earlier tag, found by the tag's module prefix — the export fails unless the date line
+names the first release's version and date, and the version-history section has an entry for the
+version being exported. The first version is exempt from both, the same way it is exempt from
+having a version history section at all; a date line still marked as a draft is faulted on its own
+terms instead. `--draft` writes the export all the same, with a `DRAFT` file that
+`linkage release zenodo` refuses outside the sandbox.

@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 
 from conftest import run_cli
-from linkage import config, release
+from linkage import config, release, zenodo
 from linkage.prose import register
 
 
@@ -453,3 +453,21 @@ def test_register_counts_the_modules_paper_by_default(article_repo: Path) -> Non
     assert rc == 0
     assert "01-intro.tex" in out and "main.tex" not in out    # main.tex is preamble, not prose
     assert "TOTAL" in out
+
+
+# ---- the Zenodo steps (no network: the state file and the gate) ---------------------------------
+
+def test_a_step_without_a_reserved_draft_says_to_reserve_first(tmp_path: Path) -> None:
+    rc, _, err = run_cli("release", "zenodo", "status", "--export", str(tmp_path))
+    assert rc == 2
+    assert "reserve" in err
+
+
+def test_the_deposit_gate_refuses_a_draft_export(tmp_path: Path) -> None:
+    (tmp_path / "DRAFT").write_text("not a release\n", encoding="utf-8")
+    faults = zenodo.deposit_gate(tmp_path, {"doi": "10.5281/zenodo.1", "sandbox": False}, [])
+    assert faults and "DRAFT file" in faults[0]
+
+
+def test_the_deposit_gate_passes_an_export_with_no_pdf_to_read(tmp_path: Path) -> None:
+    assert zenodo.deposit_gate(tmp_path, {"doi": "10.5281/zenodo.1", "sandbox": False}, []) == []
