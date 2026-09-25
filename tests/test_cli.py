@@ -54,7 +54,8 @@ def test_a_missing_shared_lake_package_exits_two(article):
 def test_help_lists_every_subcommand():
     rc, out, _ = run_cli("--help")
     assert rc == 0
-    for cmd in ("check", "manifest", "demand", "axioms", "packages", "prose", "init"):
+    for cmd in ("check", "manifest", "demand", "axioms", "packages", "prose", "review",
+                "init"):
         assert cmd in out
 
 
