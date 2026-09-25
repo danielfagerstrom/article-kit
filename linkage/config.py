@@ -325,7 +325,7 @@ def load(root: Path | None = None) -> Config:
         )
 
     def modules_table() -> tuple[Module, ...]:
-        rows = raw.get("modules", ())
+        rows = raw.get("modules", [])
         if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
             raise ConfigError(f"{CONFIG_NAME}: `[[modules]]` must be a list of tables")
         out: list[Module] = []
