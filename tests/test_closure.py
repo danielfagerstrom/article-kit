@@ -246,6 +246,21 @@ theorem x : True := by
     assert tagged(article.closure().advisory, "declared") == []
 
 
+def test_the_default_export_path_follows_the_configured_lean_directory(article):
+    """It is written beside the sources it describes, and `paths.lean` is configurable."""
+    from fixtures.article import DEFAULT_TOML
+    from linkage import closure
+
+    article.file("linkage.toml",
+                 DEFAULT_TOML.replace('lean      = "Formalization"', 'lean      = "Lean"'))
+    article.file("Lean/Main.lean", "theorem a : True := trivial\ntheorem x : True := trivial\n")
+    article.file("Lean/lean-uses.json", '{"x": ["a"], "a": []}')
+    article.blueprint(bp(lemma("lem:a", "a"), theorem("thm:x", "x", uses=("lem:a",))))
+    _index, route = closure.build_index(article.cfg, None)
+    assert route == "export (lean-uses.json)"
+    assert tagged(article.closure().advisory, "declared") == []
+
+
 def test_a_malformed_export_is_a_tooling_error_not_a_finding(article):
     article.lean("theorem x : True := trivial\n")
     article.file("Formalization/lean-uses.json", '{"x": "a"}')
