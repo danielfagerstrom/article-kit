@@ -147,8 +147,11 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    transcription is in the entry or in the repository's verbatim companion
    (`blueprint/AXIOMS-verbatim.md`, one section per entry, written in the same commit as the entry).
    A paraphrase alone dropped a slowly varying factor from Sato's (53.28), and the result was
-   printed, typed, reviewed and admitted as a false axiom. Not yet checked by `linkage axioms
-   --check`; a missing transcription is a review finding until it is (`WISHLIST.md`).
+   printed, typed, reviewed and admitted as a false axiom. `linkage axioms
+   --check` now checks it: an entry whose `**Lean:**` segment names an admitted interface axiom (one
+   in `trust-boundary.txt`) and that has neither a `**Verbatim:**` block nor a same-id `## AXX` section
+   in the companion **fails**; an entry that grounds no admitted name gets an advisory. The companion's
+   path is `paths.axioms_verbatim` in `linkage.toml`, default `blueprint/AXIOMS-verbatim.md`.
 
    **Ledger identifiers are opaque and stable** (2026-08-09, from `hcs`). Assign them in order of
    introduction; never reuse, never renumber. They are *published names* — `manifest` gives every node a

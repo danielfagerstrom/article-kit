@@ -26,7 +26,11 @@ An analytic interface.
 **Lean:** `Article.Interfaces.tail_bound`
 
 **Cite:** @author2020 — Thm 3.1, p. 88
+
+**Verbatim:** "For all t, the tail is bounded by C exp(-t)." (p. 88)
 """
+
+BARE = LEDGER.split("**Verbatim:**")[0]
 
 
 def axioms(article, *names: str, header: str = "# this article's interface axioms\n") -> None:
@@ -139,3 +143,53 @@ def test_only_the_lean_segment_of_an_entry_grounds_a_name(article):
                                   "The Lean side uses `Article.Interfaces.tail_bound`."))
     axioms(article, "Article.Interfaces.tail_bound")
     assert trust.ungrounded(article.cfg) == ["Article.Interfaces.tail_bound"]
+
+
+# --- rule 5: the source's wording is transcribed (`linkage axioms --check`) -----------
+
+
+def companion(article, text: str) -> None:
+    article.root.joinpath("blueprint/AXIOMS-verbatim.md").write_text(text, encoding="utf-8")
+
+
+def test_an_admitted_entry_with_a_verbatim_block_passes(article):
+    article.axioms(LEDGER)
+    axioms(article, "Article.Interfaces.tail_bound")
+    rc, _, err = run_cli("--root", str(article.root), "axioms", "--check")
+    assert rc == 0 and "advisory" not in err
+
+
+def test_an_admitted_entry_with_a_companion_section_passes(article):
+    article.axioms(BARE)
+    companion(article, "# Verbatim\n\n## A1 -- tail bound\n\n> the tail is bounded\n")
+    axioms(article, "Article.Interfaces.tail_bound")
+    rc, _, err = run_cli("--root", str(article.root), "axioms", "--check")
+    assert rc == 0 and "advisory" not in err
+
+
+def test_an_admitted_entry_with_neither_fails(article):
+    article.axioms(BARE)
+    companion(article, "## A2 -- another entry's section does not count\n")
+    axioms(article, "Article.Interfaces.tail_bound")
+    rc, _, err = run_cli("--root", str(article.root), "axioms", "--check")
+    assert rc == 1
+    assert "no source transcription" in err and "  A1" in err
+
+
+def test_an_unadmitted_entry_with_neither_only_gets_an_advisory(article):
+    article.axioms(BARE)
+    axioms(article)  # nothing admitted
+    rc, _, err = run_cli("--root", str(article.root), "axioms", "--check")
+    assert rc == 0
+    assert "advisory" in err and "A1" in err
+
+
+def test_the_companion_path_is_configurable(article):
+    article.axioms(BARE)
+    axioms(article, "Article.Interfaces.tail_bound")
+    article.root.joinpath("blueprint/wording.md").write_text("## A1 -- x\n", encoding="utf-8")
+    toml = article.root / "linkage.toml"
+    toml.write_text(toml.read_text(encoding="utf-8").replace(
+        "[paths]", '[paths]\naxioms_verbatim = "blueprint/wording.md"', 1), encoding="utf-8")
+    rc, _, _ = run_cli("--root", str(article.root), "axioms", "--check")
+    assert rc == 0

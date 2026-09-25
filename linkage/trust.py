@@ -65,3 +65,35 @@ def ungrounded(cfg: Config) -> list[str]:
     """Declared axioms that no ledger entry mentions — declared but never reviewed."""
     mentions = ledger_lean_mentions(cfg)
     return [d for d in declared(cfg) if d.split(".")[-1] not in mentions]
+
+
+def _entries(text: str, key: str) -> dict[str, str]:
+    """`AXX` -> the body of its `## AXX` section (same split as `artifacts.ledger_entries`)."""
+    return {m.group(1): m.group(2) for m in re.finditer(
+        rf"(?ms)^##\s*({key})\b(.*?)(?=^##\s*{key}\b|\Z)", text)}
+
+
+def missing_verbatim(cfg: Config) -> tuple[list[str], list[str]]:
+    """Ledger entries with no transcription of the source's wording (LINKAGE.md rule 5).
+
+    An entry has one if its body carries a `**Verbatim:**` block, or the companion
+    (`cfg.axioms_verbatim`) has a section of the same id. Returns `(errors, advisories)`:
+    an entry whose `**Lean:**` segment names a declared interface axiom is *admitted* and
+    an absent transcription is an error; any other entry only gets an advisory.
+    """
+    entries = _entries(cfg.axioms.read_text(encoding="utf-8"), cfg.ledger_key)
+    companion: set[str] = set()
+    if cfg.axioms_verbatim is not None and cfg.axioms_verbatim.is_file():
+        companion = set(_entries(cfg.axioms_verbatim.read_text(encoding="utf-8"),
+                                 cfg.ledger_key))
+    admitted = {d.split(".")[-1] for d in declared(cfg)}
+    errors: list[str] = []
+    advisories: list[str] = []
+    for aid, body in entries.items():
+        if "**Verbatim:**" in body or aid in companion:
+            continue
+        names = {i.split(".")[-1] for m in re.finditer(
+                     r"\*\*Lean:\*\*(.*?)(?=\n\s*\n|\*\*Cite:\*\*|\Z)", body, re.S)
+                 for i in re.findall(r"`([A-Za-z_][\w'.]*)`", m.group(1))}
+        (errors if names & admitted else advisories).append(aid)
+    return errors, advisories
