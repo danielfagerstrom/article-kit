@@ -7,6 +7,18 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage closure` — the inferred half of the `\uses` edge ([`docs/LINKAGE.md`](docs/LINKAGE.md)
+  rule 11). Per `\leanok` node it reads the Lean declaration the node points at — from the
+  declaration source, or from an exported constant map (`paths.lean_uses`, default
+  `Formalization/lean-uses.json`; `--export PATH`) when the article has a built environment to
+  write one from — and diffs the constants it uses against the node's `\uses{}` both ways:
+  `[declared]` (a `\uses` target nowhere in the declaration's transitive inferred closure),
+  `[inferred]` (a declaration cited directly that no `\uses` path reaches), plus `[empty]` (a
+  proved node whose declaration cites nothing of ours while its `\uses{}` names formalised nodes)
+  and `[orphan]` (a `lem` nothing depends on in either graph). Advisory only and a separate
+  command: it always exits 0, `linkage check`'s exit code is untouched, and nothing here writes a
+  `\uses{}` edge — authorship stays blueprint-first. Supersedes the `\uses`-against-imports half of
+  `f7sweep.py` for `\leanok` nodes.
 - `linkage check` prints a `[uses]` advisory per shared node whose paper proof never `\ref`s (or
   `\cref`s) some of the node's blueprint `\uses{}` targets. Advisory only; the exit code is
   unchanged ([`docs/LINKAGE.md`](docs/LINKAGE.md) rule 4).

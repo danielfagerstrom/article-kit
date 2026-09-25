@@ -23,6 +23,7 @@ linkage init --slug <slug> --title "<title>"   # a new article: scaffolding, rul
 linkage init --sync                             # refresh the framework-owned files
 linkage check                                   # every in-repo edge, plus drift and shape advisories
 linkage check --wiki $WIKI_VAULT                # also the \notes{} edge to the hub
+linkage closure                                 # what each \leanok node's Lean decl cites, against its \uses{} (advisory)
 linkage shape [DIR]                             # instruction files that hold records (no linkage.toml needed)
 linkage manifest                                # write blueprint-manifest-<slug>.json for the hub
 linkage demand                                  # unproved blueprint nodes the hub is asking for
