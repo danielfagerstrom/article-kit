@@ -99,3 +99,24 @@ def test_an_edited_framework_file_shows_up_in_the_check(tmp_path):
     rc, out, _ = run_cli("--root", str(root), "check")
     assert rc == 0
     assert "advisory [scaffold] blueprint/src/blueprint.sty differs" in out
+
+
+# --- --sync in a paper-only repository -------------------------------------------------
+
+
+def test_sync_works_in_a_paper_only_repository(tmp_path):
+    root = tmp_path / "paper-only"
+    (root / "paper").mkdir(parents=True)
+    (root / "linkage.toml").write_text('slug = "ppr"\n', encoding="utf-8")
+    stale = root / ".claude" / "rules" / "article-kit" / "core.md"
+    stale.parent.mkdir(parents=True)
+    stale.write_text("% stale\n", encoding="utf-8")
+
+    rc, out, err = run_cli("--root", str(root), "init", "--sync")
+    assert rc == 0, out + err
+    assert stale.read_text(encoding="utf-8") != "% stale\n"
+    assert (stale.parent / "writing.md").is_file()
+    for skipped in ("blueprint.md", "ledger.md", "lean.md"):
+        assert not (stale.parent / skipped).exists()
+    assert not (root / "blueprint").exists()
+    assert scaffold.drift(root) == []

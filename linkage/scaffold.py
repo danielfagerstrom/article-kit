@@ -91,6 +91,29 @@ def render(text: str, subs: dict[str, str]) -> str:
     return text
 
 
+def _absent_artifacts(root: Path) -> set[str]:
+    """`--sync` in a repository lacking an artifact skips what belongs to it.
+
+    The path-scoped rules load only when a matching file is read, so copying them would be
+    harmless, but the `blueprint/` build files and the stamp would litter a paper-only repo.
+    """
+    from . import config
+    try:
+        cfg = config.load(root, validate=False)
+    except config.ConfigError:
+        return set()
+    gone = set()
+    if not cfg.blueprint.exists():
+        gone |= {"blueprint", "claude/rules/blueprint.md", "claude/rules/ledger.md"}
+    if not cfg.lean.exists():
+        gone.add("claude/rules/lean.md")
+    return gone
+
+
+def _skipped(rel: str, absent: set[str]) -> bool:
+    return rel in absent or ("blueprint" in absent and rel.startswith("blueprint/"))
+
+
 def init(root: Path, slug: str, subs: dict[str, str] | None = None,
          sync: bool = False) -> int:
     """Write the scaffolding into `root`. Existing seeded/template files are left alone."""
@@ -98,8 +121,11 @@ def init(root: Path, slug: str, subs: dict[str, str] | None = None,
     subs = {"SLUG": slug, "TITLE": slug, "HOME": "", "GITHUB": "", "DOCHOME": "", **(subs or {})}
     stamp: dict[str, str] = {}
     wrote, kept = [], []
+    absent = _absent_artifacts(root) if sync else set()
 
     for rel, dest_rel in FRAMEWORK_OWNED.items():
+        if _skipped(rel, absent):
+            continue
         dest = root / dest_rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         content = _read(src / rel)
@@ -111,6 +137,8 @@ def init(root: Path, slug: str, subs: dict[str, str] | None = None,
         stamp[dest_rel] = sha(content)
 
     for rel, dest_rel in SEEDED.items():
+        if _skipped(rel, absent):
+            continue
         dest = root / dest_rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         if dest.exists():
@@ -129,9 +157,10 @@ def init(root: Path, slug: str, subs: dict[str, str] | None = None,
             dest.write_text(render(_read(src / rel), subs), encoding="utf-8")
             wrote.append(dest_rel)
 
-    (root / "blueprint").mkdir(parents=True, exist_ok=True)
-    (root / "blueprint" / STAMP).write_text(
-        json.dumps({"framework_owned": stamp}, indent=2) + "\n", encoding="utf-8")
+    if "blueprint" not in absent:
+        (root / "blueprint").mkdir(parents=True, exist_ok=True)
+        (root / "blueprint" / STAMP).write_text(
+            json.dumps({"framework_owned": stamp}, indent=2) + "\n", encoding="utf-8")
 
     print(f"scaffold: wrote {len(wrote)}, left {len(kept)} in place")
     for w in wrote:
