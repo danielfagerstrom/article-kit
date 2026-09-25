@@ -526,7 +526,10 @@ def report(reviews, defects, threads, problems, top: int = 10) -> list[str]:
                    f"{', '.join(t.files)}")
         out.append(f"      refs: {', '.join(t.refs) or '(none)'}")
         for d in t.defects:
-            out.append(f"      x{d.breadth} {d.tag:<12} {d.key.split('::')[-1]}")
+            # The file, not only the referent: a thread's members share their labels, so
+            # the referent alone prints the same string twice.
+            out.append(f"      x{d.breadth} {d.tag:<12} {d.file}  "
+                       f"{d.key.split('::')[-1]}")
     if not threads:
         out.append("  (none — every defect stayed inside one section)")
 

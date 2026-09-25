@@ -72,12 +72,15 @@ each shared node's `\uses{}` set with the `\ref`s in the paper's proof of it, as
 have caught a reordering in Paper I that dropped three invocations while keeping the sentence that
 promised them.
 
-### Reviewer output contract — implement and adopt
+### Reviewer output contract — adopt (the spec and the aggregator are done)
 
-[`docs/REVIEWER-CONTRACT.md`](docs/REVIEWER-CONTRACT.md) is drafted and not adopted. Needed: the
+[`docs/REVIEWER-CONTRACT.md`](docs/REVIEWER-CONTRACT.md) is specified and implemented: the
 scope-and-hypothesis tags (`SCOPE`, `HYPOTHESIS`, `COUNT`, `NOTATION`, `TRANSCLUSION`, `FRONTIER`)
-beside the prose-surface ones, a stable identity per underlying defect so pooled flags rank by the
-number of independent discoveries, and the section-contract declaration. Then the aggregator.
+with definitions and examples, the defect identity that pools flags from different reviewers and
+ranks them by the number of independent discoveries, the section-contract declaration, and
+`linkage review` over it all. What is left is the hub's: `draft-reviewer.md` emits prose reports and
+must emit the records instead — the seven changes are listed at the end of the contract. Until that
+pass lands the aggregator has nothing to read.
 
 ### Inferred dependency closure
 
