@@ -7,6 +7,20 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- The release and register scripts are `linkage`'s (ADR-0001 step 5): `linkage release export`
+  writes a module's verification export, `linkage release zenodo {reserve,upload,status,publish,
+  discard}` deposits it through the Zenodo API with a reserved DOI, and `linkage prose register`
+  prints the restraint-budget counts by zone. Every module-specific parameter — chapters, paper
+  directory, tag, Lean roots, headline declaration, records directory, stem, title, export
+  repository URL, keywords, related identifiers — is read from `linkage.toml`'s `[[modules]]`,
+  with the creators, licence and copyright line in `[release]`. `docs/RELEASE.md` § "The commands"
+  names these; `spatial-hemigroup-scale-space`'s `scripts/` held them before. Two new `[paths]`
+  keys serve the export: `lean_libraries` (this tree's Lake libraries; inferred when absent) and
+  `shared_namespaces` (the namespaces a shared package declares, where they differ from its name,
+  as `ScaleSpaceCore` declares `ScaleSpace.*`; defaults to `lean_packages`).
+- `linkage release export` carries the rule 6 gate: for a release after the module's own first
+  tag, the date line must name that first release's version and date, and the version-history
+  section must have an entry for the version exported; a first release is exempt from both.
 - **The boundary harness — `linkage boundary`** ([`docs/LINKAGE.md`](docs/LINKAGE.md) rule 5), four
   checks the repository-wide axiom guard cannot do, because it reads the *union* of what the guard
   file prints: a `#guard_msgs`-pinned `#print axioms` per headline declaration (with the pinned
