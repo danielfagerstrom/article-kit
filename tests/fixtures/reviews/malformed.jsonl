@@ -1,0 +1,4 @@
+{"kind":"review","target":"paper/09-signaling.tex","contract":"B.5","contract_why":"the main results section","strengths":"clear"}
+{"kind":"flag","file":"paper/09-signaling.tex","anchor":"(H)","tag":"SCOPE","layer":"structure","severity":3,"claim":"the hypothesis is overstated","probe":"compare with the proposition","refs":[],"elsewhere":[]}
+{"kind":"flag","file":"paper/09-signaling.tex","anchor":"The extreme rays of the cone","tag":"MOTIVATION","layer":"structure","severity":2,"claim":"no reason is given for the object","probe":"check the order of motivation and statement","refs":[],"elsewhere":[]}
+{"kind":"flag","file":"paper/09-signaling.tex","anchor":"In the semigroup case","tag":"VIBE","layer":"voice","severity":9,"claim":"reads oddly","probe":"reconsider","refs":[],"elsewhere":[]}

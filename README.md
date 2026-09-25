@@ -30,6 +30,7 @@ linkage demand                                  # unproved blueprint nodes the h
 linkage axioms --check                          # the trust boundary against the ledger
 linkage boundary                                # per-theorem axiom pins, probes, adversarial goals, shadowed names
 linkage pins                                    # fail if a workflow call or linkage_ref is at a branch, not a tag
+linkage review <review>.jsonl …                 # pool the reviewers' flags by defect, rank by breadth
 ```
 
 CI runs `linkage check --require-render --emit-manifest <path>`: `--require-render` makes a
@@ -74,6 +75,7 @@ demand.py      `wiki demands --json` joined against live \leanok status
 scaffold.py    `linkage init`, and drift detection for the framework-owned copies
 shape.py       the instruction-file advisories (ADR-0001)
 prose/         prose measurement over the paper sources
+review.py      the reviewer output contract: pool flags by defect, rank by breadth
 ```
 
 `checks.py` does not import `parse_latex`. That is the load-bearing rule: the checks, the manifest
