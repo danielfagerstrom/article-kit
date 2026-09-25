@@ -167,6 +167,11 @@ class PaperMarker:
     """The paper's own statement under the same reduction applied to the blueprint node.
     None when no statement environment follows the marker — itself a finding."""
 
+    proof_refs: set[str] | None = None
+    """Labels `\\ref`/`\\cref`ed in the proof environment that directly follows the marked
+    statement. None when no proof follows it (the paper proves it elsewhere, or not at all),
+    which the `\\uses` advisory must not read as "cites nothing"."""
+
     raw: str = ""
     """The marker's own text, so `--pin-shared` can rewrite it in place."""
 

@@ -147,3 +147,43 @@ def test_a_marker_does_not_adopt_the_next_markers_statement(article):
     assert f.stats["shared_no_env"] == 1
     assert f.stats["shared_verbatim"] == 1
     assert f.stats["shared_drift"] == 0
+
+
+# --- the \uses advisory: does the paper's proof still cite what the blueprint's does? ---
+
+USES = ("lem:a", "lem:b", "lem:c", "lem:d")
+
+
+def uses_article(article, paper_proof: str | None):
+    deps = "".join(statement(label=lab, body=f"Fact {lab}.") for lab in USES)
+    article.blueprint(deps + statement(body=BODY, label="thm:x", uses=USES, proof="Use them all."))
+    proof = (f"\\begin{{proof}}{paper_proof}\\end{{proof}}\n" if paper_proof is not None else "")
+    article.paper(paper_stmt(BODY, "thm:x") + proof)
+    return article.check()
+
+
+def test_a_paper_proof_dropping_three_of_four_uses_is_advised(article):
+    f = uses_article(article, r"By Lemma~\ref{lem:a} the kernel is smooth.")
+    assert f.fatal == []
+    (msg,) = tagged(f.advisory, "uses")
+    assert "thm:x" in msg and "3 of 4" in msg
+    assert "lem:b, lem:c, lem:d" in msg and "lem:a," not in msg
+
+
+def test_cref_lists_and_comments_are_read_like_ref(article):
+    f = uses_article(article, "By \\cref{lem:a,lem:b} and \\Cref{lem:c}. % \\ref{lem:d}\n")
+    (msg,) = tagged(f.advisory, "uses")
+    assert "1 of 4" in msg and msg.endswith("lem:d")
+
+
+def test_a_paper_proof_citing_every_use_is_silent(article):
+    f = uses_article(article, r"\ref{lem:a}, \ref{lem:b}, \cref{lem:c}, \ref{lem:d}.")
+    assert tagged(f.advisory, "uses") == []
+
+
+def test_no_paper_proof_after_the_statement_is_silent(article):
+    assert tagged(uses_article(article, None).advisory, "uses") == []
+
+
+def test_the_uses_advisory_does_not_change_the_verdict(article):
+    assert uses_article(article, "Trivial.").ok

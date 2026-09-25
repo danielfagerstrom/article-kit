@@ -7,6 +7,10 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage check` prints a `[uses]` advisory per shared node whose paper proof never `\ref`s (or
+  `\cref`s) some of the node's blueprint `\uses{}` targets. Advisory only; the exit code is
+  unchanged ([`docs/LINKAGE.md`](docs/LINKAGE.md) rule 4).
+
 ## v0.1.0 — 2026-09-21 — the first pinned release
 
 The framework as it stands after the process home (ADR-0001) and its own test suite and CI. Before
