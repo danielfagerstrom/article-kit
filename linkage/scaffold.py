@@ -8,7 +8,8 @@ by `linkage init` and their divergence is detected by `linkage check`.
 
 Two tiers:
 
-**Framework-owned** — `blueprint.sty`, `theorems.tex`, `linkage-macros.tex`, `latexmkrc`, and
+**Framework-owned** — `blueprint.sty`, `theorems.tex`, `linkage-macros.tex`, `latexmkrc`,
+`scripts/build-blueprint.sh` (the article's one-command rebuild of every blueprint view), and
 the session rules under `.claude/rules/article-kit/` (ADR-0001: the process reaches every
 article session through them). Editing the article's copy is a mistake; `linkage check` reports
 it as an advisory naming the file. Change them in article-kit and re-run `linkage init --sync`.
@@ -33,6 +34,7 @@ FRAMEWORK_OWNED = {
     "blueprint/theorems.tex": "blueprint/src/theorems.tex",
     "blueprint/linkage-macros.tex": "blueprint/src/linkage-macros.tex",
     "blueprint/latexmkrc": "blueprint/src/latexmkrc",
+    "scripts/build-blueprint.sh": "scripts/build-blueprint.sh",
     "claude/rules/core.md": ".claude/rules/article-kit/core.md",
     "claude/rules/writing.md": ".claude/rules/article-kit/writing.md",
     "claude/rules/blueprint.md": ".claude/rules/article-kit/blueprint.md",
@@ -104,7 +106,8 @@ def _absent_artifacts(root: Path) -> set[str]:
         return set()
     gone = set()
     if not cfg.blueprint.exists():
-        gone |= {"blueprint", "claude/rules/blueprint.md", "claude/rules/ledger.md"}
+        gone |= {"blueprint", "scripts/build-blueprint.sh",
+                 "claude/rules/blueprint.md", "claude/rules/ledger.md"}
     if not cfg.lean.exists():
         gone.add("claude/rules/lean.md")
     return gone
@@ -132,7 +135,9 @@ def init(root: Path, slug: str, subs: dict[str, str] | None = None,
         if dest.exists() and _read(dest) == content:
             kept.append(dest_rel)
         else:
-            dest.write_text(content, encoding="utf-8")
+            # bytes, not write_text: on Windows text mode would turn the shell script's LF
+            # into CRLF, and `sh` then reads `set -eu\r`.
+            dest.write_bytes(content.encode("utf-8"))
             wrote.append(dest_rel)
         stamp[dest_rel] = sha(content)
 
