@@ -7,6 +7,15 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `scripts/build-blueprint.sh` is now framework-owned: `scaffold/scripts/build-blueprint.sh`, delivered
+  to an article's `scripts/` by `linkage init --sync` (skipped in a repository with no blueprint) and
+  reported by `linkage check` as scaffold drift when the copy diverges. Two article repositories had
+  byte-identical hand copies; the copies are now deliveries, and the original is here. It also fixes
+  the web step on Windows: plasTeX writes the `\lean`-tag declaration list in Python's default
+  encoding (cp1252) and died on a non-ASCII Lean name such as `b₀`; the plasTeX command now runs
+  with `PYTHONUTF8=1`. Linux CI was never affected. `init` also writes framework-owned files as
+  bytes, so a shell script keeps its LF endings on Windows.
+
 - `linkage init --sync` works in a paper-only repository. It reads the slug from `linkage.toml`
   without validating the artifact paths (`config.load(root, validate=False)`), so a repository with
   no blueprint, ledger or Lean directory no longer stops with a CONFIG ERROR. Chosen: the rules for

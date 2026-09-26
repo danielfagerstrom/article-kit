@@ -587,7 +587,10 @@ not to either projection.
   `blueprint/src/web.tex` and the deploy job publishes it at `/blueprint/` on the article's
   Cloudflare Pages project, so the `\uses` graph and the `[T]`/`[A]` tags are a shareable URL
   rather than a local artifact. Opt out per article with `build_web: false`. Locally,
-  `scripts/build-blueprint.sh` in each article rebuilds the same view.
+  `scripts/build-blueprint.sh` in each article rebuilds the same view. That script is
+  **scaffolded**: its original is `scaffold/scripts/build-blueprint.sh` in article-kit, and the copy
+  in an article is a delivery by `linkage init --sync` (framework-owned, so `linkage check` flags a
+  diverging copy). Fix it in article-kit and re-sync; never edit the article's copy.
 
   Two dependencies bite, and both are silent — a desk with MiKTeX and Graphviz installed hides
   each of them, and neither failure stops the build. **Graphviz is needed at build time**:

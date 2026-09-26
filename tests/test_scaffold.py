@@ -119,4 +119,11 @@ def test_sync_works_in_a_paper_only_repository(tmp_path):
     for skipped in ("blueprint.md", "ledger.md", "lean.md"):
         assert not (stale.parent / skipped).exists()
     assert not (root / "blueprint").exists()
+    assert not (root / "scripts").exists()
     assert scaffold.drift(root) == []
+
+
+def test_the_build_script_is_delivered_with_the_utf8_fix_and_lf_endings(fresh):
+    data = (fresh / "scripts" / "build-blueprint.sh").read_bytes()
+    assert b"\r" not in data
+    assert b"PYTHONUTF8=1 plastex" in data
