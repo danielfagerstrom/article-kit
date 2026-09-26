@@ -128,4 +128,34 @@ yet admitted". Keep the colour. Every article gets it on the next scaffold sync.
 
 ---
 
+## A check that the paper's account of its own checking is true
+
+A module's trust-base subsection states, for a reader, what is machine-checked, what is proved in
+prose, which cited facts each result reads and what `#print axioms` prints. Every one of those
+claims is derivable from the repository: the per-node status from the blueprint and
+`Formalization/INDEX.md`, the cited facts from `AXIOMS.md` and `trust-boundary.txt`, the axiom
+blocks from Lean itself. None of them is checked today, and nothing fails when they drift.
+
+They drift fast. Paper V's module C went stale twice in two days while a proving campaign ran
+beside the drafting: a section that said "nothing in this section is machine-checked" when four of
+its seven nodes had acquired a Lean tag, a table built on fourteen boundary names when there were
+sixteen, an axioms block printed before a cited fact was proved and left the boundary, and a
+statement listed as prose-only the morning after it was checked. Each was found by a session that
+happened to look, and each is the kind of claim a reader of the export can check in one command,
+which is exactly why it must not be wrong.
+
+What would fix it: a `linkage` check that reads the paper's trust-base subsection and compares it
+with the development — at least the per-statement status of every `\ref`'d node, the set of ledger
+entries the section names against the set its declarations actually read, and the printed
+`#print axioms` blocks against a fresh run. A first version could be much less: compare the
+statuses alone, and require the axiom blocks to carry the commit or the date they were produced
+at, so a reviewer can see when they went stale. The paper would need a light marker around the
+block for the checker to find, which is the sort of convention `LINKAGE.md` already sets.
+
+Raised from `spatial-hemigroup-scale-space`, 2026-09-26, after the second resync in two days. Every
+article with a trust-base subsection has this exposure, so it is the framework's and not one
+paper's.
+
+---
+
 *No other open requests.*
