@@ -7,6 +7,11 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage release`: a three-part tag (`v1.0.0`, `v1.1.0`) now parses, so the rule 6 gate finds a
+  later version's first release; it used to treat Paper I's `v1.1.0` as a first release and skip
+  the date-line and version-history checks without a word. And a Lean declaration whose name ends
+  in a prime (`sonine_conservation'`) is found, where the pattern's trailing `` never matched
+  after `'` (and let `foo` match `foo'`). Both found by the first dry run of Paper I's v1.1.0.
 - `linkage paper`'s item-count check (`\ref{p}(3)` past a statement's item count) is now
   module-aware (Q-0171): it resolves a label within the referencing file's own `paths.paper`
   module first, falling back to the repository-wide map only when that module defines the label
