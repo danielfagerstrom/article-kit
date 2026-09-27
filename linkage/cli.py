@@ -605,7 +605,8 @@ def build_parser() -> argparse.ArgumentParser:
                          formatter_class=argparse.RawDescriptionHelpFormatter)
     rz.add_argument("step", choices=sorted(zenodo_mod.STEPS),
                     help="reserve a DOI, upload the files, show the draft, publish it "
-                         "(irreversible), or discard an unpublished draft")
+                         "(irreversible), discard an unpublished draft, or set its default "
+                         "preview to the PDF")
     rz.add_argument("--export", required=True, help="the export directory (forward slashes)")
     rz.add_argument("--sandbox", action="store_true",
                     help="reserve: use sandbox.zenodo.org (the later steps read the draft's own "
@@ -616,7 +617,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="reserve: open another draft although one is open")
     rz.add_argument("--tag", help="upload: the export repository's tag to archive as a zip")
     rz.add_argument("--file", action="append",
-                    help="upload: upload these files instead of the defaults")
+                    help="upload: upload these files instead of the defaults; preview: the "
+                         "file to preview")
     rz.set_defaults(func=cmd_release_zenodo)
     rv = sub.add_parser("review", help="pool the draft-reviewer's flags across reviews "
                                        "and rank them by breadth (REVIEWER-CONTRACT.md)")

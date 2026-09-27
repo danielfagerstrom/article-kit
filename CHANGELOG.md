@@ -7,6 +7,11 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage release zenodo upload` makes the PDF the draft's **default preview**, through the
+  records API's `files.default_preview` (the legacy deposit API has no such field); a new
+  `preview` step sets it again on a draft uploaded before. The steps print the draft's own
+  page, `/uploads/<id>`, not the legacy `/deposit/<id>`, which now redirects to a record page
+  that exists only once published. Both found in Paper I's v1.1.0 sandbox rehearsal.
 - `linkage release`: a three-part tag (`v1.0.0`, `v1.1.0`) now parses, so the rule 6 gate finds a
   later version's first release; it used to treat Paper I's `v1.1.0` as a first release and skip
   the date-line and version-history checks without a word. And a Lean declaration whose name ends
