@@ -337,6 +337,9 @@ It enforces the **in-repo** edges and fails (exit 1) on:
   existing drift is cleared;
 - (advisory only) a paper statement environment with neither a `% shared with blueprint` marker nor a
   `% no blueprint node: <reason>` opt-out (rule 12);
+- a marked trust-base subsection (`% trust base: begin` … `end`) that gives a statement a status the
+  blueprint does not, names a ledger entry its statements do not read or leaves out one they do, or
+  prints an unstamped or out-of-date `#print axioms` block (rule 13; silent without the marker);
 - a `\command` in a statement or proof that the render pipeline cannot handle (the clean-render gate);
 - a stray control character in any `.tex`, `.md` or `.lean` source — anything below U+0020 that
   is not LF, or CR immediately before LF (rule 9);
@@ -515,6 +518,83 @@ naming them keeps the difference between "open" and "leaned on while open" visib
    `\theoremstyle{remark}` environment used for a real claim is exempt by construction. And it cannot
    tell a missing marker from an environment used for something that is not a claim — that is what the
    opt-out is for, and the reason written there is what a reviewer reads.
+
+13. **A paper's trust-base subsection agrees with the development** (2026-09-27, Q-0170). A module's
+   trust-base subsection tells a reader what is machine-checked, what is proved in prose, which cited
+   facts each result reads and what `#print axioms` prints. All of it is derivable from the
+   repository, and until this rule none of it was checked. Paper V's module C went stale twice in two
+   days while a proving campaign ran beside the drafting: a section said nothing was machine-checked
+   when four of its seven nodes had a Lean tag, a table listed fourteen boundary names when there were
+   sixteen, an axioms block was printed before a cited fact was proved and left the boundary, and a
+   statement was listed as prose-only the morning after it was checked.
+
+   **The marker** is two comment lines around the subsection, the same kind of marker as rule 4's and
+   rule 12's:
+
+   ```latex
+   \subsection{What is checked}
+   % trust base: begin
+   \begin{tabular}{lll}
+   Theorem~\ref{thm:main} & machine-checked & A1 (\texttt{tail\_bound}) \\
+   Proposition~\ref{prop:mode} & proved in prose & A2 \\
+   \end{tabular}
+
+   % printed at 1a2b3c4 (2026-09-26)
+   \begin{verbatim}
+   'Art.main' depends on axioms: [propext, Art.tail_bound]
+   \end{verbatim}
+   % trust base: end
+   ```
+
+   A paper without the marker is not read, and `linkage check` prints exactly what it printed before;
+   with one, the summary gains a `Trust base:` line. An unclosed `begin` or a stray `end` fails, since
+   a region the checker cannot find is a region the author believes is checked. A paper may have
+   several regions, in one file or several.
+
+   **Three comparisons**, all fatal, reported as `[trust-base]`:
+
+   1. **Status.** The region is read in *rows*: a table row (ended by `\\`), an `\item`, a sentence or
+      a paragraph. A row that `\ref`s statements and says *machine-checked*, *Lean-checked*, *checked
+      in Lean* or *formalised in Lean* claims every one of them `\leanok`; a row that says *prose*,
+      *prose-only*, *on paper*, *unformalised* or *not machine-checked* claims none of them is. The
+      claim is compared with the blueprint node. A `\ref` to a paper label is read through that
+      statement's `% shared with blueprint` marker, so an unaligned label (rule 4's advisory) is still
+      checked. A row that says both is an advisory, not a guess — split it. A row that `\ref`s a
+      statement and claims no status is a mention, and is not read.
+   2. **Ledger entries.** The entries the region *names* — an id matching `ledger_key` (a bare `A7` or
+      `\ledger{A7}`), or an interface axiom of `trust-boundary.txt` by its short name (`tail\_bound`
+      reads as `tail_bound`) — against the entries its `\ref`'d statements *read*. For a `\leanok`
+      node, what it reads is the set of boundary axioms its `\lean{}` declarations reach in the
+      `linkage closure` index (the `lean-uses.json` export when there is one, the source scan
+      otherwise), mapped to entries through the ledger's `**Lean:**` segments. For any other node it
+      is the `\ledger{}` entries of the `[A]` nodes it rests on ahead of the trust boundary, the node
+      itself included. An entry named and not read, or read and not named, fails. When the region
+      lists boundary names as well, the same comparison runs name by name, because two names grounded
+      by one entry would otherwise hide a missing row. A `\leanok` node whose declaration is not in
+      this repository's index (a shared package) turns the comparison off for its region, with an
+      advisory.
+   3. **Axiom blocks.** A `verbatim`, `Verbatim`, `BVerbatim`, `lstlisting` or `minted` block in the
+      region holding Lean's `#print axioms` output must carry a **stamp**: a comment line
+      `% printed at <commit>` or `% printed at <YYYY-MM-DD>` among the comment lines directly above
+      its `\begin`, so a reviewer can see when it was produced. It may print only Lean core and the
+      axioms `trust-boundary.txt` declares (and never `sorryAx`) — the check that catches a block
+      printed before a cited fact left the boundary. When the boundary harness (rule 5) pins the same
+      declaration under `#guard_msgs`, the block must print the pinned set.
+
+   **The fresh run is opt-in.** `linkage check --fresh-axioms` also writes a scratch file importing
+   each printed declaration's module and runs it through `lake env lean` in the Lean directory, and
+   fails where the printed block differs from what Lean prints now, or where Lean could not be run.
+   It needs a built project, so it is for a desk or a Lean CI job; the default run, like every other
+   check here, reads source text only.
+
+   **What it cannot see.** A claim written without a `\ref` ("nothing in this section is
+   machine-checked") is not a row it can read — list the statements. It reads only the fixed words
+   above, so a status written in other words is not checked, and it reads a `\ref` to any statement
+   as that statement's row, so a region that mentions an unrelated result in passing includes that
+   result's ledger entries. The source-scan route shares `linkage closure`'s blind spots (rule 11): a
+   boundary axiom reached only through a `simp` set or an instance is invisible to it, and would be
+   reported as named but not read; the export route has the exact answer. And a stamp says when a
+   block was produced, not that it is current: only the pin comparison and `--fresh-axioms` say that.
 
 The **wiki edge** is cross-repo: pass `--wiki <path-to-Notes>` to also check that every `\notes{slug}`
 resolves to a `slug.md` under the wiki.

@@ -7,6 +7,18 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage check` reads a paper's **trust-base subsection** and compares it with the development
+  (LINKAGE.md rule 13, Q-0170; requested by `spatial-hemigroup-scale-space` after Paper V's module C
+  went stale twice in two days). The paper marks the subsection with `% trust base: begin` and
+  `% trust base: end`. Inside it, a row calling a `\ref`'d statement machine-checked or prose-only
+  must agree with the node's `\leanok`. The ledger entries the region names must equal those its
+  statements read: through the `linkage closure` index for a `\leanok` node, through its `[A]`
+  ancestors for any other. A printed `#print axioms` block must carry a `% printed at <commit|date>`
+  stamp, may print only Lean core and declared boundary axioms, and must match its `#guard_msgs`
+  pin where the boundary harness has one. `--fresh-axioms` also runs `#print axioms` through
+  `lake env lean` and compares; the default run needs no Lean. A paper without the marker is not
+  read and the check's output is unchanged; with one, the summary gains a `Trust base:` line.
+  Fixtures in `tests/test_trust_base.py` cover a matching subsection and each drift.
 - `scripts/build-blueprint.sh` is now framework-owned: `scaffold/scripts/build-blueprint.sh`, delivered
   to an article's `scripts/` by `linkage init --sync` (skipped in a repository with no blueprint) and
   reported by `linkage check` as scaffold drift when the copy diverges. Two article repositories had
