@@ -70,7 +70,7 @@ def set_default_preview(st: dict, tok: str, name: str) -> None:
     draft is read and written back whole, so nothing but the preview changes — `pids` included,
     which carries the reserved DOI.
 
-    **Both requests name the RDM media type.** Asked for plain `application/json`, Zenodo's
+    **The read asks for the RDM media type.** Asked for plain `application/json`, Zenodo's
     records API answers in the *legacy* serialization (`creators[].name`, `upload_type`,
     `keywords`, `doi`); written back as RDM, every one of those fields is unknown and dropped.
     That emptied Paper I's v1.1.0 draft of its DOI, resource type, creators and keywords
@@ -89,7 +89,9 @@ def set_default_preview(st: dict, tok: str, name: str) -> None:
             f"erase them). Run `linkage release zenodo metadata` to set them from .zenodo.json")
     body = {k: draft[k] for k in ("access", "metadata", "pids", "custom_fields") if k in draft}
     body["files"] = {"enabled": True, "default_preview": name}
-    call("PUT", url, tok, data=body, ctype=RDM, accept=RDM)
+    # The write is labelled plain JSON: the draft endpoint reads RDM from `application/json` and
+    # refuses its own media type with 415 (2026-09-27); only the *answer* needs the Accept header.
+    call("PUT", url, tok, data=body, accept=RDM)
 
 
 def token(sandbox: bool) -> str:

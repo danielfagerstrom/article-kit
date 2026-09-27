@@ -7,6 +7,9 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage release zenodo preview`: the write-back is labelled `application/json`. The draft
+  endpoint reads RDM from plain JSON and answers 415 to its own media type, which #32 sent;
+  only the read needs `Accept: application/vnd.inveniordm.v1+json`.
 - **`linkage release zenodo`: setting the default preview no longer empties the draft.** It
   read the draft from the records API as plain JSON, which Zenodo answers in the legacy
   serialization, and wrote it back as RDM, dropping the DOI, resource type, creators and

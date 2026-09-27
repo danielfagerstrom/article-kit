@@ -525,7 +525,9 @@ def test_the_default_preview_writes_the_draft_back_whole(monkeypatch) -> None:
     (m1, u1, _, k1), (m2, u2, body, k2) = calls
     assert (m1, m2) == ("GET", "PUT")
     # Plain JSON gets the legacy serialization, whose fields RDM drops on the way back in.
-    assert k1["accept"] == zenodo.RDM and k2["ctype"] == zenodo.RDM
+    assert k1["accept"] == zenodo.RDM
+    # ...but the write is labelled plain JSON: the endpoint answers 415 to its own media type.
+    assert k2.get("ctype", "application/json") == "application/json"
     assert u1 == u2 == "https://sandbox.zenodo.org/api/records/7/draft"
     assert body["files"] == {"enabled": True, "default_preview": "paper-v1.1.0.pdf"}
     assert body["pids"] == draft["pids"] and body["metadata"] == draft["metadata"]
