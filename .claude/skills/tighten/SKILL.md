@@ -1,11 +1,15 @@
 ---
 name: tighten
 description: >
-  Shorten a fixed-width typeset document to fit a page limit by measuring which paragraphs
-  are cheapest to shorten, then editing only those — and, read the other way, find where new
-  text is free. Use when a paper is over its page limit, when a wording pass is wanted, or
-  when material must be inserted without costing a page. Composes with `linkage prose stats`,
-  which says *which* patterns to fix; this says *which paragraphs it pays to fix*. LaTeX and
+  Aim a wording pass by measurement, in one of two modes. Pages: shorten a fixed-width
+  typeset document to fit a page limit by measuring which paragraphs are cheapest to shorten,
+  then editing only those — and, read the other way, find where new text is free. Padding:
+  rank paragraphs by how much text in them says nothing a reader needs, for the tic where a
+  passage announces what is coming, defers to each item, and only then says something. Use
+  when a paper is over its page limit, when material must be inserted without costing a page,
+  or when the prose is bloated rather than long. Composes with `linkage prose stats`, which
+  says *which* patterns an author overuses; this says *which paragraphs it pays to fix*, and
+  finds the padding pattern that has no fixed phrase for `prose stats` to match. LaTeX and
   any justified column; not HTML or any responsive medium.
 ---
 
@@ -17,6 +21,11 @@ what costs a line saves pages *and* improves the prose. This skill is the second
 It is the aiming half only. `linkage prose stats` owns the other half — which patterns are
 overused relative to the author's own corpus, and where they are (`--instances FAMILY`).
 Run that first when the question is voice; run this when the question is length.
+
+**Two modes, two targets.** `overhang.py` aims at pages, and is right when a page limit is
+the problem. `padding.py` aims at text that says nothing a reader needs, and is right when
+the problem is that the prose carries too little per word — see [Pruning](#pruning-when-the-problem-is-padding-and-not-pages).
+They compose in that order: prune first, then, if still over a limit, aim by overhang.
 
 ## The idea
 
@@ -81,6 +90,59 @@ Three kinds fall out of the ranking that no regex catches, and they carry most o
 overuse that hurts — which is exactly why the rate against the author's own corpus, not the
 raw count, is what `prose stats` reports. Some instances are compensation for an imprecise
 sentence opening; there, fixing the opening is the stable fix and the tic disappears with it.
+
+## Pruning: when the problem is padding and not pages
+
+Page-targeting has a blind spot, and it is not in the editing but in the selection. Overhang
+decides *which paragraph to visit* by distance past a line boundary, which is essentially
+random with respect to how much padding the paragraph holds. A paragraph full of
+announcements that happens to sit just after a boundary needs a whole width to pay and is
+skipped; a clean one a character over is visited and yields a cosmetic trim. Within whatever
+paragraph you do enter the cheapest characters really are the low-information ones — that
+half of the theory holds, and is why an overhang pass improves prose at all.
+
+So `padding.py` keeps the within-paragraph instinct and replaces the selection. It ranks by
+**removable mass**: the characters sitting in sentences that carry no mathematics, no
+reference, no citation and no page anchor, that name part of the document rather than part of
+the subject, and that point elsewhere in the text or count what is coming.
+
+    padding.py rates  FILE...                 # density per file: the overuse signal
+    padding.py report FILE... [--min-mass N]  # ranked, with each candidate quoted
+
+The pattern it is built for, which no fixed-phrase family catches:
+
+> an abstract enumeration of what is coming — *"the demand splits into three strengths, and
+> the three select three different things"* — then a forward reference per item, and at the
+> end the content. Mirrored form, just as common: the paragraph does its work and then adds
+> a sentence summarising what it just did, or handing off to the next object.
+
+**A candidate is not a verdict.** A signpost is not a defect; it is a defect when it is
+overused or when it carries nothing, and two sentences of identical shape can differ in
+whether a reader needs one. Precision is well under one — expect a third to a half of the
+candidates to be doing real work. So the procedure is dispositional rather than numeric:
+
+1. `rates` first, and compare across files and against the same measurement on an earlier
+   revision. There is no absolute threshold, and a low share is not a licence.
+2. `report`, then for **every** candidate either delete it or keep it with a reason in one
+   word: *hypothesis*, *pointer*, *term*. That is the stopping rule the page target supplied
+   and this mode has to replace; without it a padding pass degenerates into "make this
+   better", which has no stopping rule and ends in either nothing or a rewrite.
+3. Where an announcement is doing work, the stable fix is usually to move the content into
+   it rather than to delete it: *"Clause (2) turns on where the two passes are applied"*
+   became *"In the cascade of Proposition 7.2 the two passes run in series"*.
+4. `ANTECEDENT-RISK` marks a candidate whose next sentence opens on a pronoun or a
+   demonstrative. Deleting it may strand the antecedent, which is the commonest damage this
+   mode does: of two defects found in a correctness reading of one such pass, both were of
+   that kind — a stranded forward pointer and a partitive whose set had left with the
+   deleted sentence.
+5. The correctness pass below is **not optional here either**, and for the same reason.
+
+Measured on Paper V's module C, September 2026, after three earlier passes had already been
+run over it: `prose stats` scored **zero** on every fixed-phrase family, while this ranker
+found 28 candidates over 2.3% of the connective prose. A page-aimed pass then removed six of
+them and left twenty-two, because it never ranked the paragraphs they sat in — including the
+author's own example of the pattern, in a paragraph needing 45 characters to pay. The two
+rankings disagree about *where the work is*, which is the whole reason this mode exists.
 
 ## Calibrating the width
 
