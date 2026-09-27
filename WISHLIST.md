@@ -32,6 +32,25 @@ or a skill, and deletes the item. A lessons file inside an article repository me
 
 ---
 
+## process: the trust-base subsection owns a summary, and an appendix may hold the inventory
+
+**Wanted by** `spatial-hemigroup-scale-space` (module C, the first external review's part B,
+item 2), 2026-09-27.
+
+`WRITING.md` § 4 has one early subsection (§ 1.1) own the trust base. In module C that subsection
+grew to four and a half pages — coverage by clause, the ledger entries, a table, the steps each
+admitted name carries beyond its pages, reproduction commands and raw `#print axioms` output — and
+the mathematics started on p. 8. The external presentation review ranked moving it second of
+twenty. The author took a moderate form: § 1.1 keeps the coverage by section, the list of what is
+not formalized and one paragraph on the cited facts with the count of carried steps, and an
+appendix holds the inventory. **Suggested shape:** § 4 of `WRITING.md` and
+`PUBLICATION-TEMPLATE.md` § B say that § 1.1 owns the *statement* of the trust base, every sentence
+of which a reader needs to judge a result, and that the inventory (tables, per-name notes, commands,
+printouts) may live in a verification appendix that § 1.1 names. The disclosure rule is unchanged:
+nothing honesty-critical leaves § 1.1.
+
+---
+
 ## process: an interface admitted after the fidelity review re-opens its card
 
 **Wanted by** `spatial-hemigroup-scale-space` (module B, lesson 2), 2026-09-21.
