@@ -106,9 +106,21 @@ In order; a release is not done until the last item.
    the paper and its PDF, the process account and the reviews. The export is built from scratch
    and its guard must reproduce the paper's printed `#print axioms` block. Tag the release commit
    here, commit and tag the export; the public repository is created at the author's word.
-6. **Deposit** (author): upload the PDF and a zip of the tagged tree, read the draft deposit as a
-   stranger would (title, abstract, creator with ORCID, licence, version, date, related identifiers,
-   the PDF's first page), then publish. Record the version and concept DOIs in the changelog.
+   **A public, single-module repository needs no separate public export repository** (Paper I's
+   `v1.1.0`, 2026-09-27): the repository itself is already what a reader would clone, so `<export>`
+   is a local staging tree, tagged and read by the Zenodo commands but never pushed anywhere on its
+   own. It still sits **beside the repository, under a name of its own** (`lake-store`'s link
+   needs this — #31), not inside it or reusing its name.
+6. **Deposit** (author): `reserve` a draft (checklist item 3), `upload` the PDF and a zip of the
+   tagged tree — which also makes the PDF the draft's default preview — then read the draft
+   deposit as a stranger would (title, abstract, creator with ORCID, licence, version, date,
+   related identifiers, the PDF's first page), then `publish`. If the draft's metadata was lost or
+   changed since, `metadata` sets it again from `.zenodo.json`, restores the records API's
+   `pids.doi` if that left it empty, and sets the preview again; `preview` alone re-sets just the
+   default preview. `status` and `publish` both read the draft back and print or refuse on what a
+   deposit must carry (title, creators, resource type, the reserved DOI) — a check by the script,
+   not only by eye, since a bad write can empty a draft that then reads fine to a stranger who
+   never compares it against `.zenodo.json`. Record the version and concept DOIs in the changelog.
 7. **The library.** The librarian deposits the PDF and markdown so later sessions read the release
    by citekey, and in the same dispatch reports what the library holds on the module's subjects
    that the module does not cite.
@@ -172,7 +184,11 @@ Two more: `linkage release export --dry-run` prints the closure and regenerates 
 `INDEX.md` without writing an export, and `linkage prose register` prints the restraint-budget
 counts by zone (checklist item 1). The whole of the deposit can be rehearsed on
 sandbox.zenodo.org (`linkage release zenodo reserve --sandbox`, `ZENODO_SANDBOX_TOKEN`); the
-later steps read the draft's own state and need no flag.
+later steps read the draft's own state and need no flag. **The sandbox now issues real-looking
+`10.5281/zenodo.N` DOIs**, the same prefix as zenodo.org, not the old `10.5072/...` test prefix;
+a sandbox DOI is told apart by its record existing only at sandbox.zenodo.org, not by its prefix,
+and `release_gate` reads it that way (a sandbox deposit goes on past a "working draft" fault that
+zenodo.org refuses).
 
 What the first runs taught, now built into the scripts: the release date line may span two lines
 (the gate reads the whole braced `\date{...}`); guard lines are matched to exported modules by

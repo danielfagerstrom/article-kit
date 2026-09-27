@@ -397,6 +397,11 @@ def test_the_export_is_written_from_the_module_table(article_repo: Path, unblock
     assert "## v0.1" in (out_dir / "CHANGELOG.md").read_text(encoding="utf-8")
     assert (out_dir / "README.md").read_text(encoding="utf-8").startswith(
         "# An article — release v0.1")
+    # `reserve` writes the state file at the export's root and `upload` a zip there; neither
+    # belongs in the tagged tree or the public zip it makes (#31: both went in by hand once).
+    gitignore = (out_dir / ".gitignore").read_text(encoding="utf-8")
+    assert ".zenodo-deposition.json" in gitignore.splitlines()
+    assert "*.zip" in gitignore.splitlines()
 
 
 def test_the_deposit_metadata_comes_from_the_config(article_repo: Path, unblocked,
@@ -569,6 +574,52 @@ def test_a_draft_read_without_creators_is_not_written_back(monkeypatch) -> None:
     with pytest.raises(zenodo.ZenodoError, match="not writing it back"):
         zenodo.set_default_preview({"sandbox": False, "id": 7}, "tok", "p.pdf")
     assert puts == []
+
+
+def test_metadata_restores_a_pids_doi_the_legacy_put_left_empty(monkeypatch) -> None:
+    """#28's `metadata` step set `prereserve_doi` (legacy) but not `pids.doi` (records API), so
+    `preview`'s guard still refused a draft the legacy write hadn't reached."""
+    calls = []
+
+    def fake(method, url, tok, data=None, **kw):
+        calls.append((method, url, kw))
+        if method == "GET":
+            return {"pids": {}}
+        return {"pids": {"doi": {"identifier": "10.5281/zenodo.7"}}}
+
+    monkeypatch.setattr(zenodo, "call", fake)
+    zenodo.restore_doi(Path("."), {"sandbox": True, "id": 7, "doi": "10.5281/zenodo.7"}, "tok")
+    (m1, u1, k1), (m2, u2, k2) = calls
+    assert (m1, u1) == ("GET", "https://sandbox.zenodo.org/api/records/7/draft")
+    assert k1["accept"] == zenodo.RDM
+    assert (m2, u2) == ("POST", "https://sandbox.zenodo.org/api/records/7/draft/pids/doi")
+
+
+def test_metadata_leaves_a_present_pids_doi_alone(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(zenodo, "call", lambda method, *a, **kw: calls.append(method) or
+                        {"pids": {"doi": {"identifier": "10.5281/zenodo.7"}}})
+    zenodo.restore_doi(Path("."), {"sandbox": True, "id": 7, "doi": "10.5281/zenodo.7"}, "tok")
+    assert calls == ["GET"]
+
+
+def test_metadata_refuses_a_restored_doi_that_differs_from_the_state(monkeypatch) -> None:
+    """The PDF already prints the reserved DOI; a different one from the API is not written."""
+    def fake(method, url, tok, data=None, **kw):
+        if method == "GET":
+            return {"pids": {}}
+        return {"pids": {"doi": {"identifier": "10.5281/zenodo.99"}}}
+
+    monkeypatch.setattr(zenodo, "call", fake)
+    with pytest.raises(zenodo.ZenodoError, match="not writing further"):
+        zenodo.restore_doi(Path("."), {"sandbox": True, "id": 7, "doi": "10.5281/zenodo.7"}, "tok")
+
+
+def test_metadata_refuses_a_present_doi_that_differs_from_the_state(monkeypatch) -> None:
+    monkeypatch.setattr(zenodo, "call", lambda method, *a, **kw:
+                        {"pids": {"doi": {"identifier": "10.5281/zenodo.99"}}})
+    with pytest.raises(zenodo.ZenodoError, match="not writing further"):
+        zenodo.restore_doi(Path("."), {"sandbox": True, "id": 7, "doi": "10.5281/zenodo.7"}, "tok")
 
 
 def test_publish_refuses_a_draft_missing_what_a_deposit_carries() -> None:

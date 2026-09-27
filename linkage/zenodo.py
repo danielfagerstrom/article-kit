@@ -27,8 +27,9 @@ Three steps, run by the author, in this order:
   status       show the draft's state and files;  discard  delete an unpublished draft.
   preview      make the PDF the draft's default preview (`upload` does this itself; the step
                exists to set it again on a draft uploaded before it did).
-  metadata     set the draft's metadata again from .zenodo.json, then the preview; nothing is
-               uploaded. For a draft whose metadata was lost or has changed.
+  metadata     set the draft's metadata again from .zenodo.json, restore the records API's
+               pids.doi if that left it empty, then the preview; nothing is uploaded. For a
+               draft whose metadata was lost or has changed.
 
 The token is read from the environment and is never written anywhere:
     ZENODO_TOKEN            for zenodo.org           (scopes: deposit:write, deposit:actions)
@@ -287,6 +288,39 @@ def set_metadata(export: Path, st: dict, tok: str) -> None:
           meta.get("publication_date"))
 
 
+def restore_doi(export: Path, st: dict, tok: str) -> None:
+    """After the legacy PUT, restore the records API's `pids.doi` if that PUT left it empty.
+
+    #28: the legacy metadata PUT (`set_metadata`) sets `prereserve_doi` in the legacy
+    serialization, which does not touch the records API's own `pids.doi` — so a draft whose
+    `pids.doi` was already empty (emptied by the write-back `set_default_preview` now refuses,
+    or never set) stayed without one, and `preview`'s guard then refused it for real.
+
+    Reads the draft through the records API and, if `pids.doi` is empty, reserves it there:
+    `POST /records/<id>/draft/pids/doi` (InvenioRDM's REST API,
+    "Drafts and records" § "Reserve a PID" — the same endpoint the draft page's "Get a DOI now!"
+    button calls). Zenodo derives the DOI from the record id, so this reserves the same one
+    `reserve` already put in the state; refuse rather than write further if it ever answers with
+    a different one, since the PDF already prints `st['doi']`.
+    """
+    url = f"{base(st['sandbox'])}/records/{st['id']}/draft"
+    draft = call("GET", url, tok, accept=RDM)
+    doi = ((draft.get("pids") or {}).get("doi") or {}).get("identifier")
+    if doi:
+        if doi != st["doi"]:
+            raise ZenodoError(f"the draft's pids.doi is {doi}, not {st['doi']}, which the PDF "
+                              f"prints; not writing further")
+        return
+    dep = call("POST", f"{url}/pids/doi", tok, accept=RDM)
+    doi = ((dep.get("pids") or {}).get("doi") or {}).get("identifier")
+    if not doi:
+        raise ZenodoError("reserving pids.doi through the records API did not return one")
+    if doi != st["doi"]:
+        raise ZenodoError(f"the records API reserved {doi}, not {st['doi']}, which the PDF "
+                          f"prints; not writing further")
+    print("pids.doi restored:", doi)
+
+
 def metadata_missing(dep: dict, doi: str) -> list[str]:
     """What a legacy-API deposition lacks of what every deposit must carry."""
     m = dep.get("metadata", {})
@@ -302,6 +336,7 @@ def cmd_metadata(a) -> int:
     st = load_state(export)
     tok = token(st["sandbox"])
     set_metadata(export, st, tok)
+    restore_doi(export, st, tok)
     pdfs = sorted(export.glob("*.pdf"))
     if pdfs:
         _preview(st, tok, pdfs[0].name)
