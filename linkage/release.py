@@ -81,8 +81,11 @@ SHARED_RE = re.compile(
 DRAFT_MARKS = ("working draft", "not yet released")
 
 # A module's own tags: an optional module prefix (empty for the first module's plain `vX.Y`,
-# `cone-` or `selection-` for the others) before the `vMAJOR.MINOR` the export's tag carries.
-TAG_RE = re.compile(r"^(?P<prefix>[a-z]+-)?v(?P<major>\d+)\.(?P<minor>\d+)$")
+# `cone-` or `selection-` for the others) before the `vMAJOR.MINOR` the export's tag carries,
+# with an optional `.PATCH`: Paper I tags `v1.0.0` and `v1.1.0`, and a pattern that refused
+# them made the rule 6 gate treat every later version as a first release and skip it silently.
+TAG_RE = re.compile(
+    r"^(?P<prefix>[a-z]+-)?v(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<patch>\d+))?$")
 
 
 class ReleaseError(RuntimeError):
@@ -103,7 +106,10 @@ def decl_pattern(short: str) -> re.Pattern[str]:
     return re.compile(
         r"^\s*(?:@\[[^\]]*\]\s*)?(?:noncomputable\s+)?(?:protected\s+)?(?:private\s+)?"
         r"(?:theorem|lemma|def|abbrev|structure|class|axiom|instance|opaque)\s+"
-        + re.escape(short) + r"\b", re.M)
+        # Not `\b`: a Lean name may end in a prime, and there is no word boundary between `'`
+        # and the space after it, so `sonine_conservation'` was never found; and `\b` let
+        # `foo` match a declaration of `foo'`.
+        + re.escape(short) + r"(?![\w'])", re.M)
 
 
 def find_modules(name: str, mods: dict[str, str], libraries: tuple[str, ...] = (),
@@ -145,6 +151,11 @@ def closure_of(roots: list[str], mods: dict[str, str]) -> tuple[set[str], dict[s
 
 # ---- the release gate ------------------------------------------------------------------------
 
+def _version(m: re.Match[str]) -> tuple[int, int, int]:
+    """A parsed tag's version; `v1.1` reads as `v1.1.0`."""
+    return int(m.group("major")), int(m.group("minor")), int(m.group("patch") or 0)
+
+
 def earlier_release_tag(tag: str, root: Path) -> str | None:
     """The module's own first-release tag, if `tag` names a later release of it (`cone-v0.1`
     for `cone-v0.2`) — the earliest git tag that shares `tag`'s module prefix and names a lower
@@ -153,7 +164,7 @@ def earlier_release_tag(tag: str, root: Path) -> str | None:
     m = TAG_RE.match(tag)
     if not m:
         return None
-    prefix, this = m.group("prefix") or "", (int(m.group("major")), int(m.group("minor")))
+    prefix, this = m.group("prefix") or "", _version(m)
     try:
         out = subprocess.run(["git", "tag", "-l"], cwd=root, capture_output=True,
                              text=True, check=True).stdout
@@ -163,7 +174,7 @@ def earlier_release_tag(tag: str, root: Path) -> str | None:
     for t in out.split():
         tm = TAG_RE.match(t)
         if tm and (tm.group("prefix") or "") == prefix:
-            v = (int(tm.group("major")), int(tm.group("minor")))
+            v = _version(tm)
             if v < this:
                 earlier.append((v, t))
     return min(earlier)[1] if earlier else None

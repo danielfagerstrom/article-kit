@@ -96,6 +96,22 @@ def test_earlier_release_tag_finds_lower_version_of_same_module(repo: Path) -> N
     assert release.earlier_release_tag("cone-v0.2", repo) == "cone-v0.1"
 
 
+def test_earlier_release_tag_reads_three_part_tags(repo: Path) -> None:
+    """Paper I tags `v1.0.0`: a later `v1.1.0` must find it, or the rule 6 gate is skipped."""
+    commit(repo, "v1.0.0", "2026-09-02")
+    git(repo, "tag", "v1.0.0")
+    assert release.earlier_release_tag("v1.1.0", repo) == "v1.0.0"
+    assert release.earlier_release_tag("v1.1", repo) == "v1.0.0"
+    assert release.earlier_release_tag("v1.0.0", repo) is None
+
+
+def test_a_primed_declaration_is_found_and_not_confused_with_its_unprimed_twin() -> None:
+    mods = {"Lib.A": "theorem foo' : True := trivial\n",
+            "Lib.B": "theorem foo : True := trivial\n"}
+    assert release.find_modules("Lib.foo'", mods) == ["Lib.A"]
+    assert release.find_modules("Lib.foo", mods) == ["Lib.B"]
+
+
 def test_first_release_line_reads_changelog_entry(repo: Path) -> None:
     (repo / "CHANGELOG.md").write_text(
         "# Changelog\n\n## cone-v0.1 — 2026-09-20 — first release of module B\n\ntext\n",
