@@ -44,6 +44,8 @@ article repository*.
     - a marker preceding no statement environment at all: either it sits on prose that
       merely references the node (a valid weaker link) or the statement it marked has been
       removed. The checker cannot tell those apart and does not guess.
+    - a paper statement environment with neither a marker nor a
+      "% no blueprint node: <reason>" opt-out (rule 12)
     - a shared statement that has drifted from its blueprint node (fatal under
       --strict-shared; see 3b)
     - a \\leanok node with no \\lean{}, or a node marked both \\leanok and \\notready
@@ -68,6 +70,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .artifacts import unshared_statements
 from .config import Config
 from .model import Blueprint, ControlChar, LedgerEntry, Node, PaperMarker
 from .render import unknown_commands
@@ -474,6 +477,20 @@ def run(
     (fatal if strict_shared else advisory).extend(drifted)
     f.unpinned = unpinned
 
+    # 12. a paper statement with no blueprint node (2026-09-27)
+    #
+    # Rule 4 enumerates the paper only through its markers, so an unmarked statement is
+    # invisible to it. Advisory: the population is unknown and a fatal check would block
+    # every article on day one (LINKAGE.md rule 12 says how to promote it).
+    unshared = unshared_statements(cfg)
+    for file, line, env, label in unshared:
+        advisory.append(
+            f"[unshared] {file}:{line}: \\begin{{{env}}}"
+            + (f" ({label})" if label else "")
+            + " has no '% shared with blueprint' marker -- add one, or "
+            "'% no blueprint node: <reason>' above it if it deliberately has none "
+            "(LINKAGE.md rule 12)")
+
     # 9. control characters in sources
     #
     # Fatal with no strict flag and no grace period, unlike check 3b: there is no
@@ -514,6 +531,7 @@ def run(
         "shared_tracked": tracked,
         "shared_no_env": no_env,
         "shared_drift": len(drifted),
+        "paper_unshared": len(unshared),
         "reached_unproved": len(reached_unproved),
         "reached_on_paper": len(reached_on_paper),
         "unproved": sorted(unproved),

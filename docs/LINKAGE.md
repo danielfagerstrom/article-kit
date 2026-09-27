@@ -335,6 +335,8 @@ It enforces the **in-repo** edges and fails (exit 1) on:
 - under `--strict-shared`: a shared paper statement whose text has drifted from its blueprint
   node (rule 4). Advisory without the flag, so an article can adopt the check before its
   existing drift is cleared;
+- (advisory only) a paper statement environment with neither a `% shared with blueprint` marker nor a
+  `% no blueprint node: <reason>` opt-out (rule 12);
 - a `\command` in a statement or proof that the render pipeline cannot handle (the clean-render gate);
 - a stray control character in any `.tex`, `.md` or `.lean` source — anything below U+0020 that
   is not LF, or CR immediately before LF (rule 9);
@@ -466,6 +468,53 @@ naming them keeps the difference between "open" and "leaned on while open" visib
    nothing rather than to a guess). A node whose `\lean{}` points into a shared Lake package is reported
    as unreadable, not scored as citing nothing; a `\uses` target with no `\lean{}` — an `[A]` or
    untagged node — has no declaration to look for and is left to the reader.
+
+12. **A paper statement has a blueprint node, or says it has none** (2026-09-27). ADR-0020 decides that
+   every mathematical statement of an article belongs in its blueprint, and until this rule nothing
+   enforced it: rule 4 enumerates the paper side of the link *only* through `% shared with blueprint`
+   markers, so its "89/89 paper statements verbatim" counts markers, not statements, and a
+   `\begin{theorem}` with no marker above it was invisible to every check. This rule enumerates the
+   statement environments themselves and reports each one that is not covered.
+
+   **What counts as a statement environment** is read from the declarations, not hard-coded: the
+   article's `statement_envs` (default `definition`, `lemma`, `proposition`, `theorem`, `corollary`)
+   plus every `\newtheorem{env}` in the paper sources, except those declared under
+   `\theoremstyle{remark}` and the names `example` and `remark`, which are commentary. So an article's
+   own `conjecture` or `claim` is covered without configuration. A commented-out `\begin` is ignored.
+
+   **Covered** means a marker or an opt-out stands over the environment: it lies between the end of the
+   previous statement environment and the start of this one — the same adjacency rule 4 uses, so one
+   marker covers one statement. Reported as `[unshared] file:line: \begin{env} (label)`.
+
+   **The opt-out** is a comment of its own above the environment:
+
+   ```latex
+   % no blueprint node: restates Theorem 3.2 of [Sato 1999]
+   \begin{theorem}[Sato]
+   ```
+
+   The reason after the colon is required — an opt-out that says nothing is the silence it replaces — and
+   a bare `% no blueprint node` does not count. It is legitimate for a **restatement of an earlier
+   result** whose node is elsewhere (name it), an **example** or illustration that claims nothing new,
+   and **someone else's theorem cited** rather than proved, which enters the blueprint, if at all, as an
+   `[A]` node of its own. It is not a way to leave out a result of the article that has no node yet; that
+   is the case the rule exists to surface.
+
+   **Advisory, not fatal** — the safer direction: the population is unknown, an article may legitimately
+   use a `remark`-like environment or a restated corollary, and a fatal check on an unknown population
+   would block every article on day one, the reasoning of rule 4's `--strict-shared`. The first run over
+   `spatial-hemigroup-scale-space` (2026-09-27) reports one statement, `def:levy-exponents` in
+   `paper/02-preliminaries.tex`, and is silent on `paper-b` and `paper-c`. **To make it fatal later**,
+   move the messages from `advisory` to `fatal` in `linkage/checks.py` (check 12), preferably behind a
+   `--strict-unshared` flag mirroring `--strict-shared`, and turn that on in an article's CI once its
+   own list is empty.
+
+   **What it cannot see.** Whether a marker is *right*: it counts coverage, and rule 4 alone judges
+   whether the marked text matches. A statement written in prose or in an environment the article never
+   declares with `\newtheorem` (a bare `\paragraph{Theorem.}`) is not an environment to it. A
+   `\theoremstyle{remark}` environment used for a real claim is exempt by construction. And it cannot
+   tell a missing marker from an environment used for something that is not a claim — that is what the
+   opt-out is for, and the reason written there is what a reviewer reads.
 
 The **wiki edge** is cross-repo: pass `--wiki <path-to-Notes>` to also check that every `\notes{slug}`
 resolves to a `slug.md` under the wiki.
