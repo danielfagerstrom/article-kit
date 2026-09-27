@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage release zenodo`: setting the default preview no longer empties the draft.** It
+  read the draft from the records API as plain JSON, which Zenodo answers in the legacy
+  serialization, and wrote it back as RDM, dropping the DOI, resource type, creators and
+  keywords of Paper I's v1.1.0 draft. Both requests now name the RDM media type, and a draft
+  that reads without creators, a resource type or a DOI is refused rather than written back.
+  A new `metadata` step sets the metadata again from `.zenodo.json` (then the preview) without
+  uploading; `status` prints the reserved DOI, type, creators, title, version, keywords and
+  licence; and `publish` refuses a draft missing the title, creators, type or reserved DOI.
 - `linkage release export --build`: the exported lakefile's `defaultTargets` keeps only the
   libraries the export carries (a `Skeleton` target failed Paper I's v1.1.0 build, whose
   nodes are all proved); an export not beside its repository under a name of its own is
