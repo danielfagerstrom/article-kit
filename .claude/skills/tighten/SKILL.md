@@ -139,10 +139,46 @@ candidates to be doing real work. So the procedure is dispositional rather than 
 
 Measured on Paper V's module C, September 2026, after three earlier passes had already been
 run over it: `prose stats` scored **zero** on every fixed-phrase family, while this ranker
-found 28 candidates over 2.3% of the connective prose. A page-aimed pass then removed six of
-them and left twenty-two, because it never ranked the paragraphs they sat in — including the
-author's own example of the pattern, in a paragraph needing 45 characters to pay. The two
-rankings disagree about *where the work is*, which is the whole reason this mode exists.
+found candidates over 2% of the connective prose. A page-aimed pass then removed six of them
+and left the rest, because it never ranked the paragraphs they sat in — including the author's
+own example of the pattern, in a paragraph needing 45 characters to pay. The two rankings
+disagree about *where the work is*, which is the whole reason this mode exists.
+
+### Calibration across documents, and the honest limit
+
+Three papers by one author, same month, different amounts of prior tightening:
+
+| document | connective prose | candidates | mass | share |
+|---|---|---|---|---|
+| Paper V module C, before a page-aimed pass | 114k | 22 | 2129c | **1.9%** |
+| the same, after it | 113k | 16 | 1574c | **1.4%** |
+| Paper V module B, released | 171k | 16 | 1240c | **0.7%** |
+| Paper I, released after a 75-edit page-limit pass | 119k | 5 | 318c | **0.3%** |
+
+The ordering tracks how much tightening each document had already had, which is the evidence
+that the measure reads the prose rather than one paper's idiosyncrasy. **Precision is
+density-dependent**, and that is the limit to keep in mind: on module C most candidates were
+real, on Paper I one or two of five are. As the true positives are edited away, a constant
+false-positive rate comes to dominate — so below about 1% read `rates` only, and do not expect
+`report` to be worth working through.
+
+Three false-positive classes surfaced when the two released papers were run, each costing more
+than it caught, and all three are now filtered:
+
+- **A flat meta vocabulary does not survive mathematical prose.** *Half*, *side*, *form*,
+  *case* name part of a document in some company and are ordinary subject nouns in others,
+  hence the STRONG/WEAK tiering: one strong word suffices, weak words count in pairs. A flat
+  list put the false-positive rate on the least padded paper at three in four.
+- **Frontier and scope disclosures read exactly like padding**, and the process requires them
+  ("the frontier is marked, not hidden"). A sentence saying what is *not* proved, carried out
+  or claimed is excluded, and *disclosure* is a fourth keep-reason.
+- **Mathematical idiom and predication**: "both sides" of an inequality, "on the half line",
+  and a document noun as the subject of a copula — *"The lemma is an equivalence"* says what
+  the object is, not what the text does.
+
+Tuning stopped there on purpose. Two residual false-positive shapes remain in Paper I, a
+hyphenated compound whose parts are both weak words and a pointer carrying a real claim, and
+chasing four sentences further would have meant fitting the detector to them.
 
 ## Calibrating the width
 

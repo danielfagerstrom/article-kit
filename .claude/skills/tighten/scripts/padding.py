@@ -45,13 +45,36 @@ REF = re.compile(r"\\(eq)?ref\{[^}]*\}")
 CMD = re.compile(r"\\[a-zA-Z]+\*?(\[[^\]]*\])?(\{)?")
 ANCHOR = re.compile(r"(pp?\.|\\S|Thm|Theorem|Prop\.|Def\.|Ch\.|eq\.|Lemma|Remark|Cor\.)")
 
-# The vocabulary of a document talking about itself. A sentence whose content words are
-# mostly these, and which carries no mathematics, is talking about the text.
-META = set("""section subsection paragraph sentence statement clause item list table figure
-theorem proposition lemma corollary remark definition example proof question answer reading
-readings sense senses kind kinds strength strengths step steps point points part parts half
-route way ways form forms version thing things subject topic account note notes summary
-discussion treatment exposition argument case cases side sides aspect respect""".split())
+# The vocabulary of a document talking about itself, in two tiers, because one tier does not
+# survive contact with mathematical prose. STRONG words name a part of the document and
+# almost nothing else. WEAK words do that in some company and are ordinary subject vocabulary
+# in others: "on the half line", "its operator-side form", "the second half of the proof".
+# Measured on three papers of one author: a single flat list put the false-positive rate on
+# the paper with the least padding at three in four, and all three were a WEAK word used of
+# the mathematics.
+STRONG = set("""section subsection paragraph sentence statement clause item theorem
+proposition lemma corollary remark definition example proof appendix footnote table figure
+list""".split())
+WEAK = set("""question answer reading readings sense senses kind kinds strength strengths
+step steps point points part parts half route way ways form forms version thing things
+subject topic account note notes summary discussion treatment exposition argument case cases
+side sides aspect respect""".split())
+META = STRONG | WEAK
+
+# Fixed phrases in which a WEAK word is mathematics and not document-talk. Without these the
+# paper with the least padding of the three tested produced four candidates, of which three
+# were "both sides" of an inequality, "on the half line", and "its operator-side form".
+IDIOM = re.compile(r"\b(both sides|either side|left-?hand side|right-?hand side|other side|"
+                   r"half[- ]lines?|half[- ]plane|one side|the sides of)\b", re.I)
+
+# A sentence disclosing what is NOT done -- the frontier, the scope -- reads like meta-talk
+# and is required rather than padding (the drafting gate's "the frontier is marked, not
+# hidden"). Two of the false positives on the second paper tested were of that kind.
+DISCLOSURE = re.compile(r"\b(not|never|no|nothing|neither)\b[^.]{0,60}?\b(proved|proven|"
+                        r"carried out|treated|attempted|established|formalized|formalised|"
+                        r"needed|claimed|asserted|settled|shown|derived|machine-checked)\b"
+                        r"|\bdoes not (need|carry|claim|assert)\b"
+                        r"|\boutside (this|the) (paper|article|module|section)\b", re.I)
 
 # Deixis: the sentence points somewhere else in the document rather than saying something.
 DEIXIS = re.compile(r"\b(below|above|earlier|later|next|following|preceding|in turn|"
@@ -122,9 +145,14 @@ def classify(sent: str):
     if ANCHOR.search(CITE.sub("", REF.sub("", sent))):
         carries.append("anchor")
     plain = CMD.sub(" ", MATH.sub(" ", CITE.sub(" ", REF.sub(" ", sent))))
+    if DISCLOSURE.search(plain):
+        carries.append("disclosure")
+    plain = IDIOM.sub(" ", plain)  # "both sides", "the half line": mathematics, not the text
     words = re.findall(r"[A-Za-z][a-z]+", plain)
     content = [w.lower() for w in words if len(w) > 3]
     meta = [w for w in content if w in META]
+    strong = [w for w in meta if w in STRONG]
+    weak = [w for w in meta if w in WEAK]
     ratio = len(meta) / len(content) if content else 0.0
     deixis = bool(DEIXIS.search(plain))
     count = bool(COUNT.search(plain))
@@ -135,13 +163,21 @@ def classify(sent: str):
         reasons.append("deixis")
     if count:
         reasons.append("enumeration")
-    # A candidate names part of the document (at least one META noun), points somewhere
-    # else in it or counts what is coming, and carries no mathematics, reference, citation
-    # or anchor of its own. The ratio floor is low on purpose: an announcement dilutes its
-    # meta nouns with the subject's ("Locality has those two senses for a two-parameter
-    # family, and the section takes them in turn" scores 0.22), so a high floor hides
-    # exactly the sentences this is for. What does the discriminating work is the cue.
-    is_cand = (not carries) and bool(meta) and ratio >= 0.12 and (deixis or count)
+    # A candidate names part of the document, points somewhere else in it or counts what is
+    # coming, and carries no mathematics, reference, citation, anchor or frontier disclosure
+    # of its own. One STRONG word is enough; WEAK words count only in pairs, or singly when
+    # something is being enumerated ("Five kinds of operator appear"). The ratio floor is low
+    # on purpose: an announcement dilutes its document nouns with the subject's ("Locality
+    # has those two senses for a two-parameter family, and the section takes them in turn"
+    # scores 0.22), so a high floor hides exactly the sentences this is for. The cue and the
+    # tiering do the discriminating work, not the ratio.
+    named = bool(strong) or len(weak) >= 2 or (count and bool(weak))
+    # "The lemma is an equivalence": a document noun as the subject of a copula is saying what
+    # the object IS, which is content about the mathematics however meta the noun looks.
+    if re.match(r"\s*(The|This|That|Its|Our)\s+\w*\s*(" + "|".join(sorted(STRONG)) +
+                r")s?\s+(is|are|was|were)\b", plain, re.I):
+        carries.append("predication")
+    is_cand = (not carries) and named and ratio >= 0.12 and (deixis or count)
     return is_cand, reasons, carries
 
 
