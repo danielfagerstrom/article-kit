@@ -168,6 +168,65 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
     return out
 
 
+# `% no blueprint node: <reason>` -- the opt-out of LINKAGE.md rule 12. The reason is part of
+# the grammar: an opt-out that says nothing is the silence it replaces.
+NO_NODE_RE = re.compile(r"%[ \t]*no blueprint node\b[ \t]*[:\u2014-]?[ \t]*(\S[^\n]*)")
+
+# Declared as theorems, but not claims a blueprint node would carry.
+_NOT_CLAIMS = {"example", "remark", "proof"}
+
+
+def declared_paper_envs(cfg: Config) -> set[str]:
+    r"""The statement environments the papers use: `statement_envs` plus every
+    `\newtheorem{env}` the paper sources declare, minus the `\theoremstyle{remark}` ones
+    (and `example`, `remark`), which are commentary rather than claims. Read from the
+    declarations, so an article's `conjecture` or `claim` is covered without configuration.
+    """
+    envs = set(cfg.statement_envs)
+    for f in paper_files(cfg):
+        style = "plain"
+        for m in re.finditer(
+                r"(?m)^[^%\n]*?\\(?:theoremstyle\{(\w+)\}|newtheorem\*?\{(\w+)\})",
+                read(f)):
+            if m.group(1):
+                style = m.group(1)
+            elif style != "remark" and m.group(2) not in _NOT_CLAIMS:
+                envs.add(m.group(2))
+    return envs
+
+
+def unshared_statements(cfg: Config) -> list[tuple[str, int, str, str | None]]:
+    """Statement environments of the papers that neither a `% shared with blueprint` marker
+    nor a `% no blueprint node: <reason>` comment stands over: `(file, line, env, label)`.
+
+    A marker or opt-out covers the next environment only: it must lie between the
+    previous environment's end and this one's start, the same adjacency `paper_markers`
+    uses.
+    """
+    envs = declared_paper_envs(cfg)
+    env_re = re.compile(r"\\begin\{(" + "|".join(map(re.escape, sorted(envs))) + r")\}")
+    out = []
+    for f in paper_files(cfg):
+        t = read(f)
+        prev_end = 0
+        for m in env_re.finditer(t):
+            if m.start() < prev_end:
+                continue  # nested inside an environment already seen
+            line_start = t.rfind("\n", 0, m.start()) + 1
+            if re.search(r"(?<!\\)%", t[line_start:m.start()]):
+                continue  # commented out
+            end = re.compile(r"\\end\{" + m.group(1) + r"\}").search(t, m.end())
+            gap = t[prev_end:m.start()]
+            prev_end = end.end() if end else m.end()
+            if MARKER_RE.search(gap) or NO_NODE_RE.search(gap):
+                continue
+            lm = re.search(r"\\label\{([^}]+)\}", t[m.end():prev_end])
+            out.append((f.relative_to(cfg.root).as_posix(),
+                        t.count("\n", 0, m.start()) + 1, m.group(1),
+                        lm.group(1) if lm else None))
+    return out
+
+
 def pin_shared(cfg: Config, shas: dict[str, str], only: set[str] | None = None) -> int:
     """Rewrite paper markers to pin the current sha of each label they name.
 
