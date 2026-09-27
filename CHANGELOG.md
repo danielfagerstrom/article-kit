@@ -7,6 +7,13 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage release export --build`: the exported lakefile's `defaultTargets` keeps only the
+  libraries the export carries (a `Skeleton` target failed Paper I's v1.1.0 build, whose
+  nodes are all proved); an export not beside its repository under a name of its own is
+  refused before the build, and a failed `lake-store link` stops it, since either means
+  cloning every package and compiling Mathlib (three and a half hours, and a tree that
+  `lake-store gc` cannot see). `zenodo upload` names the source zip after the PDF, not the
+  export's directory.
 - `linkage release zenodo upload` makes the PDF the draft's **default preview**, through the
   records API's `files.default_preview` (the legacy deposit API has no such field); a new
   `preview` step sets it again on a draft uploaded before. The steps print the draft's own

@@ -526,3 +526,22 @@ def test_the_default_preview_writes_the_draft_back_whole(monkeypatch) -> None:
     assert body["files"] == {"enabled": True, "default_preview": "paper-v1.1.0.pdf"}
     assert body["pids"] == draft["pids"] and body["metadata"] == draft["metadata"]
     assert "links" not in body and "id" not in body
+
+
+# ---- the export's lakefile and the source zip's name -------------------------------------------
+
+def test_default_targets_keep_only_the_exported_libraries() -> None:
+    """Paper I's export carries no skeleton module; a `Skeleton` default target failed its build."""
+    lf = '# c\ndefaultTargets = ["Hemigroup", "Skeleton"]\n\n[[lean_lib]]\nname = "Skeleton"\n'
+    out = release.trim_default_targets(lf, {"Hemigroup"})
+    assert 'defaultTargets = ["Hemigroup"]' in out
+    assert '[[lean_lib]]\nname = "Skeleton"' in out           # the table stays
+    both = release.trim_default_targets(lf, {"Hemigroup", "Skeleton"})
+    assert 'defaultTargets = ["Hemigroup", "Skeleton"]' in both
+
+
+def test_the_source_zip_is_named_after_the_pdf(tmp_path: Path) -> None:
+    export = tmp_path / "paper-export"
+    pdf = export / "hemigroup-kernels-v1.1.0.pdf"
+    assert zenodo.zip_stem(pdf, "v1.1.0", export) == "hemigroup-kernels-v1.1.0"
+    assert zenodo.zip_stem(export / "main.pdf", "v1.1.0", export) == "paper-export-v1.1.0"
