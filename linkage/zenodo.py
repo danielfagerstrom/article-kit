@@ -194,6 +194,12 @@ def cmd_reserve(a) -> int:
     return 0
 
 
+def zip_stem(pdf: Path, tag: str, export: Path) -> str:
+    """The source zip's name: the released PDF's own (`<stem>-<tag>`), or `<export>-<tag>` when
+    the PDF is not named for the tag."""
+    return pdf.stem if pdf.stem.endswith(tag) else f"{export.name}-{tag}"
+
+
 def cmd_upload(a) -> int:
     export = Path(a.export)
     st = load_state(export)
@@ -205,9 +211,13 @@ def cmd_upload(a) -> int:
             raise ZenodoError("no PDF at the export's root and no --file given")
         files += pdfs
         if a.tag:
-            zip_path = export / f"{export.name}-{a.tag}.zip"
+            # Named after the PDF (`<stem>-<tag>`), not after the export's directory: the name is
+            # public and permanent, and the directory is a local working copy that must sit where
+            # `lake-store` can link it (release.build_in_place), so it need not carry the name.
+            name = zip_stem(pdfs[0], a.tag, export)
+            zip_path = export / f"{name}.zip"
             subprocess.run(["git", "-C", str(export), "archive", "--format=zip",
-                            f"--prefix={export.name}-{a.tag}/", "-o", str(zip_path), a.tag],
+                            f"--prefix={name}/", "-o", str(zip_path), a.tag],
                            check=True)
             files.append(zip_path)
         else:

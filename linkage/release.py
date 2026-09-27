@@ -452,6 +452,22 @@ def root_file(original: Path, exported: set[str], prefix: str) -> str:
     return "\n".join(header + imports) + "\n"
 
 
+DEFAULT_TARGETS_RE = re.compile(r"(?m)^(defaultTargets\s*=\s*)\[([^\]\n]*)\]")
+
+
+def trim_default_targets(lakefile: str, libraries: set[str]) -> str:
+    """The lakefile's `defaultTargets`, restricted to the libraries the export carries.
+
+    A lakefile that names `Skeleton` as a default target (so CI compiles the target types) makes
+    `lake build` fail in an export that carries no skeleton module: Paper I's v1.1.0, all of whose
+    nodes are proved, lost its first export build this way, after three hours. The `[[lean_lib]]`
+    table stays; a library that is not a default target is built only when asked for."""
+    def keep(m: re.Match[str]) -> str:
+        names = re.findall(r'"([^"]+)"', m.group(2))
+        return m.group(1) + "[" + ", ".join(f'"{n}"' for n in names if n in libraries) + "]"
+    return DEFAULT_TARGETS_RE.sub(keep, lakefile)
+
+
 def copy(src: Path, dst: Path) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
@@ -1062,10 +1078,15 @@ def export(cfg: Config, args) -> int:
     for name in ["lakefile.toml", "lakefile.lean", "lake-manifest.json", "lean-toolchain"]:
         if (ex.form / name).exists():
             copy(ex.form / name, out / lean_name / name)
+    carried = set()
     for lib in ex.libraries():
         if any(m.startswith(lib + ".") for m in exported) and (ex.form / f"{lib}.lean").exists():
+            carried.add(lib)
             write(out / lean_name / f"{lib}.lean",
                   root_file(ex.form / f"{lib}.lean", exported, lib))
+    if (out / lean_name / "lakefile.toml").exists():
+        lf = out / lean_name / "lakefile.toml"
+        write(lf, trim_default_targets(lf.read_text(encoding="utf-8"), carried))
     guard, kept, dropped = ex.guard_file(exported, mods)
     write(out / lean_name / GUARD_NAME, guard)
     print(f"guard: {kept} #print axioms lines kept, {dropped} dropped (declarations of later "
@@ -1296,13 +1317,29 @@ def build_in_place(ex: Exporter, out: Path, paper: Path) -> int:
     """`--build`: link the shared package store, `lake build`, run the guard, and check the
     paper's printed `#print axioms` block against the guard's output."""
     print("linking the shared package store …", flush=True)
+    # `lake-store` finds a project by its directory name among the repositories' common parent
+    # (`dev/`), so the export must sit there, beside the repository, under a name of its own. One
+    # placed deeper, under the repository's own name, made `lake-store link` link the repository
+    # instead and report "already linked", and `lake build` then cloned every package afresh and
+    # compiled Mathlib from source (Paper I's v1.1.0, three and a half hours). A deeper export is
+    # also invisible to `lake-store gc` and `wt-remove`, and a recursive delete of it would follow
+    # its junctions into the store. So a misplaced export stops here, before the build.
+    if out.resolve().parent != ex.cfg.root.resolve().parent or out.name == ex.cfg.root.name:
+        print(f"the export {out} is not beside {ex.cfg.root} under a name of its own, so "
+              f"lake-store cannot link it; export to {ex.cfg.root.parent / (out.name + '-export')}"
+              f" or similar")
+        return 2
     # `lake-store` is a shell script with a `.cmd` wrapper beside it; Python's `subprocess` finds
     # neither by bare name on Windows, so the wrapper is named explicitly there.
     store = shutil.which("lake-store") or shutil.which("lake-store.cmd")
     if store is None:
         print("lake-store not on PATH; link the shared package store by hand before building")
     else:
-        subprocess.run([store, "link", out.name], check=False)
+        # --yes: a package the export cloned itself is replaced by the store's copy of the same
+        # revision; the export is generated, so its copy holds nothing of its own.
+        if subprocess.run([store, "link", out.name, "--yes"], check=False).returncode != 0:
+            print("lake-store link FAILED: not building from fresh clones (hours); fix the link")
+            return 2
     form = out / ex.form.name
     print("lake build …", flush=True)
     r = subprocess.run(["lake", "build"], cwd=form)
