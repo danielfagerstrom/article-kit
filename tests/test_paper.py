@@ -224,6 +224,38 @@ def test_a_statement_with_no_items_is_not_counted(article):
     assert tagged(f.fatal, "item") == []
 
 
+FOUR_ITEMS = (r"\begin{proposition}\label{prop:p}\begin{enumerate}"
+              r"\item a\item b\item c\item d\end{enumerate}\end{proposition}")
+TWO_ITEMS = (r"\begin{proposition}[clauses (1) and (2)]\label{prop:p}\begin{enumerate}"
+             r"\item a\item b\end{enumerate}\end{proposition}")
+
+
+def test_a_label_duplicated_across_modules_resolves_within_its_own_module(article):
+    r"""A restatement is a convention (LINKAGE.md "A label, once per module"), not a
+    defect: module B abridges module A's four-item proposition to its first two clauses,
+    under the same label, because module B's own text only needs those two. A
+    `\ref{p}(3)` inside module A must resolve against module A's own four-item
+    statement, not whichever module a repository-wide label map happens to answer with.
+    """
+    article.papers("paper", "paper-b")
+    article.paper(FOUR_ITEMS + r"By Proposition~\ref{prop:p}(3) we are done.", dir="paper")
+    article.paper(TWO_ITEMS, dir="paper-b")
+    f = paper.lint(article.cfg)
+    assert tagged(f.fatal, "item") == []
+
+
+def test_a_reference_past_its_own_modules_item_count_still_fails(article):
+    r"""The module-local resolution above must not turn into "never check an item
+    pointer against a duplicated label": a pointer past the count of the *referencing*
+    module's own copy is still wrong."""
+    article.papers("paper", "paper-b")
+    article.paper(FOUR_ITEMS, dir="paper")
+    article.paper(TWO_ITEMS + r"By Proposition~\ref{prop:p}(3) we are done.", dir="paper-b")
+    f = paper.lint(article.cfg)
+    (msg,) = tagged(f.fatal, "item")
+    assert "paper-b/paper.tex" in msg and "2 item(s)" in msg
+
+
 # --- 5. a bare pointer with no citation and no label ----------------------------------
 
 

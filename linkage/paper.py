@@ -143,6 +143,11 @@ class Source:
     path: Path
     rel: str
     text: str
+    module: Path | None = None
+    """The `paths.paper` directory this file lives under, or `None` for a file reached
+    by `\\input` from outside every configured paper directory (a shared preamble). A
+    module is `cfg.papers` membership, not a name pattern — a repository names its own
+    directories."""
 
 
 @dataclass
@@ -153,6 +158,7 @@ class Statement:
     rel: str
     line: int
     items: int
+    module: Path | None = None
 
 
 @dataclass
@@ -185,6 +191,21 @@ def _resolve(base: Path, arg: str) -> Path | None:
     return None
 
 
+def _module_of(cfg: Config, path: Path) -> Path | None:
+    """Which `paths.paper` directory `path` lives under, or `None` if none of them.
+
+    Membership, not a naming pattern: the caller need not know that a module happens to
+    be spelled `paper-b` — it is whatever `linkage.toml` lists.
+    """
+    for d in cfg.papers:
+        try:
+            path.relative_to(d)
+            return d
+        except ValueError:
+            continue
+    return None
+
+
 def read(cfg: Config) -> Sources:
     r"""Every paper source, plus whatever they `\input`, plus the bibliographies.
 
@@ -209,7 +230,7 @@ def read(cfg: Config) -> Sources:
             rel = p.relative_to(cfg.root).as_posix()
         except ValueError:
             rel = p.as_posix()
-        s = Source(path=p, rel=rel, text=text)
+        s = Source(path=p, rel=rel, text=text, module=_module_of(cfg, p))
         by_path[p] = s
         src.files.append(s)
         for m in INPUT_RE.finditer(text):
@@ -237,6 +258,7 @@ def read(cfg: Config) -> Sources:
                 rel=s.rel,
                 line=_line(s.text, m.start()),
                 items=len(ITEM_RE.findall(m.group(2))),
+                module=s.module,
             ))
 
     _read_bib(src)
@@ -379,14 +401,33 @@ def _items(src: Sources, f: Findings) -> None:
     Found by a blind review of Paper I, where a reordering had left three such pointers
     behind. Nothing else in the toolchain can see it: the reference resolves, the number
     typesets, and only a reader who follows the pointer finds no item there.
+
+    **Resolved within the referencing file's own module first** (2026-09-27, Q-0171). A
+    label may be defined once per module — a later module legitimately restates an
+    earlier one's statement, verbatim or abridged, under the same label, so its own
+    `\ref`s resolve locally (LINKAGE.md "A label, once per module"). A single
+    repository-wide label -> statement map answers every module's pointers from
+    whichever module happened to define the label last, so a `\ref{p}(3)` in the module
+    that states four items failed against a *different* module's two-item restatement of
+    the same label. The repository-wide map remains the fallback for a `\ref` from a
+    file outside every configured module (or a label no module defines locally).
     """
-    by_label = {st.label: st for st in src.statements if st.label}
+    global_by_label: dict[str, Statement] = {}
+    module_by_label: dict[Path, dict[str, Statement]] = {}
+    for st in src.statements:
+        if not st.label:
+            continue
+        global_by_label.setdefault(st.label, st)
+        if st.module is not None:
+            module_by_label.setdefault(st.module, {}).setdefault(st.label, st)
     for s in src.files:
         for m in REF_RE.finditer(s.text):
             if not m.group(2):
                 continue
             lab = m.group(1).strip()
-            st = by_label.get(lab)
+            st = module_by_label.get(s.module, {}).get(lab) if s.module else None
+            if st is None:
+                st = global_by_label.get(lab)
             if st is None or st.items == 0:
                 continue  # not a statement of ours, or it has no items to count
             raw = m.group(2)
