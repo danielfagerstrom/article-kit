@@ -7,6 +7,18 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage paper`'s item-count check (`\ref{p}(3)` past a statement's item count) is now
+  module-aware (Q-0171): it resolves a label within the referencing file's own `paths.paper`
+  module first, falling back to the repository-wide map only when that module defines the label
+  nowhere itself. A repository with several paper modules may legitimately restate an earlier
+  module's statement under the same label — an abridged copy, not drift, so each module's own
+  `\ref`s resolve locally — and the old repository-wide map answered every module's pointers from
+  whichever module's copy it read last, failing a correct `\ref{p}(3)`/`(4)` in the module that
+  states the result in full against a shorter restatement elsewhere (seven such failures on
+  `spatial-hemigroup-scale-space`'s `prop:thorin-subclass`). `linkage check`'s shared-statement
+  comparison (rule 4) does not have this blind spot — see `docs/LINKAGE.md` "A label, once per
+  module".
+
 - `linkage check` reads a paper's **trust-base subsection** and compares it with the development
   (LINKAGE.md rule 13, Q-0170; requested by `spatial-hemigroup-scale-space` after Paper V's module C
   went stale twice in two days). The paper marks the subsection with `% trust base: begin` and
@@ -19,6 +31,7 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   `lake env lean` and compares; the default run needs no Lean. A paper without the marker is not
   read and the check's output is unchanged; with one, the summary gains a `Trust base:` line.
   Fixtures in `tests/test_trust_base.py` cover a matching subsection and each drift.
+
 - `scripts/build-blueprint.sh` is now framework-owned: `scaffold/scripts/build-blueprint.sh`, delivered
   to an article's `scripts/` by `linkage init --sync` (skipped in a repository with no blueprint) and
   reported by `linkage check` as scaffold drift when the copy diverges. Two article repositories had

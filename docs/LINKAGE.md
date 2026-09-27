@@ -149,6 +149,33 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    reusable `docs.yml` builds the further papers too, through its `extra_papers` input (a JSON list
    of `{name, tex, title}`; one matrix leg each, published to the artifacts branch and listed on the
    site as `<name>.pdf`, added 2026-09-15 for Paper V's module B).
+
+   **A label, once per module** (2026-09-27, Q-0171). Each module builds as its own document, so a
+   later module legitimately *restates* an earlier module's statement — verbatim or abridged to only
+   the clauses it needs — under the **same label**, precisely so its own `\ref`s resolve without
+   reaching into another module's file. Module C of `spatial-hemigroup-scale-space` restates two of
+   module B's `prop:thorin-subclass`'s four clauses this way, titled "clauses (1) and (2) of
+   Proposition 5.7 of the cone paper"; thirteen labels of that repository are defined in more than one
+   module. **An abridged restatement is not drift** — it is the same convention rule 4's shared-statement
+   markers use for the paper-vs-blueprint edge, applied paper-side, module-to-module. Renaming one of
+   the copies to make the label unique would defeat the point: the restatement's whole value is that a
+   reader (and every mechanical `\ref`) can follow it without knowing which module they are in.
+
+   **Which check resolves labels how.** `linkage paper` (linkage/paper.py) — the deterministic paper
+   lint sibling to `linkage check`, documented in its own module docstring and in
+   `PUBLICATION-TEMPLATE.md` § B — has an item-count check (its check 3: a `\ref{p}(3)` past the
+   target statement's item count) that resolves the pointer **within the referencing file's own
+   module first** — `paths.paper`'s directories, read from `linkage.toml`, never a naming pattern —
+   and falls back to a repository-wide map only when that module defines the label nowhere itself.
+   Before this, one repository-wide map answered every module's pointers from whichever module's copy
+   happened to be read last, so a module that states a result in full failed its own correct
+   `\ref{p}(3)` against a different module's shorter restatement of the same label.
+
+   `linkage check`'s shared-statement comparison (rule 4 above) never had this blind spot: each
+   `% shared with blueprint <label>` marker names its blueprint label explicitly and is compared
+   against *that* blueprint node — the blueprint itself never duplicates a label (rule 1) — using the
+   statement text immediately following that same marker in that same file, never a label looked up
+   in a cross-module map. Only `linkage paper`'s pointer checks needed the fix.
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no
