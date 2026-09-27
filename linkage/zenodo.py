@@ -27,6 +27,8 @@ Three steps, run by the author, in this order:
   status       show the draft's state and files;  discard  delete an unpublished draft.
   preview      make the PDF the draft's default preview (`upload` does this itself; the step
                exists to set it again on a draft uploaded before it did).
+  metadata     set the draft's metadata again from .zenodo.json, then the preview; nothing is
+               uploaded. For a draft whose metadata was lost or has changed.
 
 The token is read from the environment and is never written anywhere:
     ZENODO_TOKEN            for zenodo.org           (scopes: deposit:write, deposit:actions)
@@ -66,12 +68,28 @@ def set_default_preview(st: dict, tok: str, name: str) -> None:
     The legacy deposit API this module otherwise uses has no such field; the records API
     (InvenioRDM) has `files.default_preview` on the draft, and the same token reaches it. The
     draft is read and written back whole, so nothing but the preview changes — `pids` included,
-    which carries the reserved DOI."""
+    which carries the reserved DOI.
+
+    **Both requests name the RDM media type.** Asked for plain `application/json`, Zenodo's
+    records API answers in the *legacy* serialization (`creators[].name`, `upload_type`,
+    `keywords`, `doi`); written back as RDM, every one of those fields is unknown and dropped.
+    That emptied Paper I's v1.1.0 draft of its DOI, resource type, creators and keywords
+    (2026-09-27). And the draft is checked before it is written: one without creators, a
+    resource type or a DOI is refused, since writing it back would erase what the deposit
+    carries."""
     url = f"{base(st['sandbox'])}/records/{st['id']}/draft"
-    draft = call("GET", url, tok)
+    draft = call("GET", url, tok, accept=RDM)
+    meta = draft.get("metadata") or {}
+    missing = [k for k, ok in (("creators", meta.get("creators")),
+                               ("resource_type", meta.get("resource_type")),
+                               ("pids.doi", (draft.get("pids") or {}).get("doi"))) if not ok]
+    if missing:
+        raise ZenodoError(
+            f"the draft as read carries no {', '.join(missing)}; not writing it back (it would "
+            f"erase them). Run `linkage release zenodo metadata` to set them from .zenodo.json")
     body = {k: draft[k] for k in ("access", "metadata", "pids", "custom_fields") if k in draft}
     body["files"] = {"enabled": True, "default_preview": name}
-    call("PUT", url, tok, data=body)
+    call("PUT", url, tok, data=body, ctype=RDM, accept=RDM)
 
 
 def token(sandbox: bool) -> str:
@@ -84,12 +102,18 @@ def token(sandbox: bool) -> str:
     return t
 
 
+RDM = "application/vnd.inveniordm.v1+json"
+"""The records API's own serialization; see `set_default_preview` for why it is named."""
+
+
 def call(method: str, url: str, tok: str, data=None, raw: bytes | None = None,
-         ctype="application/json"):
+         ctype="application/json", accept: str | None = None):
     body = raw if raw is not None else (
         json.dumps(data).encode("utf-8") if data is not None else None)
     req = urllib.request.Request(url, data=body, method=method)
     req.add_header("Authorization", "Bearer " + tok)
+    if accept:
+        req.add_header("Accept", accept)
     if body is not None:
         req.add_header("Content-Type", ctype)
     try:
@@ -225,12 +249,7 @@ def cmd_upload(a) -> int:
     release_gate(export, st, [f for f in files if f.suffix == ".pdf"])
     # The export is written again between `reserve` and `upload` (the DOI goes into the paper),
     # so the draft's metadata is set again from the .zenodo.json that is there now.
-    meta = json.loads((export / ".zenodo.json").read_text(encoding="utf-8"))
-    meta["prereserve_doi"] = True
-    call("PUT", f"{base(st['sandbox'])}/deposit/depositions/{st['id']}", tok,
-         data={"metadata": meta})
-    print("metadata set from .zenodo.json: version", meta.get("version"), "| date",
-          meta.get("publication_date"))
+    set_metadata(export, st, tok)
     for f in files:
         print("uploading", f.name, f"({f.stat().st_size} bytes)")
         call("PUT", f"{st['bucket']}/{f.name}", tok, raw=f.read_bytes(),
@@ -252,6 +271,42 @@ def _preview(st: dict, tok: str, name: str) -> None:
               f"{name} on the draft page")
 
 
+def set_metadata(export: Path, st: dict, tok: str) -> None:
+    """Set the draft's metadata from the export's .zenodo.json, through the legacy API, keeping
+    the reserved DOI (Zenodo derives it from the record id, so re-reserving gives the same one)."""
+    meta = json.loads((export / ".zenodo.json").read_text(encoding="utf-8"))
+    meta["prereserve_doi"] = True
+    dep = call("PUT", f"{base(st['sandbox'])}/deposit/depositions/{st['id']}", tok,
+               data={"metadata": meta})
+    doi = (dep.get("metadata", {}).get("prereserve_doi") or {}).get("doi") or dep.get("doi", "")
+    if doi and doi != st["doi"]:
+        raise ZenodoError(f"the draft now reserves {doi}, not {st['doi']}, which the PDF prints")
+    print("metadata set from .zenodo.json: version", meta.get("version"), "| date",
+          meta.get("publication_date"))
+
+
+def metadata_missing(dep: dict, doi: str) -> list[str]:
+    """What a legacy-API deposition lacks of what every deposit must carry."""
+    m = dep.get("metadata", {})
+    reserved = (m.get("prereserve_doi") or {}).get("doi") or dep.get("doi")
+    return [k for k, ok in (("title", m.get("title")), ("creators", m.get("creators")),
+                            ("resource type", m.get("upload_type")),
+                            ("reserved DOI " + doi, reserved == doi)) if not ok]
+
+
+def cmd_metadata(a) -> int:
+    """Set the metadata again, and the preview after it, without uploading anything."""
+    export = Path(a.export)
+    st = load_state(export)
+    tok = token(st["sandbox"])
+    set_metadata(export, st, tok)
+    pdfs = sorted(export.glob("*.pdf"))
+    if pdfs:
+        _preview(st, tok, pdfs[0].name)
+    print("check the draft at", draft_page(st))
+    return 0
+
+
 def cmd_preview(a) -> int:
     export = Path(a.export)
     st = load_state(export)
@@ -269,6 +324,16 @@ def cmd_status(a) -> int:
                token(st["sandbox"]))
     print("id", dep["id"], "| state:", dep.get("state"), "| submitted:", dep.get("submitted"))
     print("DOI:", st["doi"], "|", draft_page(st))
+    # What a stranger reads first, so that a draft emptied by a write is seen here.
+    m = dep.get("metadata", {})
+    reserved = (m.get("prereserve_doi") or {}).get("doi")
+    print("  reserved DOI:", reserved or "NONE", "| type:", m.get("upload_type") or "NONE",
+          m.get("publication_type") or "", "| creators:",
+          "; ".join(c.get("name", "?") for c in m.get("creators", [])) or "NONE")
+    print("  title:", m.get("title") or "NONE", "| version:", m.get("version") or "NONE",
+          "| keywords:", len(m.get("keywords", [])), "| licence:",
+          (m.get("license") or {}).get("id") if isinstance(m.get("license"), dict)
+          else m.get("license") or "NONE")
     for f in dep.get("files", []):
         print("  file:", f.get("filename"), f.get("filesize"))
     return 0
@@ -279,6 +344,13 @@ def cmd_publish(a) -> int:
     st = load_state(export)
     where = "the SANDBOX" if st["sandbox"] else "zenodo.org"
     release_gate(export, st, sorted(export.glob("*.pdf")))
+    # A draft emptied by a bad write publishes empty, and a published record cannot be edited
+    # back into shape everywhere it has been harvested; so it is checked here, not only by eye.
+    dep = call("GET", f"{base(st['sandbox'])}/deposit/depositions/{st['id']}",
+               token(st["sandbox"]))
+    if missing := metadata_missing(dep, st["doi"]):
+        raise ZenodoError(f"the draft has no {', '.join(missing)}: not publishing. Run "
+                          f"`linkage release zenodo metadata` and check the draft page again")
     print(f"About to publish deposition {st['id']} on {where} with DOI {st['doi']}.")
     print("A published record cannot be deleted. Type the word publish to go on:")
     if input().strip() != "publish":
@@ -307,7 +379,8 @@ def cmd_discard(a) -> int:
 
 
 STEPS = {"reserve": cmd_reserve, "upload": cmd_upload, "status": cmd_status,
-         "publish": cmd_publish, "discard": cmd_discard, "preview": cmd_preview}
+         "publish": cmd_publish, "discard": cmd_discard, "preview": cmd_preview,
+         "metadata": cmd_metadata}
 
 
 def main(args) -> int:

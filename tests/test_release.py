@@ -512,16 +512,20 @@ def test_the_default_preview_writes_the_draft_back_whole(monkeypatch) -> None:
     draft = {"id": "7", "links": {}, "access": {"record": "public"}, "metadata": {"title": "T"},
              "pids": {"doi": {"identifier": "10.5281/zenodo.7"}},
              "files": {"enabled": True, "entries": {}}}
+    draft["metadata"] = {"title": "T", "creators": [{"person_or_org": {"name": "F, D"}}],
+                         "resource_type": {"id": "publication-preprint"}}
     calls = []
 
     def fake(method, url, tok, data=None, **kw):
-        calls.append((method, url, data))
+        calls.append((method, url, data, kw))
         return draft if method == "GET" else {}
 
     monkeypatch.setattr(zenodo, "call", fake)
     zenodo.set_default_preview({"sandbox": True, "id": 7}, "tok", "paper-v1.1.0.pdf")
-    (m1, u1, _), (m2, u2, body) = calls
+    (m1, u1, _, k1), (m2, u2, body, k2) = calls
     assert (m1, m2) == ("GET", "PUT")
+    # Plain JSON gets the legacy serialization, whose fields RDM drops on the way back in.
+    assert k1["accept"] == zenodo.RDM and k2["ctype"] == zenodo.RDM
     assert u1 == u2 == "https://sandbox.zenodo.org/api/records/7/draft"
     assert body["files"] == {"enabled": True, "default_preview": "paper-v1.1.0.pdf"}
     assert body["pids"] == draft["pids"] and body["metadata"] == draft["metadata"]
@@ -545,3 +549,30 @@ def test_the_source_zip_is_named_after_the_pdf(tmp_path: Path) -> None:
     pdf = export / "hemigroup-kernels-v1.1.0.pdf"
     assert zenodo.zip_stem(pdf, "v1.1.0", export) == "hemigroup-kernels-v1.1.0"
     assert zenodo.zip_stem(export / "main.pdf", "v1.1.0", export) == "paper-export-v1.1.0"
+
+
+def test_a_draft_read_without_creators_is_not_written_back(monkeypatch) -> None:
+    """Paper I's v1.1.0 draft lost its DOI, type, creators and keywords to a write-back of a
+    legacy-format read; a draft that reads without them must be refused, not written."""
+    legacy = {"metadata": {"title": "T", "creators": [{"name": "F, D"}],
+                           "upload_type": "publication"}, "doi": "10.5281/zenodo.7"}
+    puts = []
+
+    def fake(method, url, tok, data=None, **kw):
+        if method == "PUT":
+            puts.append(data)
+        return legacy
+
+    monkeypatch.setattr(zenodo, "call", fake)
+    with pytest.raises(zenodo.ZenodoError, match="not writing it back"):
+        zenodo.set_default_preview({"sandbox": False, "id": 7}, "tok", "p.pdf")
+    assert puts == []
+
+
+def test_publish_refuses_a_draft_missing_what_a_deposit_carries() -> None:
+    ok = {"metadata": {"title": "T", "creators": [{"name": "F, D"}], "upload_type": "publication",
+                       "prereserve_doi": {"doi": "10.5281/zenodo.7"}}}
+    assert zenodo.metadata_missing(ok, "10.5281/zenodo.7") == []
+    emptied = {"metadata": {"title": "T"}}
+    assert zenodo.metadata_missing(emptied, "10.5281/zenodo.7") == [
+        "creators", "resource type", "reserved DOI 10.5281/zenodo.7"]
