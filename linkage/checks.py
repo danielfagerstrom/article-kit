@@ -34,6 +34,10 @@ article repository*.
        colours the graph from both flags independently, and this combination is the one
        the legend has no reading for (the converse -- a statement flag with no proof flag
        -- is the advisory below, since a proof may legitimately be unformalised)
+   13. a paper's marked trust-base subsection agrees with the development: the status it
+       gives each \\ref'd statement, the ledger entries it names, and its stamped
+       `#print axioms` blocks (linkage/trustbase.py; silent for a paper without the
+       "% trust base: begin" marker)
 
   ADVISORY (reported, non-fatal)
     - a paper statement that shares a blueprint node but carries a different \\label
@@ -218,6 +222,7 @@ def run(
     control_chars: list[ControlChar] | None = None,
     wiki: Path | None = None,
     strict_shared: bool = False,
+    fresh_axioms: bool = False,
 ) -> Findings:
     """Every in-repo edge, plus the wiki edge when a vault path is given."""
     f = Findings()
@@ -491,6 +496,15 @@ def run(
             "'% no blueprint node: <reason>' above it if it deliberately has none "
             "(LINKAGE.md rule 12)")
 
+    # 13. the paper's trust-base subsection against the development (2026-09-27)
+    #
+    # Silent for a paper without the `% trust base: begin` marker. Imported here because
+    # it reads the `linkage closure` index, and closure imports this module.
+    from .trustbase import check as trust_base
+    tb = trust_base(bp, cfg, markers, fresh=fresh_axioms)
+    fatal.extend(tb.fatal)
+    advisory.extend(tb.advisory)
+
     # 9. control characters in sources
     #
     # Fatal with no strict flag and no grace period, unlike check 3b: there is no
@@ -532,6 +546,7 @@ def run(
         "shared_no_env": no_env,
         "shared_drift": len(drifted),
         "paper_unshared": len(unshared),
+        "trust_base": tb.stats,
         "reached_unproved": len(reached_unproved),
         "reached_on_paper": len(reached_on_paper),
         "unproved": sorted(unproved),

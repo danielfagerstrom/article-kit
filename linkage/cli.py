@@ -75,6 +75,7 @@ def cmd_check(args) -> int:
         control_chars=artifacts.control_chars(cfg),
         wiki=args.wiki,
         strict_shared=args.strict_shared,
+        fresh_axioms=args.fresh_axioms,
     )
 
     # Framework-owned scaffolding must exist in the article tree (TeX resolves \input
@@ -120,6 +121,10 @@ def cmd_check(args) -> int:
           f"({', '.join(s['unproved']) or 'none'}).")
     print("  (the fatal walk traverses [A] nodes; the advisory's dependent counts stop at "
           "them -- LINKAGE.md rule 8)")
+    if (tb := s.get("trust_base", {})).get("regions"):
+        # Only for a paper carrying the marker, so every other article's output is unchanged.
+        print(f"Trust base: {tb['regions']} marked subsection(s), {tb['claims']} status "
+              f"claim(s), {tb['blocks']} printed axioms block(s) read (LINKAGE.md rule 13).")
     for a in f.advisory:
         print("  advisory " + a)
     if f.fatal:
@@ -464,6 +469,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="fail (exit 1) on a paper statement that has drifted from the "
                         "blueprint node it declares it shares, instead of reporting it as "
                         "an advisory -- for CI, once an article's existing drift is cleared")
+    c.add_argument("--fresh-axioms", action="store_true",
+                   help="also run `#print axioms` through Lean (`lake env lean`) for every "
+                        "declaration a trust-base subsection prints, and fail where the "
+                        "printed block differs -- needs a built Lean project (rule 13)")
     c.add_argument("--require-render", action="store_true",
                    help="fail (exit 2) unless the pinned pandoc renders every label — for "
                         "CI, where a manifest without transclusion fields must never reach "
