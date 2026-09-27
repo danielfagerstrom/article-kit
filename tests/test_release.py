@@ -498,3 +498,31 @@ def test_the_deposit_gate_refuses_a_draft_export(tmp_path: Path) -> None:
 
 def test_the_deposit_gate_passes_an_export_with_no_pdf_to_read(tmp_path: Path) -> None:
     assert zenodo.deposit_gate(tmp_path, {"doi": "10.5281/zenodo.1", "sandbox": False}, []) == []
+
+
+# ---- zenodo: the draft page and the default preview -------------------------------------------
+
+def test_the_draft_page_is_the_uploads_page() -> None:
+    assert zenodo.draft_page({"sandbox": True, "id": 7}) == "https://sandbox.zenodo.org/uploads/7"
+    assert zenodo.draft_page({"sandbox": False, "id": 7}) == "https://zenodo.org/uploads/7"
+
+
+def test_the_default_preview_writes_the_draft_back_whole(monkeypatch) -> None:
+    """Only `files` changes: `pids` (the reserved DOI) and the metadata go back as read."""
+    draft = {"id": "7", "links": {}, "access": {"record": "public"}, "metadata": {"title": "T"},
+             "pids": {"doi": {"identifier": "10.5281/zenodo.7"}},
+             "files": {"enabled": True, "entries": {}}}
+    calls = []
+
+    def fake(method, url, tok, data=None, **kw):
+        calls.append((method, url, data))
+        return draft if method == "GET" else {}
+
+    monkeypatch.setattr(zenodo, "call", fake)
+    zenodo.set_default_preview({"sandbox": True, "id": 7}, "tok", "paper-v1.1.0.pdf")
+    (m1, u1, _), (m2, u2, body) = calls
+    assert (m1, m2) == ("GET", "PUT")
+    assert u1 == u2 == "https://sandbox.zenodo.org/api/records/7/draft"
+    assert body["files"] == {"enabled": True, "default_preview": "paper-v1.1.0.pdf"}
+    assert body["pids"] == draft["pids"] and body["metadata"] == draft["metadata"]
+    assert "links" not in body and "id" not in body

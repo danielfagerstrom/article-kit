@@ -25,6 +25,8 @@ Three steps, run by the author, in this order:
                deleted, only superseded by a new version. The step asks for the word "publish".
 
   status       show the draft's state and files;  discard  delete an unpublished draft.
+  preview      make the PDF the draft's default preview (`upload` does this itself; the step
+               exists to set it again on a draft uploaded before it did).
 
 The token is read from the environment and is never written anywhere:
     ZENODO_TOKEN            for zenodo.org           (scopes: deposit:write, deposit:actions)
@@ -50,6 +52,26 @@ class ZenodoError(RuntimeError):
 
 def base(sandbox: bool) -> str:
     return "https://sandbox.zenodo.org/api" if sandbox else "https://zenodo.org/api"
+
+
+def draft_page(st: dict) -> str:
+    """The draft's own page. Not the legacy API's `links.html`: that is `/deposit/<id>`, which
+    the current site redirects to `/records/<id>`, a page that exists only once published."""
+    return base(st["sandbox"]).removesuffix("/api") + f"/uploads/{st['id']}"
+
+
+def set_default_preview(st: dict, tok: str, name: str) -> None:
+    """Make `name` the draft's default preview.
+
+    The legacy deposit API this module otherwise uses has no such field; the records API
+    (InvenioRDM) has `files.default_preview` on the draft, and the same token reaches it. The
+    draft is read and written back whole, so nothing but the preview changes — `pids` included,
+    which carries the reserved DOI."""
+    url = f"{base(st['sandbox'])}/records/{st['id']}/draft"
+    draft = call("GET", url, tok)
+    body = {k: draft[k] for k in ("access", "metadata", "pids", "custom_fields") if k in draft}
+    body["files"] = {"enabled": True, "default_preview": name}
+    call("PUT", url, tok, data=body)
 
 
 def token(sandbox: bool) -> str:
@@ -120,7 +142,9 @@ def release_gate(export: Path, st: dict, pdfs: list[Path]) -> None:
 
     The released PDF prints its date, its version and the DOI reserved for it; a build that says
     "working draft" reached a tag once and a sandbox deposit once. On the sandbox the faults are
-    printed and the step goes on, since a sandbox DOI (10.5072/...) is never printed by a paper.
+    printed and the step goes on, since a sandbox DOI is never printed by a paper. (The sandbox
+    issues `10.5281/zenodo.N` DOIs like zenodo.org, not the `10.5072/...` test prefix it once
+    used; a sandbox DOI is told apart by its record, not its prefix.)
     """
     faults = deposit_gate(export, st, pdfs)
     if not faults:
@@ -164,7 +188,7 @@ def cmd_reserve(a) -> int:
     save_state(export, st)
     print("draft deposition", dep["id"], "opened; nothing is public")
     print("reserved DOI:", doi)
-    print("edit page:   ", st["html"])
+    print("edit page:   ", draft_page(st))
     print(f"state written to {export / STATE} (add it to .gitignore or commit it; it holds no "
           f"secret)")
     return 0
@@ -201,7 +225,31 @@ def cmd_upload(a) -> int:
         print("uploading", f.name, f"({f.stat().st_size} bytes)")
         call("PUT", f"{st['bucket']}/{f.name}", tok, raw=f.read_bytes(),
              ctype="application/octet-stream")
-    print("uploaded; check the draft at", st["html"])
+    pdf = next((f.name for f in files if f.suffix == ".pdf"), None)
+    if pdf:
+        _preview(st, tok, pdf)
+    print("uploaded; check the draft at", draft_page(st))
+    return 0
+
+
+def _preview(st: dict, tok: str, name: str) -> None:
+    # Not fatal: the files are up, and the preview can be set on the draft page by hand.
+    try:
+        set_default_preview(st, tok, name)
+        print("default preview:", name)
+    except ZenodoError as e:
+        print(f"could not set the default preview ({e.args[0].splitlines()[0]}); set it to "
+              f"{name} on the draft page")
+
+
+def cmd_preview(a) -> int:
+    export = Path(a.export)
+    st = load_state(export)
+    names = [Path(f).name for f in (a.file or [])] or [p.name for p in sorted(export.glob("*.pdf"))]
+    if not names:
+        raise ZenodoError("no PDF at the export's root and no --file given")
+    set_default_preview(st, token(st["sandbox"]), names[0])
+    print("default preview:", names[0], "|", draft_page(st))
     return 0
 
 
@@ -210,7 +258,7 @@ def cmd_status(a) -> int:
     dep = call("GET", f"{base(st['sandbox'])}/deposit/depositions/{st['id']}",
                token(st["sandbox"]))
     print("id", dep["id"], "| state:", dep.get("state"), "| submitted:", dep.get("submitted"))
-    print("DOI:", st["doi"], "|", st["html"])
+    print("DOI:", st["doi"], "|", draft_page(st))
     for f in dep.get("files", []):
         print("  file:", f.get("filename"), f.get("filesize"))
     return 0
@@ -249,7 +297,7 @@ def cmd_discard(a) -> int:
 
 
 STEPS = {"reserve": cmd_reserve, "upload": cmd_upload, "status": cmd_status,
-         "publish": cmd_publish, "discard": cmd_discard}
+         "publish": cmd_publish, "discard": cmd_discard, "preview": cmd_preview}
 
 
 def main(args) -> int:
