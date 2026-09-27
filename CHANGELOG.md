@@ -7,6 +7,17 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- `linkage release zenodo metadata` restores the records API's `pids.doi` when the legacy
+  metadata PUT left it empty: it reads the draft back (`Accept: vnd.inveniordm.v1+json`) and, if
+  `pids.doi` is empty, reserves it through `POST /records/<id>/draft/pids/doi` (InvenioRDM's own
+  REST API, the same call the draft page's "Get a DOI now!" button makes); it refuses, without
+  writing further, if the DOI that comes back differs from the one the PDF already prints. Paper
+  I's `v1.1.0` draft kept `prereserve_doi` (legacy) but not `pids.doi` after #32's fix, so
+  `preview`'s guard still refused it; the author re-reserved it by hand on the draft page, which
+  happened to derive the same DOI from the record id. `linkage release export`'s generated
+  `.gitignore` now lists `.zenodo-deposition.json` and `*.zip`, which `reserve` and `upload` write
+  at the export's root and which a plain `git add -A` there had put in the tagged tree and the
+  public zip.
 - `linkage release zenodo preview`: the write-back is labelled `application/json`. The draft
   endpoint reads RDM from plain JSON and answers 415 to its own media type, which #32 sent;
   only the read needs `Accept: application/vnd.inveniordm.v1+json`.

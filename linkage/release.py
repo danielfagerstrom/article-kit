@@ -1200,7 +1200,8 @@ def export(cfg: Config, args) -> int:
     if (cfg.root / "CHANGELOG.md").exists():
         write(out / "CHANGELOG.md", changelog_entry(cfg.root / "CHANGELOG.md", tag))
     write(out / ".gitignore", f"{lean_name}/.lake/\n*.olean\npaper/*.aux\npaper/*.log\n"
-                              "paper/*.bbl\npaper/*.blg\npaper/*.out\n")
+                              "paper/*.bbl\npaper/*.blg\npaper/*.out\n"
+                              ".zenodo-deposition.json\n*.zip\n")
 
     # ---- CITATION.cff and .zenodo.json
     ex.citation_files(out)
