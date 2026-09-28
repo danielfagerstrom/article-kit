@@ -729,6 +729,43 @@ Neither direction certifies *faithfulness* — whether a Lean statement is true 
 to say. That is a judgement, left to a reviewing agent (the wiki's `curator`) working with the prover,
 not to either projection.
 
+## The trunk's second-demand rule — `linkage lean clones`
+
+`scale-space-lean` is extended *on second demand*: a result moves into the trunk when a second
+article needs it. Nothing computed second demand until the engineer's survey of 2026-09-19 (hub
+proposal E-0010), which found by script in one pass the 73 clones between Papers I and V that
+the queue had three of. `linkage lean clones` is that survey as a standing check. It is the one
+verb that reads more than one repository, and it needs no `linkage.toml`: the members come from
+the hub's `constellation.json` (`--wiki`, else `$WIKI_VAULT`), and every member that is a git
+checkout with tracked `.lean` files is compared with every other. Nothing is compiled; only
+tracked files are read, so `.lake/` packages and agent worktrees are not mistaken for copies.
+
+A clone is a declaration whose **whole text is the same up to renaming** (one-letter lowercase
+identifiers collapsed, comments ignored) in two members, *whatever the two are called*. The
+index is the statement text, not the name, so renaming a declaration does not make its clone
+disappear; the report prints how many matches are under different names (`renamed`), which is
+the number a rename would move. A theorem whose statement matches but whose proof differs is
+counted apart (`other proof`) and does not count against the threshold. The module docstring
+(`linkage/leanclones.py`) lists the four places the method departs from the survey, and why.
+
+```
+linkage lean clones                                   # the report; exit 1 above the threshold
+linkage lean clones --max-clones 10                   # the threshold (default 0)
+linkage lean clones --allow NAME --allow-file PATH    # named exceptions
+linkage lean clones --json                            # every match, with file and line
+```
+
+The **exception list** names declarations (short or namespaced, on either side) whose clones are
+accepted; an entry that names no match is an advisory, so the list does not outlive its reason.
+It lives with whoever runs the check (the hub's scheduled job passes `--allow-file`), not in an
+article's `linkage.toml`, because a clone belongs to two articles and to neither. Exit codes: 0
+within the threshold, 1 above it, 2 when the check could not answer, including when fewer than
+two Lean members are checked out (a comparison of nothing must not pass).
+
+It needs the member checkouts, so it is a **scheduled** run, not a per-push one. It does not yet
+apply the second half of the rule (that the statement mentions no article-specific structure);
+the report is what a person reads for that.
+
 ## Status (2026-07)
 
 - **Enforced now, checker green:** blueprint→Lean, blueprint→ledger, paper→blueprint (existence),

@@ -7,6 +7,18 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage lean clones`: the trunk's second-demand rule, observable (Q-0189, E-0010).** A new
+  verb finds the Lean members through the hub's `constellation.json` (`--wiki`, else
+  `$WIKI_VAULT`), compares every pair that is checked out, and reports the declarations that are
+  the same text up to renaming, anchored on the **statement text** rather than the name, with the
+  count of matches under different names (the number a rename would move). It exits 1 above
+  `--max-clones` (default 0) except for names in `--allow` / `--allow-file`, 2 when it could not
+  answer, and has `--json`. The parser is the engineer's survey's, with one repair (a declaration
+  ends at the next top-level command, not only the next declaration; the survey missed 6 of 86
+  clones at the end of a namespace) and three guards that anchoring on the statement needs
+  (definitions anchor on their whole text; a theorem statement under `--min-tokens` tokens does
+  too; a declaration's own name is blanked). Config-free, like `prose` and `review`. See
+  `docs/LINKAGE.md` § "The trunk's second-demand rule".
 - `linkage release zenodo metadata` restores the records API's `pids.doi` when the legacy
   metadata PUT left it empty: it reads the draft back (`Accept: vnd.inveniordm.v1+json`) and, if
   `pids.doi` is empty, reserves it through `POST /records/<id>/draft/pids/doi` (InvenioRDM's own

@@ -10,6 +10,7 @@
     linkage prose register [PATHS...]
     linkage axioms [--check]
     linkage boundary [--strict-shadows] [--with-mathlib]
+    linkage lean clones [--wiki PATH] [--max-clones N] [--allow NAME] [--allow-file PATH] [--json]
     linkage init [--slug SLUG]
 
 Run from anywhere inside an article repo; the config is found by walking up to
@@ -22,7 +23,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import artifacts, checks, closure, config, parse_latex
+from . import artifacts, checks, closure, config, leanclones, parse_latex
 from . import manifest as manifest_mod
 from . import release as release_mod
 from . import zenodo as zenodo_mod
@@ -281,6 +282,33 @@ def cmd_boundary(args) -> int:
     return 0
 
 
+def cmd_lean_clones(args) -> int:
+    """Cross-repository clones between the constellation's Lean members (config-free).
+
+    Exit 0 when the clones not named in the exception list are within `--max-clones`,
+    1 above it, 2 when the members could not be found or compared.
+    """
+    vault = leanclones.resolve_vault(args.wiki)
+    members, skipped = leanclones.find_members(vault, args.dev_root)
+    allow = list(args.allow or [])
+    for f in args.allow_file or []:
+        allow.extend(leanclones.read_allow(f))
+    rep = leanclones.run(members, max_clones=args.max_clones, allow=allow,
+                         min_tokens=args.min_tokens, skipped=skipped)
+    if args.json:
+        print(json.dumps(rep.to_json(), indent=2, ensure_ascii=False))
+    else:
+        print("\n".join(leanclones.render(rep)))
+    if not rep.ok:
+        print(f"\nLEAN CLONE CHECK FAILED: {rep.counted} clone(s) not in the exception list, "
+              f"{rep.max_clones} allowed", file=sys.stderr)
+        return 1
+    if not args.json:
+        print(f"\nLEAN CLONE CHECK OK: {rep.counted} clone(s) not in the exception list "
+              f"(<= {rep.max_clones}).")
+    return 0
+
+
 def cmd_packages(args) -> int:
     """Report the shared Lake packages this article needs, for a toolchain-free fetch."""
     cfg = config.load(args.root)
@@ -521,6 +549,30 @@ def build_parser() -> argparse.ArgumentParser:
                         "standard notion (reads thousands of files; a deliberate run, "
                         "not a per-push check)")
     b.set_defaults(func=cmd_boundary)
+
+    ln = sub.add_parser("lean", help="checks across the constellation's Lean members")
+    lsub = ln.add_subparsers(dest="lean_cmd", required=True)
+    lc = lsub.add_parser("clones", help="declarations copied between Lean members, anchored on "
+                                        "statement text (needs the member checkouts)",
+                         description=leanclones.__doc__,
+                         formatter_class=argparse.RawDescriptionHelpFormatter)
+    lc.add_argument("--wiki", type=Path, help="path to the Notes vault, whose constellation.json "
+                                              "names the members (default: $WIKI_VAULT)")
+    lc.add_argument("--dev-root", type=Path, default=None,
+                    help="where the members are checked out (default: the manifest's "
+                         "workspace.root)")
+    lc.add_argument("--max-clones", type=int, default=0, metavar="N",
+                    help="fail (exit 1) above this many clones outside the exception list "
+                         "(default 0)")
+    lc.add_argument("--allow", action="append", metavar="NAME",
+                    help="a declaration name whose clones are accepted; repeatable")
+    lc.add_argument("--allow-file", action="append", type=Path, metavar="PATH",
+                    help="a file of such names, one per line, `#` for the reason; repeatable")
+    lc.add_argument("--min-tokens", type=int, default=leanclones.DEFAULT_MIN_TOKENS, metavar="N",
+                    help="a theorem statement shorter than this is anchored on the whole declaration "
+                         "(default %(default)s)")
+    lc.add_argument("--json", action="store_true", help="machine-readable output")
+    lc.set_defaults(func=cmd_lean_clones)
 
     k = sub.add_parser("packages", help="shared Lake packages: name, url, rev, destination")
     k.add_argument("--missing-only", action="store_true",
