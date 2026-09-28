@@ -30,6 +30,7 @@ linkage manifest                                # write blueprint-manifest-<slug
 linkage demand                                  # unproved blueprint nodes the hub is asking for
 linkage axioms --check                          # the trust boundary against the ledger
 linkage boundary                                # per-theorem axiom pins, probes, adversarial goals, shadowed names
+linkage lean clones                             # declarations copied between the constellation's Lean members (needs $WIKI_VAULT and the checkouts)
 linkage pins                                    # fail if a workflow call or linkage_ref is at a branch, not a tag
 linkage review <review>.jsonl …                 # pool the reviewers' flags by defect, rank by breadth
 ```
