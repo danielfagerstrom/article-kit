@@ -138,11 +138,21 @@ In order; a release is not done until the last item.
      takes the title, version, export and DOI from that module's record in `modules` rather
      than restating them. `site` is a list when a repository publishes more than one paper.
      **The `slug` is a permanent public URL** — reader-facing, chosen once, never reused.
-   - **The routing table follows.** In `research-site`: `npm run routes`, read the diff (it is
-     the diff that publishes an article), commit, push; CI deploys. Then `npm run verify`,
-     which fetches every channel the manifest promises and fails on one that does not answer.
-     Until the manifest names it, the channel exists and nothing serves it — which is the
-     order to want, not a defect.
+   - **The routing table follows itself.** The hub's own `notify-site` workflow dispatches
+     `research-site`'s `site-sync` on the push that changed `constellation.json` (and daily,
+     as a safety net); `site-sync` regenerates `src/routes.json` and the generated pages from
+     the hub's `main` (`npm run build`), commits that to `research-site`'s `main` naming the
+     hub commit, deploys, and runs `npm run verify`, which fails the run if a channel the
+     manifest promises does not answer. Nothing to run here: see the commit on
+     `research-site`'s `main` (or the `site-sync` run in its Actions tab) to know it reached
+     the site, and if it failed, read that run's log — a refused `site` block, or a verify
+     that found a promised channel nobody wrote. Until the manifest names it, the channel
+     exists and nothing serves it — which is the order to want, not a defect. **If the
+     workflow cannot run** (the read-only deploy key is missing, a new export repository is
+     not yet in `research-site`'s `EXPORT_REPOS`, Actions is down), the manual fallback, from
+     a machine with the hub and the export repositories checked out: `npm run routes`,
+     `npm run pages` (or `npm run build`, which is both), read the diff (it is the diff that
+     publishes an article), commit, push; CI deploys. Then `npm run verify`.
 9. **The hub**: the items of its `RELEASES.md` (the manifest pin and `release.latest`, the thread
    page, the programme page, the log, the citation check of importing modules, the postdoc round).
 10. **Open the next cycle.** Restore the draft date line at the first edit after the release; move
@@ -166,8 +176,11 @@ linkage release zenodo status  --export <export>
 linkage release zenodo publish --export <export>             # author; cannot be undone
 #   then the site (step 8), from the export repository and the hub:
 gh workflow run docs.yml --repo <owner>/<export>             # writes the write-once release channel
-#   add the site entry to the hub's constellation.json, then in research-site:
-npm run routes && npm run verify                             # regenerate, then check it answers
+#   add the site entry to the hub's constellation.json and push: research-site's site-sync
+#   regenerates, commits, deploys and verifies itself (see the commit on its main, or its
+#   Actions run, to know it reached the site). If it cannot run, the manual fallback:
+npm run build && git add src/routes.json public/papers public/bibliography && git commit && git push
+npm run verify                                                # then check every channel answers
 ```
 
 **The module's parameters are read from `linkage.toml`, not typed on the command line.** One

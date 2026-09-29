@@ -7,6 +7,13 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`docs/RELEASE.md` item 8 and "The commands": the site step as `research-site` now runs it
+  (Q-0181).** The routing table and generated pages are no longer a manual `npm run routes` /
+  `npm run verify` pair: the hub's `notify-site` workflow dispatches `research-site`'s
+  `site-sync` on the push that changes `constellation.json` (and daily as a safety net), which
+  regenerates, commits, deploys and verifies on its own — the earlier text omitted `npm run
+  pages`, which Paper I's `v1.1.0` needed on 2026-09-27. The manual fallback (`npm run routes`,
+  `npm run pages`, commit, push, `npm run verify`) stays, for when the workflow cannot run.
 - **`linkage lean clones`: the trunk's second-demand rule, observable (Q-0189, E-0010).** A new
   verb finds the Lean members through the hub's `constellation.json` (`--wiki`, else
   `$WIKI_VAULT`), compares every pair that is checked out, and reports the declarations that are
