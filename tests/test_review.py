@@ -161,6 +161,23 @@ def test_a_refs_label_that_resolves_nowhere_is_reported_but_keeps_the_flag(tmp_p
     assert len(doc["defects"]) == 1
 
 
+def test_a_scope_audit_review_carries_its_mode_and_may_flag_quantity(tmp_path):
+    # The scope-audit mode reads the summary surfaces of the whole paper; its review record
+    # says so in `mode`, and QUANTITY (a number that does not name the object computed) is a
+    # structure tag like SCOPE.
+    p = tmp_path / "r.jsonl"
+    lines = A.read_text(encoding="utf-8").splitlines()
+    rev, flag = json.loads(lines[0]), json.loads(lines[1])
+    rev["mode"] = "scope-audit"
+    flag["tag"] = "QUANTITY"
+    p.write_text(json.dumps(rev) + "\n" + json.dumps(flag) + "\n", encoding="utf-8")
+    doc, _, rc = review.aggregate([p], FIXTURES)
+    assert rc == 0, doc["malformed"]
+    assert doc["reviews"][0]["mode"] == "scope-audit"
+    assert [d["tag"] for d in doc["defects"]] == ["QUANTITY"]
+    assert review.LAYER_OF["QUANTITY"] == "structure"
+
+
 def test_a_flag_with_no_review_record_before_it_is_rejected(tmp_path):
     p = tmp_path / "r.jsonl"
     p.write_text(A.read_text(encoding="utf-8").splitlines()[1] + "\n", encoding="utf-8")

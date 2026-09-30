@@ -36,7 +36,7 @@ from pathlib import Path
 # malformed: the layer is not a second opinion, it is which half of the template the tag
 # belongs to (§B structure, §C voice).
 STRUCTURE_TAGS = (
-    "SCOPE", "HYPOTHESIS", "COUNT", "FRONTIER",
+    "SCOPE", "HYPOTHESIS", "COUNT", "QUANTITY", "FRONTIER",
     "CONTRACT", "PROMISE", "ORPHAN", "ENVELOPE", "POINTER", "TRANSCLUSION",
     "NOTATION", "UNDEFINED",
 )
@@ -63,6 +63,7 @@ class Review:
     strengths: str
     maturity: str | None = None
     floor: str | None = None
+    mode: str | None = None
     source: str = ""
 
 
@@ -272,7 +273,7 @@ def _review(rec: dict, rid: str, src: str, lineno: int) -> tuple[Review | None, 
     return Review(id=rid, target=rec["target"], contract=contract,
                   contract_why=rec["contract_why"], strengths=rec["strengths"],
                   maturity=_as_str(rec, "maturity"), floor=_as_str(rec, "floor"),
-                  source=src), []
+                  mode=_as_str(rec, "mode"), source=src), []
 
 
 def _flag(rec: dict, review: str, src: str, lineno: int) -> tuple[Flag | None, list[Problem]]:
@@ -483,7 +484,8 @@ def to_json(reviews, defects, threads, problems) -> dict:
     return {
         "reviews": [{"id": r.id, "target": r.target, "contract": r.contract,
                      "contract_why": r.contract_why, "maturity": r.maturity,
-                     "strengths": r.strengths, "floor": r.floor} for r in reviews],
+                     "strengths": r.strengths, "floor": r.floor, "mode": r.mode}
+                    for r in reviews],
         "threads": [{"id": t.id, "reviews": t.reviews, "files": t.files, "refs": t.refs,
                      "defects": [d.key for d in t.defects]} for t in threads],
         "defects": [{"key": d.key, "file": d.file, "tag": d.tag, "layer": d.layer,

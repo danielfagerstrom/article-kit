@@ -1,9 +1,9 @@
 # Reviewer output contract
 
-**Status: specified and implemented, 2026-09-25 (drafted 2026-08-15). The aggregator is
-[`linkage review`](../linkage/review.py); `uv run pytest tests/test_review.py` holds it to this
-page. Not yet adopted by the reviewer — the hub's `draft-reviewer` still emits prose reports, and
-[what it has to change](#what-the-hub-must-change-in-draft-reviewermd) is listed at the end.**
+**Status: specified and implemented, 2026-09-25 (drafted 2026-08-15); adopted by the hub's
+`draft-reviewer` on 2026-09-30, with the [scope-audit mode](#the-scope-audit-mode) (Q-0108). The
+aggregator is [`linkage review`](../linkage/review.py); `uv run pytest tests/test_review.py` holds
+it to this page.**
 
 The output format for exposition-review flags, and the rules an aggregator applies over them. The
 companion to [`PUBLICATION-TEMPLATE.md`](PUBLICATION-TEMPLATE.md): the template says *what* a reviewer
@@ -60,8 +60,9 @@ over one review or over twenty.
  "floor":"linkage check — noted, not run"}
 ```
 
-`target`, `contract`, `contract_why` and `strengths` are **required**; `maturity`, `floor` and `id`
-are optional. A review that omits a required field, or declares a contract that does not parse, is
+`target`, `contract`, `contract_why` and `strengths` are **required**; `maturity`, `floor`, `id` and
+`mode` are optional. `mode` is `"section"` (the default: one section, both layers) or
+`"scope-audit"` (below); the aggregator carries it and does not rank on it. A review that omits a required field, or declares a contract that does not parse, is
 **not a review**: its flags are rejected with it, because a flag whose section contract is unknown
 cannot be read as structural evidence.
 
@@ -146,6 +147,7 @@ flag:
 | `SCOPE` | the claim is wider than the result it rests on |
 | `HYPOTHESIS` | a condition the body carries is absent where the claim is made |
 | `COUNT` | an economy or enumeration claim the text's own proofs falsify |
+| `QUANTITY` | a reported number that does not name the object computed: the text describes one variant, configuration or quantity, and the number is another's |
 | `FRONTIER` | unsettled or cited status not marked *at the point of claim* (absence of a marker is `note-evaluator`'s; misplacement is this) |
 
 **Structure**
@@ -174,11 +176,11 @@ owed), `PROSE` (the argument is not followable from the text alone), plus the su
 Policy is set **per tag**, not per instance — the point of a fixed vocabulary. Expect a small number of
 tags to carry most of the volume, and one rule each then replaces dozens of decisions.
 
-### The six that are not prose-surface, by example
+### The seven that are not prose-surface, by example
 
-These are the tags the note's §1 vocabulary does not reach, and they carried eight of the ten threads
-in the trial batch. Each is given as the reviewer needs it: what the defect *is*, what it is not, and
-one instance.
+These are the tags the note's §1 vocabulary does not reach; the first six carried eight of the ten
+threads in the trial batch, and `QUANTITY` was added with the scope-audit mode. Each is given as the
+reviewer needs it: what the defect *is*, what it is not, and one instance.
 
 **`SCOPE` — the claim is wider than the result it rests on.** The text asserts something of a class,
 a range or a construction for which only a subcase is established. A claim that is *wrong* is Lean's
@@ -209,6 +211,19 @@ defect is arithmetic and checkable inside the document: count what the text actu
 > *claim:* the proof of `prop:main` invokes (H), the semigroup property and separability — three.
 > *probe:* count the hypotheses the proofs actually invoke and either reduce the claim or the
 > hypotheses. *refs:* `prop:main`, `def:standing-hypothesis`.
+
+**`QUANTITY` — a reported number that does not name the object computed.** An error, a rate, a
+count, a ratio or a timing is printed under a description that belongs to something else: another
+variant of the method, another parameter setting, another quantity than the one the script or the
+table computed. Distinct from `COUNT`, which is an enumeration claim the proofs falsify; here the
+number may be right and the sentence around it names the wrong thing. Checkable by restating, from
+the table, the caption or the generating script, what was computed, and comparing.
+
+> *anchor:* `the recursive filter's maximum error is below $10^{-3}$`
+> *claim:* the table the sentence cites reports that error for the truncated series at 12 terms;
+> the recursive filter's row, two lines below, is `4\times10^{-3}`.
+> *probe:* name the variant whose error is quoted, or quote the recursive filter's. *refs:*
+> `tab:errors`, `rem:recursive-gaussians`.
 
 **`NOTATION` — one symbol, two objects.** The same symbol denotes different things in different
 places, or a symbol silently changes arity, type or normalization. Not `UNDEFINED`, which is a symbol
@@ -241,6 +256,33 @@ that uses it does not say so. The *absence* of the marker anywhere is `note-eval
 > §1.1 trust base says so; this sentence presents it as settled in-document.
 > *probe:* mark the import where it is used, as the trust base marks it. *refs:*
 > `thm:completeness`.
+
+## The scope-audit mode
+
+`WRITING.md` § 5 and `PROCESS.md` § 8 require, before a frozen build, that every summary of a result
+be restated from the statement it cites and compared. Every pass that did this by hand found a
+dropped hypothesis (Paper V module B: R167, R168, R170). A section review does not: the summaries
+sit in the abstract and the introduction, the statements in § 5, and a reviewer of one section sees
+one side. The scope-audit mode is that pass as a reviewer run.
+
+- **Target: the paper directory**, not one section. It reads every file, and **flags only on the
+  summary surfaces**: the abstract, the introduction's result and contribution paragraphs, the
+  conclusion (and any discussion that restates results), every table, every figure and table
+  caption, and any sentence elsewhere that restates a numbered result by `\ref`.
+- **The pass, per claim.** List each claim a summary surface makes; find the statement it cites
+  (by `\ref`, or the one it evidently paraphrases); restate that statement in plain words from its
+  own hypotheses and quantifiers, *before* rereading the summary; compare. A number is restated from
+  the table, caption or script that produced it, and its description compared with what was
+  computed.
+- **Flags** are `SCOPE`, `HYPOTHESIS`, `COUNT`, `QUANTITY`, `FRONTIER` and `TRANSCLUSION`; nothing in
+  the voice layer. `refs` names the cited statement's label as well as any the surface sits beside,
+  so the flag pools with a section review's flag on the same statement. A summary that has no
+  statement behind it at all is `PROMISE`.
+- **The review record** declares `"mode":"scope-audit"`, `target` the paper directory, and
+  `contract` the summary sections' own (`B.1+B.2+B.9`, with `B.8` when a discussion restates
+  results), `contract_why` saying so.
+- **Blind.** Like every run, it does not read the findings ledger, the review records, the response
+  plans or the history: a scope audit that has read the fix list reports the fix list.
 
 ## Defect identity
 
@@ -322,22 +364,24 @@ The charter's non-mechanical obligations do not become fields:
   `linkage check`'s) is rendered from the review record, not repeated per flag;
 - **no verdicts**, and no rewrites. `probe` says what to check; the author decides.
 
-## What the hub must change in `draft-reviewer.md`
+## What the hub changed in `draft-reviewer.md`
 
-The adoption step is the author's: this repository owns the spec and never writes the hub's files.
-What the hub's `.claude/agents/draft-reviewer.md` has to change, in one pass:
+The adoption step was the author's (2026-09-30, Q-0108): this repository owns the spec and never
+writes the hub's files. The hub's `.claude/agents/draft-reviewer.md` made these changes in one pass;
+the list stays as the checklist a later change to either side is held to.
 
-1. **Emit JSONL, not a prose report.** One `.jsonl` file per run, named for the run (the file stem
-   becomes the review's identity), one record per line: the `kind:"review"` record first, then one
-   `kind:"flag"` per finding. The readable report is no longer the agent's output — `linkage review`
-   renders it — so the prompt's report-format section is replaced by the record shapes above.
+1. **Emit JSONL, not a prose report.** One review per run, one record per line: the `kind:"review"`
+   record first, then one `kind:"flag"` per finding. The agent is read-only, so it **returns** the
+   records as its final message, in one fenced `jsonl` block and nothing else, and the caller saves
+   them as `<run>.jsonl` (the file stem becomes the review's identity). The readable report is not
+   the agent's output — `linkage review` renders it.
 2. **Declare the section contract.** Before flagging: name the `B.<n>` the section is held to and say
    in `contract_why` why that one and not the same-numbered template section. The agent currently
    has to be told this in the invocation; it becomes a required field.
 3. **Carry the strengths line into the review record**, where it is required, instead of into the
    report's opening paragraph.
-4. **Teach the six non-prose-surface tags** — `SCOPE`, `HYPOTHESIS`, `COUNT`, `NOTATION`,
-   `TRANSCLUSION`, `FRONTIER` — with the definitions and examples above, beside the prose-surface
+4. **Teach the seven non-prose-surface tags** — `SCOPE`, `HYPOTHESIS`, `COUNT`, `QUANTITY`,
+   `NOTATION`, `TRANSCLUSION`, `FRONTIER` — with the definitions and examples above, beside the prose-surface
    tags it already carries from `ai-prose-patterns.md` §1. Eight of the ten threads in the trial
    batch were not prose-surface, so an agent with only the old vocabulary cannot emit most of what
    matters.
@@ -348,9 +392,8 @@ What the hub's `.claude/agents/draft-reviewer.md` has to change, in one pass:
    rejected by the aggregator, so an agent that quotes loosely loses its findings.
 7. **Keep the boundary and the no-verdicts rule** unchanged: `probe` says what to check, never a
    rewrite; correctness stays Lean's, grounding `note-evaluator`'s, integrity `linkage check`'s.
-
-Until that pass lands, `linkage review` has nothing to read; the contract is implemented on this side
-and unadopted on the other.
+8. **The scope-audit mode**, as [above](#the-scope-audit-mode), invoked by `mode: scope-audit` in
+   the brief.
 
 ## Open questions
 

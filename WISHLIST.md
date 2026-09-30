@@ -248,4 +248,20 @@ yet admitted". Keep the colour. Every article gets it on the next scaffold sync.
 
 ---
 
+## `linkage review`: thread clustering over-merges a scope audit
+
+**Wanted by** `spatial-hemigroup-scale-space` (the scope-audit trial on module B, Q-0108),
+2026-09-30; the trial record is that repository's `records/cone/TRIAL-scope-audit.md`.
+
+The first scope-audit run gave 35 well-formed flags that pooled into 28 defects, and
+`linkage review` proposed **one thread holding all 28**. The contract asks `refs` to name every
+label a flag implicates, and a scope-audit flag names the statement it cites and that statement's
+neighbours, so clustering by any shared label chains every defect to every other. Pooling into
+defects (same file, same tag, a shared label) is unaffected. **Suggested shape:** cluster threads on
+a flag's *primary* referent, the cited statement, with the other labels as evidence only; the
+contract would say which `refs` entry is primary (first in the list, say). A test fixture from the
+trial's JSONL would pin it.
+
+---
+
 *No other open requests.*

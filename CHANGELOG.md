@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The reviewer contract adopted, with a scope-audit mode and the `QUANTITY` tag (Q-0108).**
+  `docs/REVIEWER-CONTRACT.md`: the hub's `draft-reviewer` now emits the contract's JSONL records
+  (returned as its final message, since it is read-only, and saved by the caller) instead of a
+  prose report; a new § "The scope-audit mode" restates every summary surface of a paper (abstract,
+  introduction results, conclusion, tables, captions) from the statement it cites and flags the
+  mismatches, which `WRITING.md` § 5 and `PROCESS.md` § 8 require before a frozen build; the review
+  record gains an optional `mode`; and `QUANTITY` is the tag for a number that does not name the
+  object computed. `linkage review` knows the tag and carries the mode (`tests/test_review.py`).
 - **`fidelity-review`: a row that repairs an inference pattern says which siblings it checked
   (Q-0235).** `SKILL.md` § 2 and the `REVIEW-fidelity.md` template: a finding that diagnoses a
   pattern rather than a local slip ends its resolution with **Siblings checked:** (the node's
