@@ -22,6 +22,10 @@ owed elsewhere>
 | R1 | | | | | open |
 
 Ledger entries are added as cards are written; a resolved entry keeps its row with the commit.
+A row whose finding is an **inference pattern** (a step that is invalid wherever it is made, not a
+local slip) ends its resolution with **Siblings checked:** the other clauses of the same node, and
+the other instances of the pattern in the chapter, that were checked for it, each with its outcome;
+or **Siblings checked: none**, which leaves the pattern open everywhere but here.
 
 ---
 

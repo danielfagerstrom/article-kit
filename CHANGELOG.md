@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`fidelity-review`: a row that repairs an inference pattern says which siblings it checked
+  (Q-0235).** `SKILL.md` § 2 and the `REVIEW-fidelity.md` template: a finding that diagnoses a
+  pattern rather than a local slip ends its resolution with **Siblings checked:** (the node's
+  other clauses and the chapter's other instances, with outcomes) or "none". A labelled clause in
+  the resolution cell, not a seventh column, so existing six-column ledgers stay valid. From Paper
+  V module C, where R123 and R83 each repaired one clause and left the same defect beside it.
+  The WISHLIST entry is removed, with the one for Q-0105, whose rule (admitting a name re-opens
+  its card) was delivered on 2026-09-21 (`08bac11`) and whose entry had outlived it.
 - **`docs/RELEASE.md` item 8 and "The commands": the site step as `research-site` now runs it
   (Q-0181).** The routing table and generated pages are no longer a manual `npm run routes` /
   `npm run verify` pair: the hub's `notify-site` workflow dispatches `research-site`'s

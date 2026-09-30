@@ -41,7 +41,12 @@ Every audited node gets one; the review is the cards plus a **findings ledger** 
 **junk-value audit** line — a card without both is not done. Verdicts: faithful ·
 faithful-with-note · weaker (how) · stronger-hyp (how) · divergent-def (how). Findings are tagged
 F1–F8 with severity *claim-changing* / *statement-tightening* / *note-only* and a resolution
-commit; a resolved row keeps its place.
+commit; a resolved row keeps its place. A finding that diagnoses an **inference pattern** rather
+than a local slip is not resolved by repairing the clause where it was found: the row's resolution
+ends with **Siblings checked:**, naming the node's other clauses and the chapter's other instances
+of the pattern that were checked, with their outcomes, or "none" (Paper V module C: R123 repaired a
+`C^k`-to-order inference in clause (2) and clause (3) kept it to the freeze; R83 fixed a Thorin
+generator's constant and left the clause's subject on another normalization).
 
 ## 3. Techniques, cheapest first
 

@@ -51,19 +51,6 @@ nothing honesty-critical leaves § 1.1.
 
 ---
 
-## process: an interface admitted after the fidelity review re-opens its card
-
-**Wanted by** `spatial-hemigroup-scale-space` (module B, lesson 2), 2026-09-21.
-
-The fidelity review read each admitted interface against page images; the three A10 names were
-admitted five days later and never had that pass. **Suggested shape:** a standing rule in the
-`fidelity-review` skill (admitting a name re-opens its card, and the interface pass runs before the
-name is relied on). The rule is already in `scaffold/claude/rules/ledger.md` and `docs/PROCESS.md`
-§ 6; the skill's own text still lacks it. Not edited on 2026-09-21 because the skill had an
-uncommitted change from another session.
-
----
-
 ## process: summaries and numbers get a scope audit before a frozen build
 
 **Wanted by** `spatial-hemigroup-scale-space` (module B, lessons 8 and 9), 2026-09-21.
@@ -115,28 +102,6 @@ machine-check bookkeeping from the reader's text. The advisory matters more than
 proof is legitimately allowed to differ, so what is wanted is a report a human reads, not a gate that
 blocks. If a sha is used it needs the escape hatch the statements already have for a tracked-by-sha
 node.
-
----
-
-## process: a fidelity row that repairs an inference pattern names the sibling clauses it checked
-
-**Wanted by** `spatial-hemigroup-scale-space` (module C, the first external review), 2026-09-27.
-
-Two of that review's three worst mathematical findings were in clauses *adjacent* to clauses an
-earlier fidelity row had already repaired, for the same reason. Row R123 established that inferring a
-kernel-side order from a `C^k` count is invalid, because Fourier inversion gives bounded continuous
-derivatives and not integrable ones, and repaired clause (2) of a proposition; clause (3) of the same
-proposition made the identical inference and was still making it at the freeze. Row R83 resolved
-which constant a Thorin generator carries and fixed it for the generator, leaving the clause's
-subject reading "the scale derivative", which the chapter's definition had already bound to a
-different normalization — so the printed formula was wrong by a factor and had separately lost a
-hypothesis its cited source states in its own clause text.
-
-**Suggested shape:** a field in the findings-ledger row format and a line in the `fidelity-review`
-skill: when a row's diagnosis is an *inference pattern* rather than a local slip, the row names the
-sibling clauses of the same node, and the same pattern elsewhere in the chapter, that were checked
-for it — or says that none was. The cost is one sentence per row, and both defects above would have
-been caught at the row that named the pattern.
 
 ---
 
