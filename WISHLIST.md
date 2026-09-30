@@ -202,6 +202,34 @@ session contract: a marker goes on its own line *before* the changed text, never
 
 ---
 
+## process: three gaps the release export showed on a paper that prints four axiom blocks
+
+**Wanted by** `spatial-hemigroup-scale-space` (module C, `selection-v0.1`), 2026-09-30.
+
+The export of module C (`scripts/export-release.py`, the article's copy of `linkage release export`)
+passed, but only after three things were done by hand:
+
+1. **The headline check compares one declaration against a whole verbatim block.** The paper prints
+   the `#print axioms` output of four declarations in one `verbatim`; the check takes the block that
+   contains the headline's name, whitespace-normalized, and compares it with the guard's single
+   line for that name, so it reports MISMATCH whenever a block holds more than one declaration. The
+   four blocks each matched the guard when compared one by one. **Shape:** parse every
+   `'<name>' depends on axioms: [...]` in the paper's verbatim blocks and compare each with the
+   guard's line for that name; fail on any difference or any printed name the guard lacks.
+2. **The deposit's date is the export's run date.** `.zenodo.json`'s `publication_date` and
+   `CITATION.cff`'s `date-released` are `date.today()`, while the paper's date line and the
+   changelog heading carry the release date; a release exported the evening before its date gets two
+   dates. **Shape:** take the date from the changelog entry's heading (`## <tag> — <date> — …`),
+   which the export already reads, or a `--date` flag.
+3. **Records that are not round plans have no route into the export.** `--reviews` exports files
+   only, so referees' reproduction code in subdirectories is dropped; and a response to a separate
+   presentation review, or a triage note, is not a round's plan. Both were copied in by hand after
+   the last export (a re-export overwrites the directory). **Shape:** export `--reviews`
+   recursively, with the same local-path redaction; and an `--extra-notes` list, or a records
+   manifest in `linkage.toml`'s module table.
+
+---
+
 ## Sync shared sub-agents from an article session, not only from a hub session
 
 **Wanted by** the wiki hub, 2026-08-15. Falls out of closing your `draft-reviewer` wish.
