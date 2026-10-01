@@ -100,11 +100,23 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
   follows another restates here what it uses of its predecessor** (the axioms,
   the main theorem, the notation table, verbatim where shared), so that it reads
   without the earlier paper open.
+- **The trust base: a statement here, an inventory in an appendix.** The
+  trust-base subsection (§ 1.1 in the finished articles; `WRITING.md` § 4) owns
+  the *statement*: the coverage by section, everything not formalized, every
+  assumption of the verified development, and the cited facts taken as given with
+  the count of steps they carry. The *inventory* (tables, per-name notes,
+  reproduction commands, `#print axioms` output) may live in a verification
+  appendix that the subsection names. Nothing honesty-critical leaves the
+  subsection: the appendix details what it says and never adds a caveat, gap or
+  assumption it does not state; when in doubt, a sentence stays.
 - **Det.:** every symbol defined before first use; no symbol overloaded; each
-  standing assumption labelled and referenced where invoked.
+  standing assumption labelled and referenced where invoked; if a verification
+  appendix exists, the trust-base subsection references it.
 - **LLM:** "For each definition sharing a name with a standard notion, does it
   match the standard? Flag divergences. Is any assumption stronger than the result
-  needs (state where each is actually used)?"
+  needs (state where each is actually used)? Does the verification appendix
+  disclose anything — an unformalized step, an assumption, a gap — that the
+  trust-base subsection does not state?"
 
 ### 5. Main theory / Results  (~30–40%, the core)
 - **Contract:** definition → motivation → theorem → proof (or sketch + appendix).

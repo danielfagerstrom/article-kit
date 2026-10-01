@@ -223,7 +223,18 @@ decisions, so each article's `adr/` records its own; this standard records that 
 - **The trust base is owned by one subsection.** What is machine-checked, and what the verified
   development assumes, is set out in a single place early (§ 1.1 in the finished articles) and
   cited from everywhere else, including from the AI-use disclosure, which therefore does not repeat
-  it.
+  it. That subsection owns the *statement* of the trust base: every sentence a reader needs to judge
+  a result. At least that is the coverage by section (which results are machine-checked, and to
+  what statement), everything that is not formalized, every assumption the verified development
+  rests on, and the cited facts taken as given, with the count of the steps they carry beyond their
+  sources. The *inventory* behind that statement (tables, per-name notes, reproduction commands,
+  raw `#print axioms` output) may move to a verification appendix that the subsection names. The
+  disclosure rule is unchanged: nothing honesty-critical leaves § 1.1. The appendix adds detail to
+  what § 1.1 says; it never holds a caveat, a gap or an assumption that § 1.1 does not state, and
+  when it is unclear which side a sentence falls on, it stays in § 1.1. This is a rule about where
+  the disclosure is made, not a length budget. (Module C of `spatial-hemigroup-scale-space` had
+  four and a half pages here before the mathematics began; the moderate split above is what it
+  kept.)
 - **The frontier is named where it occurs**, in the sentence that would otherwise overstate.
 - **Descriptive, non-hyped naming**, and no deliverable referred to by section number.
 - **Proofs of record follow the machine-checked route.** Where the Lean proof and a shorter printed
