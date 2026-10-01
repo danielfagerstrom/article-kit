@@ -101,28 +101,6 @@ of a statement.
 
 ---
 
-## process: the release gate checks the sentence that names the export, not only the date line
-
-**Wanted by** `spatial-hemigroup-scale-space` (module C, the first external review), 2026-09-27.
-
-`linkage release` refuses a build whose first page still says "working draft" or does not print the
-reserved DOI (`linkage/release.py`, `DRAFT_MARKS` and the first-page check). But an article's
-trust-base section typically also carries a sentence naming the verification export and the DOI it is
-deposited under, and that sentence is gated by nothing. Module C's review build asserted an export
-repository that did not exist yet, "deposited with this version of the paper under the DOI printed on
-the first page", on a first page that said "working draft" — so the external referee could resolve
-neither the repository nor the DOI, and said so as a required change. The two lines had drifted apart
-because only one of them was mechanically tied to the release.
-
-**Suggested shape:** extend the release gate in both directions over a configured pair of phrases —
-a release build that still carries the draft wording is a fault, and a draft build that carries the
-release wording is a fault too, since that is the direction that misleads a reader. The article's own
-copy is `spatial-hemigroup-scale-space`'s `scripts/export-release.py` (`deposit_sentence_faults`,
-2026-09-27) if a shape is wanted; a framework version would take the phrases from `linkage.toml`
-rather than hard-coding them.
-
----
-
 ## process: a change marker inserted mid-line swallows the rest of the line, and only the PDF shows it
 
 **Wanted by** `spatial-hemigroup-scale-space` (module C, round 3's presentation review), 2026-09-28.
