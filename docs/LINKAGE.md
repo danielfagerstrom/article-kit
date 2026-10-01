@@ -286,6 +286,14 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    [`templates/boundary-harness.md`](templates/boundary-harness.md).
 6. **Every statement node declares `\statusT` or `\statusA`.** The hub's confidence grading keys on the
    projected status, so a node without one is a node the hub cannot grade.
+
+   An annotation that says what a clause's declarations carry lists the declaration's hypotheses
+   beside the node's, in the same order, each marked same / stronger / weaker / absent — the
+   hypothesis side checked as carefully as the conclusion side, not read for its result and skimmed
+   for what it assumes. Two chapter-15 annotations in `spatial-hemigroup-scale-space` module C
+   enumerated conclusion differences accurately at three paragraphs each and missed every hypothesis
+   difference, including a `P.a = 0` the declaration carried and the print had dropped — the one
+   false printed statement the review found.
 7. **Every `[A]` node declares its assignment** (ADR-0011, 2026-07-30): a `\textbf{Assignment.}` clause
    inside the node's status annotation, saying **which ledger entry is answerable for which clause of this
    statement** and **what it does not carry** — the parts held as `[T]`, and the parts deliberately outside

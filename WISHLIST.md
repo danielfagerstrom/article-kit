@@ -105,26 +105,6 @@ node.
 
 ---
 
-## process: a node's annotation lists its declaration's hypotheses, not only its conclusion
-
-**Wanted by** `spatial-hemigroup-scale-space` (module C, the first external review), 2026-09-27.
-
-The `\statusT` annotations are where a node records how its printed statement differs from what its
-declarations prove, and they are written with care. Both of module C's chapter-15 annotations
-enumerated differences in the **conclusion** accurately and missed every difference in the
-**hypothesis**: a `P.a = 0` the declaration carries and the print had dropped, an index set that is a
-`Finset` in Lean and unbounded in print, and a compactly supported signal class the tagged identities
-require and the printed statement does not name. The first of those was the one false printed
-statement the review found, and the annotation that should have caught it was three paragraphs long.
-
-**Suggested shape:** a line in the `fidelity-review` skill and in `docs/LINKAGE.md`'s account of
-`\statusT`: an annotation that says what a clause's declarations carry lists the declaration's
-hypotheses beside the node's, in order, and marks each as the same, stronger, weaker or absent. A
-checklist would do; the failure is not subtlety but an asymmetry of attention between the two halves
-of a statement.
-
----
-
 ## process: the release gate checks the sentence that names the export, not only the date line
 
 **Wanted by** `spatial-hemigroup-scale-space` (module C, the first external review), 2026-09-27.
