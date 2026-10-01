@@ -164,6 +164,22 @@ def shared_statement(body: str) -> str:
     return REF_PREFIX.sub("", normalize_statement(body))
 
 
+# The proof-of-record projection (check 3d), the statement's sibling. normalize_statement
+# already removes the machine-check bookkeeping a paper deliberately drops (`\leanok`,
+# `\uses{}`, `\lean{}`, comments); what is left is reference style: the paper writes
+# `Lemma~\ref{X}` or `\cref{X}` where the blueprint writes `\ref{X}`.
+_CREF = re.compile(r"\\(?:[cC]ref|autoref)\*?\{")
+
+
+def shared_proof(body: str) -> str:
+    """A proof body reduced to what paper and blueprint are supposed to share.
+
+    Applied to both sides, a comparison key like `shared_statement`. Deliberately NOT
+    used for `proof`/`proof_sha`, which are the manifest's wire format.
+    """
+    return REF_PREFIX.sub("", _CREF.sub(r"\\ref{", normalize_statement(body)))
+
+
 # a proof environment directly following a statement env (whitespace/comments between);
 # non-greedy to the first \end{proof} — the blueprint does not nest proofs
 PROOF_AHEAD = re.compile(r"(?:\s|%[^\n]*)*\\begin\{proof\}(.*?)\\end\{proof\}", re.S)
@@ -236,6 +252,7 @@ def blueprint_nodes(tex: str, cfg: Config) -> list[Node]:
                 statement=normalize_statement(body),
                 shared_statement=shared_statement(body),
                 proof=normalize_statement(pm.group(1)) if pm else None,
+                shared_proof=shared_proof(pm.group(1)) if pm else None,
                 statement_render_src=normalize_for_render(body),
                 proof_render_src=normalize_for_render(pm.group(1)) if pm else None,
             )

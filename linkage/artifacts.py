@@ -105,13 +105,21 @@ def render_safe_commands(cfg: Config) -> set[str]:
     return defined | vetted
 
 
-# `% shared with blueprint <label>[@<sha12>][, <label>[@<sha12>]]…`
+# `% shared with blueprint <label>[@<sha12>][+<sha12>][, <label>[@<sha12>][+<sha12>]]…`
 #
-# The list and the pins are both optional, so every marker written before this grammar
-# existed still parses as a one-label unpinned marker.
-_REF = r"[a-z]+:[\w-]+(?:@[0-9a-f]{12})?"
+# `@` pins the node's statement, `+` its proof (check 3d). The list and both pins are
+# optional, so every marker written before this grammar existed still parses as a
+# one-label unpinned marker.
+_REF = r"[a-z]+:[\w-]+(?:@[0-9a-f]{12})?(?:\+[0-9a-f]{12})?"
 MARKER_RE = re.compile(
     r"%[^\n]*?shared[^\n]*?with blueprint\s+(" + _REF + r"(?:\s*,\s*" + _REF + r")*)")
+
+
+def _split_ref(ref: str) -> tuple[str, str, str]:
+    """`label@stmt+proof` -> (label, statement sha or "", proof sha or "")."""
+    ref, _, proof = ref.strip().partition("+")
+    label, _, sha = ref.partition("@")
+    return label, sha, proof
 
 
 def paper_files(cfg: Config) -> list[Path]:
@@ -132,7 +140,13 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
     no *other* marker intervenes — a marker whose own statement was deleted must not
     silently adopt the following one's and report it as drift.
     """
-    from .parse_latex import PROOF_AHEAD, proof_ref_labels, shared_statement, split_env_title
+    from .parse_latex import (
+        PROOF_AHEAD,
+        proof_ref_labels,
+        shared_proof,
+        shared_statement,
+        split_env_title,
+    )
 
     env_re = re.compile(
         r"\\begin\{(" + "|".join(cfg.statement_envs) + r")\}(.*?)\\end\{\1\}", re.S)
@@ -146,14 +160,15 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
             body = em.group(2) if em and em.start() < nxt else None
             lm = re.search(r"\\label\{([^}]+)\}", body) if body else None
             pm = PROOF_AHEAD.match(t, em.end()) if body is not None else None
-            proof_refs = (proof_ref_labels(pm.group(1))
-                          if pm and pm.end() <= nxt else None)
-            labels, pinned = [], {}
-            for ref in (r.strip() for r in m.group(1).split(",")):
-                label, _, sha = ref.partition("@")
+            proof = pm.group(1) if pm and pm.end() <= nxt else None
+            labels, pinned, proof_pinned = [], {}, {}
+            for ref in m.group(1).split(","):
+                label, sha, psha = _split_ref(ref)
                 labels.append(label)
                 if sha:
                     pinned[label] = sha
+                if psha:
+                    proof_pinned[label] = psha
             out.append(PaperMarker(
                 file=f.relative_to(cfg.root).as_posix(),
                 blueprint_labels=labels,
@@ -162,7 +177,9 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
                 pinned=pinned,
                 shared_statement=(shared_statement(split_env_title(body)[1])
                                   if body is not None else None),
-                proof_refs=proof_refs,
+                proof_refs=proof_ref_labels(proof) if proof is not None else None,
+                shared_proof=shared_proof(proof) if proof is not None else None,
+                proof_pinned=proof_pinned,
                 raw=m.group(0),
             ))
     return out
@@ -227,26 +244,36 @@ def unshared_statements(cfg: Config) -> list[tuple[str, int, str, str | None]]:
     return out
 
 
-def pin_shared(cfg: Config, shas: dict[str, str], only: set[str] | None = None) -> int:
+def pin_shared(cfg: Config, shas: dict[str, str], only: set[str] | None = None,
+               proof_shas: dict[str, str] | None = None,
+               proof_only: set[str] | None = None) -> int:
     """Rewrite paper markers to pin the current sha of each label they name.
 
     Maintaining these by hand would not happen, so the checker that asks for them
-    supplies them. Only markers in `only` (keyed by "file:line") are touched, so the
-    caller can pin exactly the ones it decided need pinning and leave verbatim 1:1
-    markers clean.
+    supplies them. Only markers in `only` (keyed by "file:line") have their statement
+    pins written, so the caller can pin exactly the ones it decided need pinning and
+    leave verbatim 1:1 markers clean; markers in `proof_only` have their proof pins
+    (`+<sha12>`, from `proof_shas`) written the same way. A pin of the other kind is
+    kept as it stands.
     """
+    proof_shas, proof_only = proof_shas or {}, proof_only or set()
     changed = 0
     for f in paper_files(cfg):
         text = orig = read(f)
         rel = f.relative_to(cfg.root).as_posix()
         for m in reversed(list(MARKER_RE.finditer(orig))):
             key = f"{rel}:{orig.count(chr(10), 0, m.start()) + 1}"
-            if only is not None and key not in only:
+            stmt = only is None or key in only
+            if not stmt and key not in proof_only:
                 continue
             refs = []
-            for ref in (r.strip() for r in m.group(1).split(",")):
-                label = ref.partition("@")[0]
-                refs.append(f"{label}@{shas[label]}" if label in shas else label)
+            for ref in m.group(1).split(","):
+                label, sha, psha = _split_ref(ref)
+                if stmt and label in shas:
+                    sha = shas[label]
+                if key in proof_only and label in proof_shas:
+                    psha = proof_shas[label]
+                refs.append(label + (f"@{sha}" if sha else "") + (f"+{psha}" if psha else ""))
             new = m.group(0).replace(m.group(1), ", ".join(refs))
             text = text[:m.start()] + new + text[m.end():]
         if text != orig:

@@ -81,30 +81,6 @@ namespaced (`/article-kit:fidelity-review`).
 
 ---
 
-## process: a shared proof of record drifts from its paper and no gate sees it
-
-**Wanted by** `spatial-hemigroup-scale-space` (module C, the first external review), 2026-09-27.
-
-`linkage check` compares `% shared with blueprint` **statements** byte for byte and says nothing
-about the **proofs** beneath them, which the paper transcribes by hand. Module C's external referee
-was therefore sent a proof of record that the blueprint had repaired five days earlier: the converse
-of a signed-data corollary, whose printed step was circular (row R257 says so in those words) and
-whose Lean carries the repair. A hand sweep of the chapter's ten proof environments against the
-blueprint then found two more, the oldest stale since row R255, one of them a proof that had lost
-both its substantive steps and asserted its conclusion bare. Nothing in the gate set could see any
-of the three, and the commit that repaired the statements said only that the statement was
-re-transcribed.
-
-**Suggested shape:** an advisory in `linkage check` for a drifted proof — either a second sha beside
-the statement's, over the `proof` environment that follows a `% shared with blueprint <label>`
-marker, or a normalized-text comparison tolerating reference style and the deliberate removal of
-machine-check bookkeeping from the reader's text. The advisory matters more than a fatal: a paper's
-proof is legitimately allowed to differ, so what is wanted is a report a human reads, not a gate that
-blocks. If a sha is used it needs the escape hatch the statements already have for a tracked-by-sha
-node.
-
----
-
 ## process: a node's annotation lists its declaration's hypotheses, not only its conclusion
 
 **Wanted by** `spatial-hemigroup-scale-space` (module C, the first external review), 2026-09-27.

@@ -73,8 +73,9 @@ URL_MACRO_RE = re.compile(r"^\\(" + "|".join(URL_MACROS) + r")\{[^}]*\}", re.M)
 LEAN_RE = re.compile(r"\\lean\{([^}]*)\}", re.S)
 IMPORT_RE = re.compile(r"^import\s+(\S+)", re.M)
 
-# linkage's marker grammar (artifacts.MARKER_RE): labels, optionally pinned to a sha, comma-separated.
-_REF = r"[a-z]+:[\w-]+(?:@[0-9a-f]{12})?"
+# linkage's marker grammar (artifacts.MARKER_RE): labels, each optionally pinned to a statement
+# sha (`@`) and a proof sha (`+`), comma-separated.
+_REF = r"[a-z]+:[\w-]+(?:@[0-9a-f]{12})?(?:\+[0-9a-f]{12})?"
 SHARED_RE = re.compile(
     r"%[^\n]*?shared[^\n]*?with blueprint\s+(" + _REF + r"(?:\s*,\s*" + _REF + r")*)")
 
@@ -568,7 +569,7 @@ class Exporter:
         for f in sorted(paper.glob("*.tex")) if paper.is_dir() else []:
             for m in SHARED_RE.finditer(f.read_text(encoding="utf-8")):
                 for ref in m.group(1).split(","):
-                    labels.append(ref.strip().partition("@")[0])
+                    labels.append(re.split(r"[@+]", ref.strip())[0])
         return labels
 
     def harvest_tags(self, chapters: list[str],
@@ -700,7 +701,7 @@ class Exporter:
             if p.startswith(paper_dir + "/") and p.endswith(".tex"):
                 for m in SHARED_RE.finditer(text):
                     for ref in m.group(1).split(","):
-                        shared_labels.append(ref.strip().partition("@")[0])
+                        shared_labels.append(re.split(r"[@+]", ref.strip())[0])
 
         decls: collections.OrderedDict[str, tuple[str, str]] = collections.OrderedDict()
 
