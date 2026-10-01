@@ -52,6 +52,9 @@ article repository*.
       "% no blueprint node: <reason>" opt-out (rule 12)
     - a shared statement that has drifted from its blueprint node (fatal under
       --strict-shared; see 3b)
+    - the proof environment directly after a shared statement, when it neither equals the
+      blueprint node's proof of record nor is pinned (`<label>+<sha12>`) to its current
+      version (3d; advisory under every flag -- a paper's proof may legitimately differ)
     - a \\leanok node with no \\lean{}, or a node marked both \\leanok and \\notready
     - a \\leanok statement whose proof environment carries no \\leanok: the node paints
       green-bordered on blue, which the graph's legend reads as "ready to be formalized"
@@ -92,6 +95,8 @@ class Findings:
     stats: dict = field(default_factory=dict)
     unpinned: list = field(default_factory=list)
     """Markers `--pin-shared` would write a sha into."""
+    proof_unpinned: list = field(default_factory=list)
+    """Markers `--pin-shared` would write a proof sha into (check 3d)."""
 
     @property
     def ok(self) -> bool:
@@ -210,6 +215,39 @@ def _divergence(paper: str, blueprint: str, width: int = 72) -> str:
         f"             paper     : {paper[i:i + width]}",
         f"             blueprint : {blueprint[i:i + width]}",
     ])
+
+
+def _proof_drift(mk: PaperMarker, nodes: list[Node], out: list[str],
+                 unpinned: list[PaperMarker]) -> str | None:
+    """Check 3d: has the blueprint's proof moved away from the one the paper prints?
+
+    The statement's pin covers the statement only, and the paper transcribes the proof
+    beneath it by hand — so a blueprint repair of a circular proof left the paper's old
+    proof standing, and nothing saw it (module C, 2026-09-27). The same three states as
+    the statement's, with `+<sha12>` as the pin; silent when the paper prints no proof
+    there or no node it names carries one. Returns the state, for the counts.
+    """
+    with_proof = [n for n in nodes if n.shared_proof is not None]
+    if mk.shared_proof is None or not with_proof:
+        return None
+    if len(nodes) == 1 and mk.shared_proof == nodes[0].shared_proof:
+        return "verbatim"
+    if moved := [n.label for n in with_proof
+                 if mk.proof_pinned.get(n.label) not in (None, n.shared_proof_sha)]:
+        out.append(
+            f"[proof]  {mk.file}:{mk.line}: the blueprint proof of {', '.join(moved)} changed "
+            f"since this paper's proof was pinned to it — re-read the proof against the "
+            f"blueprint's, then re-pin with `linkage check --pin-shared`")
+    elif unpin := [n.label for n in with_proof if n.label not in mk.proof_pinned]:
+        out.append(
+            f"[proof]  {mk.file}:{mk.line} {', '.join(unpin)}: the paper's proof "
+            + (_divergence(mk.shared_proof, nodes[0].shared_proof or "") if len(nodes) == 1
+               else "renders the blueprint proofs editorially")
+            + " — if it is meant to differ, pin it with `linkage check --pin-shared`")
+    else:
+        return "tracked"
+    unpinned.append(mk)
+    return "drift"
 
 
 def run(
@@ -397,6 +435,9 @@ def run(
     drifted: list[str] = []
     unpinned: list[PaperMarker] = []
     verbatim = tracked = no_env = 0
+    proof_drift: list[str] = []
+    proof_unpinned: list[PaperMarker] = []
+    proof_counts = {"verbatim": 0, "tracked": 0, "drift": 0}
     for mk in markers:
         if missing := [lab for lab in mk.blueprint_labels if lab not in labels]:
             fatal.append(
@@ -450,6 +491,9 @@ def run(
                         f"[uses]   {mk.file}:{mk.line} {n.label}: the paper's proof never "
                         f"\\ref's {len(missing_uses)} of {len(n.uses)} blueprint \\uses "
                         f"target(s): {', '.join(missing_uses)}")
+        proof_state = _proof_drift(mk, nodes_here, proof_drift, proof_unpinned)
+        if proof_state:
+            proof_counts[proof_state] += 1
         if len(nodes_here) == 1 and mk.shared_statement == nodes_here[0].shared_statement:
             verbatim += 1
             continue
@@ -481,6 +525,11 @@ def run(
     # it, which is what CI should adopt once an article's backlog is clear.
     (fatal if strict_shared else advisory).extend(drifted)
     f.unpinned = unpinned
+    # 3d is advisory under every flag, `--strict-shared` included: a paper's proof is
+    # legitimately allowed to differ from the proof of record, so what it owes is a
+    # report a human reads, never a gate that blocks.
+    advisory.extend(proof_drift)
+    f.proof_unpinned = proof_unpinned
 
     # 12. a paper statement with no blueprint node (2026-09-27)
     #
@@ -545,6 +594,9 @@ def run(
         "shared_tracked": tracked,
         "shared_no_env": no_env,
         "shared_drift": len(drifted),
+        "proof_verbatim": proof_counts["verbatim"],
+        "proof_tracked": proof_counts["tracked"],
+        "proof_drift": proof_counts["drift"],
         "paper_unshared": len(unshared),
         "trust_base": tb.stats,
         "reached_unproved": len(reached_unproved),

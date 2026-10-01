@@ -77,6 +77,11 @@ class Node:
     proof: str | None = None
     """Proof-of-record text, normalized the same way. None when there is no proof."""
 
+    shared_proof: str | None = None
+    """The proof reduced to what a paper transcribing it is supposed to share: `proof`
+    with reference style (`\\cref`, `Lemma~\\ref`) reduced to `\\ref`. A comparison key
+    for check 3d, never projected — `proof`/`proof_sha` are the manifest's."""
+
     statement_render_src: str = ""
     """Statement source normalized for the renderer — differs from `statement` only in
     keeping in-prose ledger refs as text."""
@@ -102,6 +107,16 @@ class Node:
         shares has moved.
         """
         return sha12(self.shared_statement)
+
+    @property
+    def shared_proof_sha(self) -> str | None:
+        """Digest of `shared_proof` — what a paper marker's `+<sha12>` pins its proof to.
+
+        A second sha rather than a widened first one: folding the proof into `shared_sha`
+        would report every pinned statement stale at once, and would make a repaired
+        proof indistinguishable from a changed statement. None when there is no proof.
+        """
+        return sha12(self.shared_proof) if self.shared_proof is not None else None
 
     def proof_of_record(self) -> str:
         """The node's blueprint proof, or "" — a proof environment with content in it."""
@@ -171,6 +186,14 @@ class PaperMarker:
     """Labels `\\ref`/`\\cref`ed in the proof environment that directly follows the marked
     statement. None when no proof follows it (the paper proves it elsewhere, or not at all),
     which the `\\uses` advisory must not read as "cites nothing"."""
+
+    shared_proof: str | None = None
+    """That same proof under the blueprint node's `shared_proof` reduction. None when no
+    proof follows the marked statement."""
+
+    proof_pinned: dict[str, str] = field(default_factory=dict)
+    """label -> the `shared_proof_sha` the paper's proof was written against, from a
+    `<label>[@<sha12>]+<sha12>` ref. Empty when no proof is pinned."""
 
     raw: str = ""
     """The marker's own text, so `--pin-shared` can rewrite it in place."""

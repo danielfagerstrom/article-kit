@@ -129,6 +129,38 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    node lists no `\uses{}`. Only `\uses{}` in the statement environment count, the ones the manifest
    projects as edges.
 
+   **And the proof's text, as an advisory with its own pin** (2026-10-01). The statement pin covers
+   the statement only; the paper transcribes the proof beneath it by hand. In Paper V module C the
+   blueprint repaired a circular proof of a corollary's converse five days before an external review,
+   the paper still printed the old one, and a hand sweep found two more stale proofs; nothing above
+   saw any of them. So each ref in a marker may carry a second pin, `+<sha12>`, over the node's proof:
+
+   ```
+   % shared with blueprint <label>[@<sha12>][+<sha12>][, …]
+   ```
+
+   When a `proof` environment directly follows the marked statement and a named node has a proof of
+   record, `linkage check` compares them with the statement's three states: **verbatim** (one label,
+   texts equal after the reduction below; silent, needs no pin), **tracked** (every proof-bearing node
+   is `+`-pinned to its current sha; silent), and otherwise one `[proof]` advisory — *stale* if a pin
+   no longer matches, with "re-read, then re-pin", or *unpinned*, with where the two texts part
+   company. `--pin-shared` writes the `+` pins for both (keeping any `@` pin as it stands), which is
+   the escape hatch for a proof legitimately allowed to differ: pin it once, after reading it, and it
+   is flagged again only when the blueprint's proof next moves.
+
+   The pin is over `shared_proof`: the proof under `normalize_statement` (which already drops
+   comments, `\leanok`, `\uses{}`, `\lean{}` — the bookkeeping a reader's text omits), with `\cref`,
+   `\Cref` and `\autoref` read as `\ref` and the environment word before a `\ref` dropped. It is a
+   comparison key; the manifest's `proof`/`proof_sha` do not move. Why a second sha rather than a
+   normalized comparison alone: a paper's proof routinely differs from the proof of record on
+   purpose, and a text comparison would flag those forever, whereas a pin records *which version* the
+   paper was written against, so a repair to the blueprint's proof surfaces even when the paper's
+   wording was never identical to it. And why not widen the statement's pin: that would report every
+   pinned statement stale at once, and a repaired proof would read as a moved statement.
+
+   Advisory under every flag, `--strict-shared` included: it never changes the exit code. The summary
+   prints `shared proofs: N compared (v verbatim, t tracked by sha, d to re-read)` when there are any.
+
    **A repository may hold several papers** (2026-09-15). `paths.paper` in `linkage.toml` takes a
    directory *or a list of them*:
 

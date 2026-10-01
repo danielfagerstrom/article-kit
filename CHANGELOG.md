@@ -7,6 +7,15 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage check` advises on a shared proof that has drifted from its blueprint (Q-0234).**
+  A marker's ref may now carry a proof pin, `<label>[@<sha12>]+<sha12>`, over the node's
+  `shared_proof` (the proof without its machine-check bookkeeping, reference style reduced). The
+  `proof` environment directly after a shared statement is verbatim, tracked by that pin, or a
+  `[proof]` advisory (stale pin, or unpinned and different, with where the texts part company);
+  `--pin-shared` writes the pin. Advisory under every flag, `--strict-shared` included. From Paper
+  V module C, where a referee was sent a circular proof the blueprint had repaired five days
+  earlier. `docs/LINKAGE.md` rule 4; `tests/test_checks_shared_proof.py`. The WISHLIST entry is
+  removed.
 - **The reviewer contract adopted, with a scope-audit mode and the `QUANTITY` tag (Q-0108).**
   `docs/REVIEWER-CONTRACT.md`: the hub's `draft-reviewer` now emits the contract's JSONL records
   (returned as its final message, since it is read-only, and saved by the caller) instead of a
