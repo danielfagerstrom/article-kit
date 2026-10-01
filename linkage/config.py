@@ -132,6 +132,11 @@ class Module:
     """Per-tag overrides of `chapters`/`paper`/`roots`, for a release whose parameters have
     since moved: `linkage release export --cites <tag>` recomputes *that* release's closure,
     so it must read the parameters as they stood, not today's."""
+    deposit_sentences: dict[str, str] = field(default_factory=dict)
+    r"""`{"draft": ..., "release": ...}`: the trust-base subsection's deposit sentence in its
+    prospective and its asserted form (docs/WRITING.md § 4), gated by the release gate
+    (`release.release_gate`) the same way the date line is. Empty — the default — leaves the
+    module unchecked, as every module was before this field existed."""
 
     def records_path(self, name: str) -> str | None:
         return f"{self.records}/{name}" if self.records else None
@@ -394,6 +399,14 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
                 raise ConfigError(
                     f"{CONFIG_NAME}: module {name!r}: `shared_nodes` is 'omit' or 'whole', "
                     f"not {shared!r}")
+            deposit = r.get("deposit_sentences", {})
+            if not isinstance(deposit, dict) or (
+                    deposit and (set(deposit) != {"draft", "release"}
+                                or not all(isinstance(v, str) for v in deposit.values()))):
+                raise ConfigError(
+                    f"{CONFIG_NAME}: module {name!r}: `deposit_sentences` must set both `draft` "
+                    f"and `release` as strings, e.g. deposit_sentences = {{draft = \"...\", "
+                    f"release = \"...\"}}")
             out.append(Module(
                 name=str(name),
                 chapters=tuple(str(c) for c in r.get("chapters", ())),
@@ -414,6 +427,7 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
                 abstract_macros=dict(r.get("abstract_macros", {})),
                 axioms_section=str(r.get("axioms_section", DEFAULT_AXIOMS_SECTION)),
                 releases={str(k): dict(v) for k, v in releases.items()},
+                deposit_sentences={str(k): str(v) for k, v in deposit.items()},
             ))
         return tuple(out)
 

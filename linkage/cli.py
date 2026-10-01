@@ -93,11 +93,17 @@ def cmd_check(args) -> int:
     from . import shape
     f.advisory.extend(shape.check(cfg.root))
 
-    if args.pin_shared and f.unpinned:
+    if args.pin_shared and (f.unpinned or f.proof_unpinned):
         shas = {n.label: n.shared_sha for n in bp.nodes if n.label}
+        proof_shas = {n.label: n.shared_proof_sha for n in bp.nodes
+                      if n.label and n.shared_proof_sha}
         keys = {f"{m.file}:{m.line}" for m in f.unpinned}
-        n = artifacts.pin_shared(cfg, shas, only=keys)
-        print(f"Pinned {len(keys)} marker(s) across {n} file(s); re-run to verify.")
+        proof_keys = {f"{m.file}:{m.line}" for m in f.proof_unpinned}
+        n = artifacts.pin_shared(cfg, shas, only=keys,
+                                 proof_shas=proof_shas, proof_only=proof_keys)
+        print(f"Pinned {len(keys | proof_keys)} marker(s) across {n} file(s)"
+              + (f" ({len(proof_keys)} with a proof sha)" if proof_keys else "")
+              + "; re-run to verify.")
         return 0
 
     s = f.stats
@@ -111,6 +117,11 @@ def cmd_check(args) -> int:
           f"{s['ledger_refs']} ledger refs, {s['paper_shared']} paper shared-statements "
           f"({verb} verbatim, {trk} tracked by sha, {drift} needing attention"
           + (f", {noenv} on prose" if noenv else "") + ").")
+    if pv := s.get("proof_verbatim", 0) + s.get("proof_tracked", 0) + s.get("proof_drift", 0):
+        # Only when a shared statement is followed by a proof both sides carry; advisory
+        # under every flag (check 3d).
+        print(f"  shared proofs: {pv} compared ({s['proof_verbatim']} verbatim, "
+              f"{s['proof_tracked']} tracked by sha, {s['proof_drift']} to re-read).")
     if len(cfg.papers) > 1:
         # One line per paper only when there is more than one: with a single directory
         # it would repeat the count just printed.
@@ -492,7 +503,8 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--pin-shared", action="store_true",
                    help="record in each paper marker the sha of every blueprint node it "
                         "renders editorially, so a later blueprint edit surfaces as stale "
-                        "rather than diverging silently")
+                        "rather than diverging silently; likewise (`+<sha>`) the proof sha "
+                        "of every node whose proof the paper prints differently")
     c.add_argument("--strict-shared", action="store_true",
                    help="fail (exit 1) on a paper statement that has drifted from the "
                         "blueprint node it declares it shares, instead of reporting it as "
