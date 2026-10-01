@@ -218,7 +218,36 @@ def version_history_text(paper: Path) -> str | None:
     return None
 
 
-def release_gate(paper: Path, tag: str, root: Path, doi: str | None = None) -> list[str]:
+def deposit_sentence_faults(paper: Path, sentences: dict[str, str]) -> list[str]:
+    r"""The trust-base subsection's deposit sentence (docs/WRITING.md § 4) must match the build:
+    prospective in a draft ("will be deposited..."), asserted at a release ("deposited... under
+    the DOI..."). The two drifted apart in module C's review build
+    (`spatial-hemigroup-scale-space`, 2026-09-27): the paper asserted an export and a first-page
+    DOI that a referee could not resolve, because only the date line and the PDF were gated.
+
+    `sentences` is the module's `deposit_sentences` table (`linkage.toml`, `draft`/`release`
+    phrases); a module that sets none is unchecked, as before this port.
+
+    Checked over every `.tex` file of the paper rather than a fixed chapter file: article-kit
+    papers range from a single `main.tex` to a chaptered split, and the trust-base subsection
+    (`modules.axioms_section`) can live in either.
+    """
+    flat = " ".join(
+        " ".join(strip_comments(f.read_text(encoding="utf-8")).split())
+        for f in sorted(paper.glob("*.tex"))).lower()
+    draft_phrase, release_phrase = sentences["draft"], sentences["release"]
+    faults = []
+    if draft_phrase.lower() in flat:
+        faults.append(f'{paper.name} still carries the draft deposit sentence '
+                      f'("{draft_phrase}..."): swap in the release form once the export exists')
+    if release_phrase.lower() not in flat:
+        faults.append(f'{paper.name} does not carry the release deposit sentence '
+                      f'("...{release_phrase}..."), so the paper does not say where the export is')
+    return faults
+
+
+def release_gate(paper: Path, tag: str, root: Path, doi: str | None = None,
+                 deposit_sentences: dict[str, str] | None = None) -> list[str]:
     r"""What keeps a build from being a release: the faults of the paper's date line and PDF.
 
     A release PDF prints its date and version (RELEASE.md rule 5) and, where the DOI was
@@ -231,6 +260,9 @@ def release_gate(paper: Path, tag: str, root: Path, doi: str | None = None) -> l
     version-history entry for the version being exported. A first release is exempt from both,
     the same way it is exempt from having a version history section at all; and a date line
     still marked as a draft is faulted on its own terms rather than piling rule 6 on top.
+
+    `deposit_sentences`, where the module sets one, gates the trust-base subsection's deposit
+    sentence the same way (`deposit_sentence_faults`), whether or not the PDF exists yet.
 
     An empty list means the build can be released.
     """
@@ -284,6 +316,8 @@ def release_gate(paper: Path, tag: str, root: Path, doi: str | None = None) -> l
                                   f"the template")
                 elif version not in vh:
                     faults.append(f"the \"Version history\" section names no entry for {version}")
+    if deposit_sentences:
+        faults += deposit_sentence_faults(paper, deposit_sentences)
     pdf = paper / "main.pdf"
     if not pdf.exists():
         faults.append(f"{name}/main.pdf does not exist: build the paper into its own directory "
@@ -1045,7 +1079,8 @@ def export(cfg: Config, args) -> int:
     n_rows, n_unfound, n_amb = ex.write_index(ex.form / "INDEX.md", mods, marked, first.name)
     print(f"index: {(ex.form / 'INDEX.md').relative_to(cfg.root).as_posix()} written "
           f"({n_rows} node-declaration rows, {n_unfound} not found, {n_amb} ambiguous)")
-    faults = release_gate(paper, tag, cfg.root, ex.doi) if paper.is_dir() else []
+    faults = (release_gate(paper, tag, cfg.root, ex.doi, mod.deposit_sentences)
+             if paper.is_dir() else [])
     if faults:
         print("release gate: this build is NOT a release"
               + (" (--draft: exported all the same)" if ex.draft else ""))

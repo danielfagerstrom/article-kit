@@ -212,6 +212,53 @@ def test_the_doi_must_be_printed_by_the_paper(cone_first_release: Path) -> None:
                         "is not printed by")
 
 
+# ---- the deposit sentence gate -----------------------------------------------------------------
+
+DEPOSIT_SENTENCES = {"draft": "will be deposited as a verification export",
+                     "release": "deposited with this version of the paper under the doi"}
+
+
+def write_paper_with_body(root: Path, date_line: str, body: str, name: str = "paper") -> Path:
+    paper = root / name
+    paper.mkdir(exist_ok=True)
+    (paper / "main.tex").write_text(
+        "\\documentclass{article}\n"
+        f"\\date{{{date_line}}}\n"
+        "\\begin{document}\n"
+        f"{body}\n"
+        "\\end{document}\n",
+        encoding="utf-8")
+    return paper
+
+
+def test_deposit_sentence_draft_phrase_faults_when_the_release_form_is_due(repo: Path) -> None:
+    paper = write_paper_with_body(
+        repo, "September 20, 2026 (v0.1)",
+        "The export " + DEPOSIT_SENTENCES["draft"] + ", named on the first page.")
+    faults = release.release_gate(paper, "v0.1", repo, deposit_sentences=DEPOSIT_SENTENCES)
+    assert faults_about(faults, "draft deposit sentence")
+
+
+def test_deposit_sentence_release_phrase_with_the_doi_is_clean(repo: Path) -> None:
+    paper = write_paper_with_body(
+        repo, "September 20, 2026 (v0.1)",
+        "The verification export is " + DEPOSIT_SENTENCES["release"]
+        + " 10.5281/zenodo.1 printed on the first page.")
+    faults = release.release_gate(paper, "v0.1", repo, deposit_sentences=DEPOSIT_SENTENCES)
+    assert not faults_about(faults, "deposit sentence")
+
+
+def test_deposit_sentence_faults_when_neither_phrase_is_present(repo: Path) -> None:
+    paper = write_paper_with_body(repo, "September 20, 2026 (v0.1)", "Nothing about a deposit.")
+    faults = release.release_gate(paper, "v0.1", repo, deposit_sentences=DEPOSIT_SENTENCES)
+    assert faults_about(faults, "release deposit sentence")
+
+
+def test_a_module_without_deposit_sentences_is_unaffected(repo: Path) -> None:
+    paper = write_paper_with_body(repo, "September 20, 2026 (v0.1)", "Nothing about a deposit.")
+    assert not faults_about(release.release_gate(paper, "v0.1", repo), "deposit sentence")
+
+
 # ---- the module table -------------------------------------------------------------------------
 
 TOML = """\
@@ -341,6 +388,25 @@ def test_a_releases_table_holds_a_tags_own_parameters(tmp_path: Path) -> None:
     mod = config.load(root).module("cone")
     assert mod.parameters_at("cone-v0.1") == (("02",), "paper-b", ("Lib.Interfaces",))
     assert mod.parameters_at("cone-v0.2") == (("03",), "paper-b", ("Lib.Interfaces",))
+
+
+def test_deposit_sentences_is_read_from_the_module_table(tmp_path: Path) -> None:
+    root = build_article(tmp_path / "art")
+    root.joinpath("linkage.toml").write_text(
+        TOML + "\n[modules.deposit_sentences]\ndraft = \"will be\"\nrelease = \"was\"\n",
+        encoding="utf-8")
+    cfg = config.load(root)
+    assert cfg.module("cone").deposit_sentences == {"draft": "will be", "release": "was"}
+    assert cfg.module("line").deposit_sentences == {}
+
+
+def test_deposit_sentences_must_set_both_phrases(tmp_path: Path) -> None:
+    root = build_article(tmp_path / "art")
+    root.joinpath("linkage.toml").write_text(
+        TOML + "\n[modules.deposit_sentences]\ndraft = \"will be\"\n", encoding="utf-8")
+    with pytest.raises(config.ConfigError) as e:
+        config.load(root)
+    assert "deposit_sentences" in str(e.value)
 
 
 # ---- the export ---------------------------------------------------------------------------------
