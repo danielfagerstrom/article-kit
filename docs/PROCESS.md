@@ -93,7 +93,10 @@ merge is gated by `lake build`, the axiom guard run to completion with its exit 
 `linkage check`. A proved declaration moves out of `Skeleton/` and its node goes `\leanok`. When a
 Lean proof takes another route than the printed one, the blueprint proof is rewritten to the checked
 route. Statement changes in the safe direction (narrowing, splitting, restating an interface at its
-source's letter) carry a `% CHANGED` marker and a ledger row; a widening waits for the author.
+source's letter) carry a `% CHANGED` marker and a ledger row; a widening waits for the author. The
+marker goes on its own line, before the changed text, never after it — appended after a replacement
+that stopped mid-line, it turns the rest of that line into comment, which the scaffolded
+`scripts/check-swallowed-prose.py` gates.
 
 ### 6. The fidelity review
 

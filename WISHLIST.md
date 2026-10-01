@@ -144,26 +144,6 @@ of a statement.
 
 ---
 
-## process: a change marker inserted mid-line swallows the rest of the line, and only the PDF shows it
-
-**Wanted by** `spatial-hemigroup-scale-space` (module C, round 3's presentation review), 2026-09-28.
-
-The session rules have every statement change carry a `% CHANGED` marker in the source. When an edit
-script ends its replacement with the marker line, and the text it matched stopped in the middle of a
-source line, the rest of that line becomes part of the comment. Nothing sees it: the build is clean,
-`linkage check` strips comments on both sides of a shared statement so it stays verbatim, and every
-review that reads the source reads the words. Module C carried thirteen such broken sentences through
-two external rounds and a blind summary pass; the third round's presentation referee, reading the
-PDF, found three, and a detector then found the rest.
-
-**Suggested shape:** a gate beside the control-character check. The article's copy is
-`spatial-hemigroup-scale-space`'s `scripts/check-swallowed-prose.py <base>`: an added comment line,
-followed directly by prose, whose tail with that prose occurs as prose in the base revision's text. It
-passes on the repaired tree and finds twelve of the thirteen on the unrepaired one. And a rule for the
-session contract: a marker goes on its own line *before* the changed text, never after it.
-
----
-
 ## process: three gaps the release export showed on a paper that prints four axiom blocks
 
 **Wanted by** `spatial-hemigroup-scale-space` (module C, `selection-v0.1`), 2026-09-30.

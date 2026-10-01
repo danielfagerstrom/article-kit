@@ -21,7 +21,10 @@ Framework-owned (`linkage init --sync`); do not edit here. The phases are
   route than the printed one, the blueprint proof is rewritten to the checked route.
 - **Statement changes** in the safe direction (narrow, split out, restate at the source's letter,
   drop what nothing reads) carry a `% CHANGED` marker and a ledger row and are reported as
-  decisions; a widening, or admitting an interface, waits for the author.
+  decisions; a widening, or admitting an interface, waits for the author. The marker goes on its
+  own line, before the changed text, never after it — appended after a replacement that stopped
+  mid-line, it turns the rest of that line into comment, which the scaffolded
+  `scripts/check-swallowed-prose.py` gates.
 - **One Lean-building agent at a time** on this machine. In a fresh worktree, copy the main
   checkout's `Formalization/.lake/build` in before the first `lake build` (parallel elaboration
   against the shared store drops olean reads).
