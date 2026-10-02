@@ -19,6 +19,9 @@ FIXTURES = REPO / "tests" / "fixtures" / "reviews"
 A, B, C = (FIXTURES / f"review-{x}.jsonl" for x in "abc")
 BAD = FIXTURES / "malformed.jsonl"
 
+SCOPE_AUDIT = REPO / "tests" / "fixtures" / "scope-audit"
+SCOPE_AUDIT_JSONL = SCOPE_AUDIT / "scope-audit-moduleB.jsonl"
+
 
 def agg(*paths: Path, top: int = 10):
     return review.aggregate(list(paths), FIXTURES, top=top)
@@ -199,6 +202,21 @@ def test_the_cli_exits_one_on_a_malformed_record_and_says_what_survived():
     rc, _, err = run_cli("review", "--base", str(FIXTURES), str(BAD))
     assert rc == 1
     assert "REVIEW AGGREGATE" in err and "malformed record(s)" in err
+
+
+def test_a_scope_audit_s_neighbour_labels_no_longer_chain_every_defect_into_one_thread():
+    """Fixture derived from `spatial-hemigroup-scale-space`'s scope-audit trial on module
+    B (Q-0108, `records/cone/TRIAL-scope-audit.md`): 35 real flags, same anchors and
+    `refs`, pooling into the same 28 defects the trial reported. Each flag's `refs` names
+    the statement it cites first and that statement's neighbours after, as the scope-audit
+    mode always does — exactly the shape that, clustering on the full `refs` intersection,
+    chained all 28 into one thread. Clustering on the primary referent (`refs[0]`) alone
+    splits them."""
+    doc, _, rc = review.aggregate([SCOPE_AUDIT_JSONL], SCOPE_AUDIT)
+    assert rc == 0, doc["malformed"]
+    assert len(doc["defects"]) == 28
+    assert len(doc["threads"]) > 1
+    assert all(len(t["defects"]) < 28 for t in doc["threads"])
 
 
 def test_the_cli_json_is_the_whole_aggregate():
