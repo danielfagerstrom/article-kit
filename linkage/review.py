@@ -83,6 +83,17 @@ class Flag:
     line: int | None = None
     source: str = ""
 
+    @property
+    def primary_ref(self) -> str | None:
+        """The statement this flag is actually about — the first `refs` entry.
+
+        The rest of `refs` are neighbours the flag's prose happens to cite (the standing
+        hypothesis, a sibling corollary); evidence for pooling, but not what the flag is
+        a report of. Threads cluster on this, not on the full set (contract, "Defect
+        identity").
+        """
+        return self.refs[0] if self.refs else None
+
 
 @dataclass(frozen=True)
 class Problem:
@@ -119,6 +130,12 @@ class Defect:
     @property
     def refs(self) -> list[str]:
         return sorted({r for f in self.flags for r in f.refs})
+
+    @property
+    def primary_refs(self) -> list[str]:
+        """The statements this defect's flags are actually about — used for thread
+        clustering (`thread()`), never for pooling, which still uses `refs` in full."""
+        return sorted({r for f in self.flags for r in (f.primary_ref,) if r})
 
     @property
     def rank(self) -> tuple:
@@ -451,8 +468,14 @@ def pool(flags: list[Flag]) -> list[Defect]:
 def thread(defects: list[Defect]) -> list[Thread]:
     """Propose threads: defects that reach across sections into one decision.
 
-    Joined by a shared label, or — same tag only — by one defect's `elsewhere` naming the
-    other's file. A thread of a single defect is not a thread and is not emitted.
+    Joined by a shared *primary* referent — the statement a defect's flags are actually
+    about, `Defect.primary_refs` — or, same tag only, by one defect's `elsewhere` naming
+    the other's file. Not the full `refs` intersection: a flag's `refs` also names the
+    referent's neighbours (its standing hypothesis, a sibling corollary), and a scope-audit
+    flag always does, so clustering on the full set chains every defect in a paper through
+    shared neighbours regardless of whether they are the same finding (the scope-audit
+    trial, where this merged 28 defects into one thread). A thread of a single defect is
+    not a thread and is not emitted.
     """
     u = _Union(len(defects))
     for i, a in enumerate(defects):
@@ -460,7 +483,8 @@ def thread(defects: list[Defect]) -> list[Thread]:
         for j in range(i + 1, len(defects)):
             b = defects[j]
             b_else = {e for f in b.flags for e in f.elsewhere}
-            if set(a.refs) & set(b.refs) or a.tag == b.tag and (b.file in a_else or a.file in b_else):
+            if (set(a.primary_refs) & set(b.primary_refs)
+                    or a.tag == b.tag and (b.file in a_else or a.file in b_else)):
                 u.join(i, j)
     threads = []
     for idxs in u.groups():

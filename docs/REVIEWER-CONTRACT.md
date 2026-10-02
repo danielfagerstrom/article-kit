@@ -123,7 +123,7 @@ Two rules make the declaration load-bearing rather than decorative:
 | `severity` | yes | 1–3, the reviewer's local read. Recorded, never the sort key |
 | `claim` | yes | one sentence: what is wrong |
 | `probe` | yes | what to check or change. **Never a rewrite the reviewer imposes** |
-| `refs` | yes | every label the flag implicates, not only the one it sits on. This is what clusters |
+| `refs` | yes | every label the flag implicates, not only the one it sits on. This is what pools. **The first entry is the primary referent** — the statement the flag is actually about; the rest are its neighbours, informative but not what threads cluster on |
 | `elsewhere` | no | other files the flag reaches into |
 | `shared_with_blueprint` | no | true if the anchor sits inside a `% shared with blueprint` block — the fix is then blueprint-side, and the reviewer should say so |
 
@@ -275,9 +275,11 @@ one side. The scope-audit mode is that pass as a reviewer run.
   the table, caption or script that produced it, and its description compared with what was
   computed.
 - **Flags** are `SCOPE`, `HYPOTHESIS`, `COUNT`, `QUANTITY`, `FRONTIER` and `TRANSCLUSION`; nothing in
-  the voice layer. `refs` names the cited statement's label as well as any the surface sits beside,
-  so the flag pools with a section review's flag on the same statement. A summary that has no
-  statement behind it at all is `PROMISE`.
+  the voice layer. `refs` names the cited statement's label **first** — the primary referent — and
+  then any the surface sits beside, so the flag pools with a section review's flag on the same
+  statement (pooling intersects the full set) without the neighbours chaining it into every other
+  defect's thread (clustering uses the primary referent only — see "Defect identity" below). A
+  summary that has no statement behind it at all is `PROMISE`.
 - **The review record** declares `"mode":"scope-audit"`, `target` the paper directory, and
   `contract` the summary sections' own (`B.1+B.2+B.9`, with `B.8` when a discussion restates
   results), `contract_why` saying so.
@@ -323,6 +325,20 @@ and that number is the last tiebreak in the ranking and nothing else. The trial 
 defect `[low-med]` and `[high]`; pooling is exactly the operation that makes the disagreement visible
 and the number uninformative.
 
+## Thread identity
+
+A **thread** proposes that defects in different files are one decision. Pooling intersects a flag's
+full `refs` because every label it implicates is evidence for *that* defect; clustering defects into
+threads uses only each flag's **primary referent** — `refs[0]`, the statement the flag is actually
+about — because a flag's remaining `refs` name that statement's neighbours (its standing hypothesis,
+a sibling corollary), and the scope-audit mode always cites them (above). Clustering on the full set
+chains every defect that mentions a popular neighbour to every other one, regardless of whether they
+are the same finding: the scope-audit trial on `spatial-hemigroup-scale-space` module B (Q-0108)
+pooled 35 flags into 28 defects and then proposed one thread holding all 28, because every defect's
+`refs` ran through a handful of shared standing hypotheses. Clustering on the primary referent is the
+fix; the full `refs` list is unchanged and still what `elsewhere` and the reported thread/defect
+`refs` draw on for anchor resolution and evidence.
+
 ## Aggregation
 
 `linkage review <review.jsonl>… [--base DIR] [--json] [--top N]`, over the records of every review of
@@ -338,10 +354,11 @@ tooling could not answer — the same three codes as `linkage check`.
    evidence, and the miss is worth knowing about). **Malformed records are reported, never silently
    dropped.**
 2. **Pool** into defects by the identity rule above.
-3. **Cluster** the defects into candidate **threads**: defects sharing a label, or — same tag only —
-   one defect's `elsewhere` naming the other's file. A thread spans at least two files and at least
-   two defects. This is a proposal, not a verdict: the trial batch's threads would have been mostly
-   recoverable this way, but not all of them, and a cluster of one is a lead rather than a finding.
+3. **Cluster** the defects into candidate **threads**: defects sharing a primary referent, or — same
+   tag only — one defect's `elsewhere` naming the other's file. A thread spans at least two files and
+   at least two defects. This is a proposal, not a verdict: the trial batch's threads would have been
+   mostly recoverable this way, but not all of them, and a cluster of one is a lead rather than a
+   finding.
 4. **Rank by breadth** — number of *independent reviews* contributing, then total flags, then max
    severity as the last tiebreak only. Threads rank the same way, over their members' reviews.
 5. **Report**: the reviews with their strengths lines and the boundary restatement; then threads with
