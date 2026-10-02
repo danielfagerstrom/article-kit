@@ -186,12 +186,20 @@ npm run verify                                                # then check every
 **The module's parameters are read from `linkage.toml`, not typed on the command line.** One
 `[[modules]]` table per releasable module names its `chapters`, `paper` directory, `tag`, Lean
 `roots`, `headline` declaration, `records` directory (the process account, the response plans and
-the reviews the export carries as `notes/`), `stem`, `title`, `repo_url` and `related`
-identifiers; `[release]` names the creators, the licence and the copyright line, which are the
-repository's and not a module's. `linkage release export --help` lists the flags that override a
-parameter for one run (`--tag`, `--chapters`, `--roots`, `--shared-nodes`), and
+the reviews the export carries recursively as `notes/`, with local paths redacted file by file),
+`extra_notes` (files or directories that are not a round's response plan — a triage note, a
+response to a separate presentation review — exported under `notes/` the same way), `stem`,
+`title`, `repo_url` and `related` identifiers; `[release]` names the creators, the licence and the
+copyright line, which are the repository's and not a module's. `linkage release export --help`
+lists the flags that override a parameter for one run (`--tag`, `--chapters`, `--roots`,
+`--shared-nodes`, `--date`, `--extra-notes`), and
 `spatial-hemigroup-scale-space`'s `records/cone/RELEASE-procedure.md` holds the command as run for
 `cone-v0.1`, in the older spelling. A repository with one module needs no `--module`.
+
+**The deposit date** (`.zenodo.json`'s `publication_date`, `CITATION.cff`'s `date-released`) is
+read from the changelog entry's own `## <tag> — YYYY-MM-DD — ...` heading, not the day the export
+happens to run; `--date` overrides it, and today's date is the fallback where the changelog names
+none.
 
 Two more: `linkage release export --dry-run` prints the closure and regenerates the Lean tree's
 `INDEX.md` without writing an export, and `linkage prose register` prints the restraint-budget

@@ -119,6 +119,11 @@ class Module:
     process: str | None = None
     response_plans: tuple[str, ...] = ()
     reviews: str | None = None
+    extra_notes: tuple[str, ...] = ()
+    """Files or directories, relative to the repository root, exported recursively under
+    notes/ with the same local-path redaction as `reviews` — records that are not a round's
+    response plan (a triage note, a response to a separate presentation review). `--extra-notes`
+    adds to this list for one run."""
     shared_nodes: str = DEFAULT_SHARED_NODES
     keywords: tuple[str, ...] = ()
     related: tuple[str, ...] = ()
@@ -421,6 +426,7 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
                 process=r.get("process"),
                 response_plans=tuple(r.get("response_plans", ())),
                 reviews=r.get("reviews"),
+                extra_notes=tuple(str(p) for p in r.get("extra_notes", ())),
                 shared_nodes=shared,
                 keywords=tuple(r.get("keywords", ())),
                 related=tuple(r.get("related", ())),

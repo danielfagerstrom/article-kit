@@ -378,6 +378,44 @@ def paper_axiom_block(paper: Path, headline: str) -> str:
     return ""
 
 
+AXIOM_LINE_RE = re.compile(r"'([^']+)' depends on axioms: \[[^\]]*\]")
+
+
+def axiom_lines(text: str) -> dict[str, str]:
+    """declaration -> its whitespace-normalized `'<name>' depends on axioms: [...]` line, for
+    every such line `text` contains. Used on both sides of the export's axiom check: the
+    paper's verbatim blocks may print several declarations in one block, and the guard's
+    stdout always prints every exported declaration's line."""
+    return {m.group(1): re.sub(r"\s+", " ", m.group(0)).strip()
+            for m in AXIOM_LINE_RE.finditer(text)}
+
+
+def axiom_mismatches(want: dict[str, str], got: dict[str, str]) -> list[str]:
+    """One report line for every name `want` prints a line for that `got` either lacks or
+    disagrees with; empty when every name of `want` matches `got` (`build_in_place`'s guard
+    check). A name `got` prints that `want` does not is not a mismatch: a restricted export's
+    guard legitimately prints declarations the paper names no block for."""
+    report = []
+    for name, line in want.items():
+        if name not in got:
+            report.append(f" {name}: printed by the paper, not by the guard")
+        elif got[name] != line:
+            report.append(f" {name}\n  paper: {line}\n  guard: {got[name]}")
+    return report
+
+
+def paper_axiom_lines(paper: Path) -> dict[str, str]:
+    """`axiom_lines`, over every verbatim block of the paper's `.tex` sources — not only the
+    block that names the headline declaration, since a paper may print several declarations'
+    blocks in or out of the headline's own."""
+    lines: dict[str, str] = {}
+    for f in sorted(paper.glob("*.tex")):
+        for m in re.finditer(r"\\begin\{verbatim\}(.*?)\\end\{verbatim\}",
+                             f.read_text(encoding="utf-8"), re.S):
+            lines.update(axiom_lines(m.group(1)))
+    return lines
+
+
 def figure_files(paper: Path) -> list[Path]:
     r"""The files the paper's `\includegraphics` lines name, resolved through `\graphicspath`."""
     dirs = [paper]
@@ -407,6 +445,16 @@ def changelog_entry(src: Path, tag: str, warn=print) -> str:
             return head.rstrip() + "\n\n## " + sec.rstrip() + "\n"
     warn(f"changelog: no '## ' heading names {tag}; the export carries the header alone")
     return head.rstrip() + "\n"
+
+
+def changelog_date(src: Path, tag: str) -> str | None:
+    """The ISO date the changelog's `## <tag> — YYYY-MM-DD — ...` heading names for `tag`; None
+    where the changelog does not exist or names no such heading."""
+    if not src.exists():
+        return None
+    m = re.search(r"(?m)^## " + re.escape(tag) + r" — (\d{4}-\d{2}-\d{2}) —",
+                 src.read_text(encoding="utf-8"))
+    return m.group(1) if m else None
 
 
 def cited_doi(tag: str, root: Path) -> str | None:
@@ -513,6 +561,42 @@ def write(dst: Path, text: str) -> None:
     dst.write_text(text, encoding="utf-8", newline="\n")
 
 
+# Reports (reviews, triage notes, response plans) name files by their path on the author's
+# machine. The public copy replaces those paths and says so at its head; nothing else in a
+# report is touched.
+LOCAL_PATH_QUOTED_RE = re.compile(r"`[A-Za-z]:[\\/](?:Users|My Drive)[^`\n]*`")
+LOCAL_PATH_BARE_RE = re.compile(r"[A-Za-z]:[\\/](?:Users|My Drive)[^\s`,;)]*")
+
+
+def redact_and_copy(src: Path, dst: Path) -> int:
+    """Copy `src` to `dst`, redacting local paths out of a `.md`/`.txt` file's text (everything
+    else, including a PDF or any other binary, copied byte for byte). Returns the number of
+    paths redacted."""
+    if src.suffix.lower() not in {".md", ".txt"}:
+        copy(src, dst)
+        return 0
+    text = src.read_text(encoding="utf-8")
+    text, n1 = LOCAL_PATH_QUOTED_RE.subn("`<local path>`", text)
+    text, n2 = LOCAL_PATH_BARE_RE.subn("<local path>", text)
+    if n1 + n2:
+        note = (f"<!-- Export note: {n1 + n2} file path(s) on the author's machine were "
+                "replaced by <local path> in this public copy; nothing else was changed. -->\n")
+        write(dst, note + text)
+    else:
+        copy(src, dst)                 # byte for byte, line endings included
+    return n1 + n2
+
+
+def copy_notes_tree(src_dir: Path, dst_dir: Path) -> int:
+    """`redact_and_copy`, file by file, over every regular file under `src_dir` (recursively),
+    at the same relative path under `dst_dir`. Returns the number of paths redacted."""
+    n = 0
+    for f in sorted(src_dir.rglob("*")):
+        if f.is_file() and f.suffix.lower() != ".pdf":
+            n += redact_and_copy(f, dst_dir / f.relative_to(src_dir))
+    return n
+
+
 def _normalize_eol(s: str) -> str:
     return s.replace("\r\n", "\n").replace("\r", "\n")
 
@@ -545,6 +629,9 @@ class Exporter:
     out: Path | None = None
     tag: str = ""
     doi: str | None = None
+    date: str | None = None
+    """The deposit date for CITATION.cff and .zenodo.json (`--date`); read from the changelog
+    entry's own heading, or today's date, where unset."""
     draft: bool = False
     shared_nodes: str = "omit"
     cites: tuple[str, ...] = ()
@@ -908,13 +995,20 @@ class Exporter:
     def copyright_line(self) -> str:
         return self.cfg.release.copyright or f"{datetime.date.today():%Y} {self.author_line()}"
 
+    def deposit_date(self) -> str:
+        """The ISO date CITATION.cff and .zenodo.json carry: `--date`, then the changelog
+        entry's own heading, then today — so a release exported the evening before its date
+        line does not get two different dates (module C, 2026-09-30)."""
+        return (self.date or changelog_date(self.root / "CHANGELOG.md", self.tag)
+                or datetime.date.today().isoformat())
+
     def citation_files(self, out: Path) -> None:
         """CITATION.cff (GitHub's citation box) and .zenodo.json (the deposit's metadata, read by
         `linkage release zenodo` and by Zenodo's GitHub integration). Both are generated, so that
         the title, the version and the related identifiers cannot drift from the release."""
         rel, mod = self.cfg.release, self.mod
         version = self.tag.rsplit("v", 1)[-1]
-        today = datetime.date.today().isoformat()
+        date_iso = self.deposit_date()
         related = []
         for item in mod.related:
             ident, _, relation = item.partition(":")
@@ -934,7 +1028,7 @@ class Exporter:
                              "chapters, the process account and the external reviews.</p>",
             "creators": [dict(c) for c in rel.creators],
             "version": version,
-            "publication_date": today,
+            "publication_date": date_iso,
             "license": rel.license,
             "keywords": list(mod.keywords),
             "related_identifiers": related,
@@ -943,7 +1037,7 @@ class Exporter:
         cff = ["cff-version: 1.2.0",
                "message: \"If you use this work, please cite it as below.\"",
                "title: \"" + mod.title.replace('"', "'") + "\"",
-               "version: \"" + version + "\"", "date-released: " + today, "authors:"]
+               "version: \"" + version + "\"", "date-released: " + date_iso, "authors:"]
         for c in rel.creators:
             family, _, given = c["name"].partition(",")
             cff.append("  - family-names: " + (family.strip() or c["name"]))
@@ -1001,7 +1095,7 @@ def export(cfg: Config, args) -> int:
         raise ReleaseError(f"module {mod.name!r} names no `chapters` — the export would carry "
                            f"no blueprint source")
     ex = Exporter(cfg=cfg, mod=mod, out=Path(args.out).resolve() if args.out else None,
-                  tag=tag, doi=args.doi, draft=args.draft,
+                  tag=tag, doi=args.doi, date=args.date, draft=args.draft,
                   shared_nodes=args.shared_nodes or mod.shared_nodes,
                   cites=tuple(args.cites or ()))
     out, paper = ex.out, ex.paper
@@ -1204,33 +1298,29 @@ def export(cfg: Config, args) -> int:
             copy(cfg.root / src, out / "notes" / name)
         else:
             print(f"notes: {src} does not exist; not exported")
-    # The archive here is verbatim, and agents' reports name files by their path on the author's
-    # machine. The public copy replaces those paths and says so at its head; nothing else in a
-    # report is touched. The frozen review builds are local PDFs; the export carries the text.
-    quoted = re.compile(r"`[A-Za-z]:[\\/](?:Users|My Drive)[^`\n]*`")
-    bare = re.compile(r"[A-Za-z]:[\\/](?:Users|My Drive)[^\s`,;)]*")
-    n_redacted = 0
+    # Recursive: a referee's reproduction code, or a round's supporting files, often sits in a
+    # subdirectory of the reviews directory, not beside its `.md`. The frozen review builds are
+    # local PDFs and are not exported; the export carries the text.
     reviews = mod.reviews_dir()
-    for f in (cfg.root / reviews).glob("*") if reviews else []:
-        if not f.is_file() or f.suffix.lower() == ".pdf":
-            continue
-        dst = out / "notes" / "reviews" / f.name
-        if f.suffix.lower() not in {".md", ".txt"}:
-            copy(f, dst)
-            continue
-        text = f.read_text(encoding="utf-8")
-        text, n1 = quoted.subn("`<local path>`", text)
-        text, n2 = bare.subn("<local path>", text)
-        if n1 + n2:
-            note = (f"<!-- Export note: {n1 + n2} file path(s) on the author's machine were "
-                    "replaced by <local path> in this public copy; nothing else was changed. "
-                    "-->\n")
-            n_redacted += n1 + n2
-            write(dst, note + text)
-        else:
-            copy(f, dst)               # byte for byte, line endings included
+    n_redacted = copy_notes_tree(cfg.root / reviews, out / "notes" / "reviews") if reviews else 0
     if n_redacted:
         print(f"reviews: {n_redacted} local path(s) replaced in the exported copies")
+    # Records that are not a round's response plan — a triage note, a response to a separate
+    # presentation review — have no place in `named` above; `extra_notes` (the module table, or
+    # --extra-notes for one run) names them explicitly, each exported under notes/ by its own
+    # basename with the same redaction.
+    extra_notes = list(mod.extra_notes) + list(args.extra_notes or ())
+    n_extra = 0
+    for rel in extra_notes:
+        src = cfg.root / rel
+        if not src.exists():
+            print(f"notes: extra note {rel} does not exist; not exported")
+        elif src.is_dir():
+            n_extra += copy_notes_tree(src, out / "notes" / src.name)
+        else:
+            n_extra += redact_and_copy(src, out / "notes" / src.name)
+    if n_extra:
+        print(f"extra notes: {n_extra} local path(s) replaced in the exported copies")
     for f in (cfg.root / "LICENSES").glob("*"):
         copy(f, out / "LICENSES" / f.name)
     if (cfg.root / "CHANGELOG.md").exists():
@@ -1411,13 +1501,17 @@ def build_in_place(ex: Exporter, out: Path, paper: Path) -> int:
     if not headline:
         print("the module names no headline declaration; the guard's output is in axioms.txt")
         return 0
-    want = paper_axiom_block(paper, headline)
-    got_m = re.search(r"'" + re.escape(headline) + r"' depends on axioms: \[[^\]]*\]", r.stdout)
-    got = re.sub(r"\s+", " ", got_m.group(0)).strip() if got_m else ""
-    if not want:
+    want = paper_axiom_lines(paper)
+    got = axiom_lines(r.stdout)
+    if headline not in want:
         print(f"the paper prints no #print axioms block for {headline}; the guard's line is\n"
-              f" {got}")
+              f" {got.get(headline, '')}")
         return 0
-    print("paper block matches the guard" if want == got
-          else f"MISMATCH\n paper: {want}\n guard: {got}")
-    return 0 if want == got else 1
+    # Every name the paper prints a line for is checked, not only the headline: a block holding
+    # several declarations must match the guard line for line, by name.
+    mismatches = axiom_mismatches(want, got)
+    if mismatches:
+        print("MISMATCH\n" + "\n".join(mismatches))
+        return 1
+    print("paper block matches the guard")
+    return 0

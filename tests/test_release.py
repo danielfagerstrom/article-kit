@@ -507,6 +507,158 @@ def test_the_export_needs_a_module_table(tmp_path: Path, unblocked) -> None:
     assert "no `[[modules]]` table" in err
 
 
+# ---- the axiom check: a block holding several declarations ------------------------------------
+
+MULTI_AXIOM_TEX = """\
+\\documentclass{article}
+\\date{September 20, 2026 (v0.1)}
+\\begin{document}
+\\begin{verbatim}
+'Lib.main_theorem' depends on axioms: [propext, Classical.choice]
+'Lib.second_theorem' depends on axioms: [propext]
+'Lib.third_theorem' depends on axioms: [propext, Quot.sound]
+\\end{verbatim}
+\\end{document}
+"""
+
+
+def test_paper_axiom_lines_reads_every_declaration_of_a_shared_verbatim_block(
+        tmp_path: Path) -> None:
+    paper = tmp_path / "paper"
+    paper.mkdir()
+    (paper / "main.tex").write_text(MULTI_AXIOM_TEX, encoding="utf-8")
+    lines = release.paper_axiom_lines(paper)
+    assert set(lines) == {"Lib.main_theorem", "Lib.second_theorem", "Lib.third_theorem"}
+    assert lines["Lib.main_theorem"] == \
+        "'Lib.main_theorem' depends on axioms: [propext, Classical.choice]"
+
+
+def test_axiom_mismatches_is_empty_when_every_line_of_a_multi_declaration_block_matches() -> None:
+    """The bug this replaces: a whole-block comparison reported MISMATCH for every line in a
+    block of four, even though each individually matched the guard."""
+    want = {
+        "Lib.main_theorem": "'Lib.main_theorem' depends on axioms: [propext, Classical.choice]",
+        "Lib.second_theorem": "'Lib.second_theorem' depends on axioms: [propext]",
+        "Lib.third_theorem": "'Lib.third_theorem' depends on axioms: [propext, Quot.sound]",
+    }
+    got = dict(want)  # the guard's stdout agrees with every line
+    assert release.axiom_mismatches(want, got) == []
+
+
+def test_axiom_mismatches_reports_only_the_names_that_actually_differ() -> None:
+    want = {"Lib.a": "'Lib.a' depends on axioms: [propext]",
+           "Lib.b": "'Lib.b' depends on axioms: [propext]"}
+    got = {"Lib.a": "'Lib.a' depends on axioms: [propext]",
+          "Lib.b": "'Lib.b' depends on axioms: [propext, Classical.choice]"}
+    mismatches = release.axiom_mismatches(want, got)
+    assert len(mismatches) == 1 and "Lib.b" in mismatches[0]
+
+
+def test_axiom_mismatches_reports_a_name_the_guard_does_not_print() -> None:
+    """A real failure, not weakened by the fix: a printed name the guard's output lacks."""
+    want = {"Lib.a": "'Lib.a' depends on axioms: [propext]"}
+    assert release.axiom_mismatches(want, {}) == \
+        [" Lib.a: printed by the paper, not by the guard"]
+
+
+# ---- the deposit date: the changelog entry, not the export's run date -------------------------
+
+def test_deposit_date_is_read_from_the_changelog_entry(tmp_path: Path) -> None:
+    root = tmp_path / "art"
+    root.mkdir()
+    (root / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## v0.1 — 2026-09-29 — first release\n\ntext\n", encoding="utf-8")
+    assert release.changelog_date(root / "CHANGELOG.md", "v0.1") == "2026-09-29"
+
+
+def test_deposit_date_is_none_without_a_matching_changelog_heading(tmp_path: Path) -> None:
+    root = tmp_path / "art"
+    root.mkdir()
+    (root / "CHANGELOG.md").write_text("# Changelog\n\nno heading here\n", encoding="utf-8")
+    assert release.changelog_date(root / "CHANGELOG.md", "v0.1") is None
+
+
+def test_citation_files_date_comes_from_the_changelog_not_run_date(article_repo: Path, unblocked,
+                                                                   tmp_path) -> None:
+    """Module C's gap: the export's run date and the changelog's release date can differ when a
+    release is exported the evening before its date line."""
+    (article_repo / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## v0.1 — 2026-09-29 — the first release\n\nwhat changed\n",
+        encoding="utf-8")
+    out_dir = tmp_path / "export"
+    run_cli("--root", str(article_repo), "release", "export", "--module", "line", "--draft",
+            "--out", str(out_dir))
+    zen = json.loads((out_dir / ".zenodo.json").read_text(encoding="utf-8"))
+    assert zen["publication_date"] == "2026-09-29"
+    cff = (out_dir / "CITATION.cff").read_text(encoding="utf-8")
+    assert "date-released: 2026-09-29" in cff
+
+
+def test_citation_files_date_flag_overrides_the_changelog(article_repo: Path, unblocked,
+                                                           tmp_path) -> None:
+    out_dir = tmp_path / "export"
+    run_cli("--root", str(article_repo), "release", "export", "--module", "line", "--draft",
+            "--date", "2026-10-01", "--out", str(out_dir))
+    zen = json.loads((out_dir / ".zenodo.json").read_text(encoding="utf-8"))
+    assert zen["publication_date"] == "2026-10-01"
+
+
+# ---- the exported reviews: recursive, and an extra-notes route for non-round-plan files -------
+
+def test_reviews_are_exported_recursively(article_repo: Path, unblocked, tmp_path) -> None:
+    reviews = article_repo / "records" / "line" / "reviews"
+    (reviews / "repro").mkdir(parents=True)
+    (reviews / "round1.md").write_text("A review.\n", encoding="utf-8")
+    (reviews / "repro" / "check.py").write_text("print('ok')\n", encoding="utf-8")
+    out_dir = tmp_path / "export"
+    run_cli("--root", str(article_repo), "release", "export", "--module", "line", "--draft",
+            "--out", str(out_dir))
+    assert (out_dir / "notes" / "reviews" / "round1.md").exists()
+    assert (out_dir / "notes" / "reviews" / "repro" / "check.py").read_text(
+        encoding="utf-8") == "print('ok')\n"
+
+
+def test_reviews_redact_local_paths_wherever_they_are_in_the_tree(article_repo: Path, unblocked,
+                                                                   tmp_path) -> None:
+    reviews = article_repo / "records" / "line" / "reviews"
+    (reviews / "sub").mkdir(parents=True)
+    (reviews / "sub" / "note.md").write_text(
+        "See `C:\\Users\\author\\dev\\article-kit\\paper`.\n", encoding="utf-8")
+    out_dir = tmp_path / "export"
+    rc, out, _ = run_cli("--root", str(article_repo), "release", "export", "--module", "line",
+                         "--draft", "--out", str(out_dir))
+    assert rc == 0
+    text = (out_dir / "notes" / "reviews" / "sub" / "note.md").read_text(encoding="utf-8")
+    assert "<local path>" in text and "C:\\Users" not in text
+    assert "reviews: 1 local path(s) replaced" in out
+
+
+def test_extra_notes_are_exported_from_the_cli_flag(article_repo: Path, unblocked,
+                                                     tmp_path) -> None:
+    triage = article_repo / "records" / "line" / "TRIAGE.md"
+    triage.write_text("A triage note.\n", encoding="utf-8")
+    out_dir = tmp_path / "export"
+    run_cli("--root", str(article_repo), "release", "export", "--module", "line", "--draft",
+            "--extra-notes", "records/line/TRIAGE.md", "--out", str(out_dir))
+    assert (out_dir / "notes" / "TRIAGE.md").read_text(encoding="utf-8") == "A triage note.\n"
+
+
+def test_extra_notes_are_read_from_the_module_table(tmp_path: Path, unblocked) -> None:
+    root = build_article(tmp_path / "art")
+    (root / "records" / "line" / "TRIAGE.md").write_text("A triage note.\n", encoding="utf-8")
+    # extra_notes is a module field, not a repository-wide one: add it to the `line` table.
+    toml_text = TOML.replace(
+        'records  = "records/line"\n',
+        'records  = "records/line"\nextra_notes = ["records/line/TRIAGE.md"]\n')
+    (root / "linkage.toml").write_text(toml_text, encoding="utf-8")
+    mod = config.load(root).module("line")
+    assert mod.extra_notes == ("records/line/TRIAGE.md",)
+    out_dir = tmp_path / "export"
+    run_cli("--root", str(root), "release", "export", "--module", "line", "--draft",
+            "--out", str(out_dir))
+    assert (out_dir / "notes" / "TRIAGE.md").read_text(encoding="utf-8") == "A triage note.\n"
+
+
 # ---- the register counts -------------------------------------------------------------------
 
 REGISTER_TEX = """\
