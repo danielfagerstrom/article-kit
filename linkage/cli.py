@@ -642,6 +642,14 @@ def build_parser() -> argparse.ArgumentParser:
     rx.add_argument("--doi", help="the version DOI reserved for this release "
                                   "(`linkage release zenodo reserve`): checked to be printed on "
                                   "the PDF's first page, and written into CITATION.cff")
+    rx.add_argument("--date", help="the deposit date for .zenodo.json and CITATION.cff, "
+                                   "YYYY-MM-DD (default: the changelog entry's own date, or "
+                                   "today where the changelog names none)")
+    rx.add_argument("--extra-notes", action="append", default=None, metavar="PATH",
+                    help="a file or directory, relative to the dev root, exported under notes/ "
+                         "with the same local-path redaction as --reviews (e.g. a triage note or "
+                         "a response to a review the module's `records` does not cover); "
+                         "repeatable, and added to the module's own `extra_notes`")
     rx.add_argument("--shared-nodes", choices=["omit", "whole"], default=None,
                     help="blueprint sources for nodes the paper transcribes from chapters outside "
                          "the release: `omit` ships the release's chapters only and reports the "
