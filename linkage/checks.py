@@ -503,6 +503,7 @@ def run(
                 f"[shared] {mk.file}:{mk.line}: blueprint node(s) {', '.join(moved)} "
                 f"changed since this paper statement was pinned to them — re-read the "
                 f"statement, then re-pin with `linkage check --pin-shared`")
+            unpinned.append(mk)
             continue
         if unpin := [n.label for n in nodes_here if n.label not in mk.pinned]:
             if len(nodes_here) == 1:

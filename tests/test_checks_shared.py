@@ -85,8 +85,37 @@ def test_a_pin_that_no_longer_matches_is_stale(article):
     # the blueprint moves: thm:y now says something else
     article.blueprint(statement(body=BODY, label="thm:x")
                       + statement(body="It is unbounded.", label="thm:y"))
-    (msg,) = tagged(article.check().advisory, "shared")
+    f = article.check()
+    (msg,) = tagged(f.advisory, "shared")
     assert "blueprint node(s) thm:y changed since this paper statement was pinned" in msg
+    # the advisory tells the reader to `--pin-shared` it -- so `--pin-shared` must
+    # actually pick it up (it collects `f.unpinned`, same as a never-pinned marker).
+    assert [m.file for m in f.unpinned] == ["paper/paper.tex"]
+
+
+def test_pin_shared_rewrites_a_stale_statement_pin(article):
+    """`--pin-shared` must do what the stale advisory promises, not just the unpinned case."""
+    article.blueprint(statement(body=BODY, label="thm:x")
+                      + statement(body="It is also bounded.", label="thm:y"))
+    s = shas(article)
+    article.paper(paper_stmt("The kernel is smooth and bounded.",
+                             f"thm:x@{s['thm:x']}, thm:y@{s['thm:y']}"))
+    # the blueprint moves: thm:y now says something else
+    article.blueprint(statement(body=BODY, label="thm:x")
+                      + statement(body="It is unbounded.", label="thm:y"))
+    new = shas(article)
+    assert new["thm:y"] != s["thm:y"]
+
+    rc, out, _ = run_cli("--root", str(article.root), "check", "--pin-shared")
+    assert rc == 0
+    assert "Pinned 1 marker(s) across 1 file(s)" in out
+
+    written = article.root.joinpath("paper/paper.tex").read_text(encoding="utf-8")
+    assert f"thm:x@{new['thm:x']}, thm:y@{new['thm:y']}" in written
+    f = article.check()
+    assert f.stats["shared_tracked"] == 1
+    assert f.stats["shared_drift"] == 0
+    assert f.unpinned == []
 
 
 def test_an_unpinned_merge_says_so_rather_than_diffing_two_texts(article):
