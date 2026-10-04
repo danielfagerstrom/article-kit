@@ -244,6 +244,22 @@ def cmd_axioms(args) -> int:
         for b in bad:
             print(f"  {b}", file=sys.stderr)
         return 1
+    # Another module's boundary, by reference (Q-0298): resolved at the manifest's pin, and
+    # reported apart from this article's own names because this ledger does not ground them.
+    res = trust.resolve(cfg)
+    if res.errors:
+        print(f"TRUST BOUNDARY: {len(res.errors)} include(s) that do not resolve against "
+              f"lake-manifest.json -- refused, admitting nothing:", file=sys.stderr)
+        for e in res.errors:
+            print(f"  {e}", file=sys.stderr)
+        return 1
+    for inc in res.included:
+        via = f", included by {inc.via}" if inc.via else ""
+        print(f"included: {len(inc.names)} name(s) of {inc.package} @ {inc.rev} "
+              f"({inc.commit[:12]}) {inc.path}{via} -- another module's boundary, grounded in "
+              f"its own ledger:", file=sys.stderr)
+        for n in inc.names:
+            print(f"  {n}", file=sys.stderr)
     if args.check:
         errors, advisories = trust.missing_verbatim(cfg)
         companion = cfg.axioms_verbatim.relative_to(cfg.root).as_posix()
@@ -259,8 +275,10 @@ def cmd_axioms(args) -> int:
                 print(f"  {e}", file=sys.stderr)
             return 1
         print(f"trust boundary OK: {len(names)} interface axiom(s), all grounded in "
-              f"{cfg.axioms.name}.", file=sys.stderr)
-    for n in trust.allowlist(cfg):
+              f"{cfg.axioms.name}" + (f"; {len(res.names)} included from "
+              f"{len(res.included)} required module boundar(ies)" if res.included else "")
+              + ".", file=sys.stderr)
+    for n in trust.allowlist(cfg, res):
         print(n)
     return 0
 
@@ -547,7 +565,8 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--json", action="store_true", help="machine-readable output")
     d.set_defaults(func=cmd_demand)
 
-    x = sub.add_parser("axioms", help="the trust-boundary allowlist (Lean core + interfaces)")
+    x = sub.add_parser("axioms", help="the trust-boundary allowlist (Lean core + interfaces + "
+                                          "included boundaries)")
     x.add_argument("--check", action="store_true",
                    help="also report the grounding verdict on stderr; fail if the "
                         "declaration file is missing")

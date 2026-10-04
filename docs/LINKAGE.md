@@ -281,6 +281,40 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    reviewed; it is the `**Lean:**` segment, not a `\ledger{}` reference, that `trust-boundary.txt` is
    cross-checked against.
 
+   **A required module's boundary is included by reference, not copied** (2026-10-04, Q-0298, from
+   Paper VII requiring Paper V's `SpatialHemigroup`). Requiring a module brings its ledger into the
+   consumer's trust base (hub `RELEASES.md` § "Dependencies between modules"), and its names are not
+   this article's to ground. One line of `trust-boundary.txt` says so:
+
+   ```
+   include SpatialHemigroup @ v0.1 blueprint/trust-boundary.txt
+   ```
+
+   `include <package> @ <revision> [<path>]`. `linkage axioms` reads `<path>` with `git show` at the
+   commit the consumer's `Formalization/lake-manifest.json` pins for `<package>`, in the checkout
+   under its `packagesDir` (`.lake/packages/<package>`); never the working tree, which on the
+   author's machine is a junction into a shared store, so an edit there admits nothing, and nothing
+   is fetched or updated. The path is relative to the package's repository root, not its `subDir`,
+   and defaults to `blueprint/trust-boundary.txt`, which an article's export ships (not the export's
+   `axioms.txt`, which is `#print axioms` output). `<revision>` must be the manifest's `inputRev`
+   (the tag the lakefile asks for) or its resolved `rev` (the sha, or a prefix of at least seven hex
+   digits). Refused, with exit 1 and nothing admitted: a package the manifest does not carry, a
+   revision other than its pin, a package not pinned to a git revision, a pinned package that is
+   not fetched, a path the pinned commit lacks, and a malformed include line. The included names
+   join the allowlist, are reported on stderr apart from the article's own (`included: N name(s) of
+   <package> @ <revision> (<sha>) <path>`), and are **not** looked for in this article's `AXIOMS.md`:
+   the required module's own `linkage axioms --check` grounded them in its ledger. A name of the
+   other module written as a line of its own is still an own name and must be grounded here, so
+   copying is caught rather than tolerated. `linkage boundary` and the trust-base check
+   (`linkage check`, rule 13) read the same allowlist.
+
+   **An included boundary may itself include.** Lake builds one revision of each package, the one
+   the consumer's manifest pins, so a nested include is resolved against the *consumer's*
+   manifest and refused, like a direct one, when the revision it names is not the one built here;
+   each (package, path) is read once, so a cycle terminates. Updating a required module is a pin
+   bump in the lakefile and the manifest, after which the include line's revision is bumped with
+   it.
+
    **The boundary harness** (`linkage boundary`, 2026-09-25, Q-0077). The allowlist check above reads
    the *union* of what the guard file prints, which leaves four holes. The harness closes them, opt-in
    per article through a `[boundary]` table in `linkage.toml`; an article without the table is reported
