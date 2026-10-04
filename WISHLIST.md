@@ -101,4 +101,22 @@ yet admitted". Keep the colour. Every article gets it on the next scaffold sync.
 
 ---
 
+## `linkage paper` checks only one main document when a repository holds several papers
+
+`paper.lint` takes the first source carrying `\begin{document}` across *all* of `cfg.papers`
+(`linkage/paper.py`, `src.main = next(...)`), so in a repository with two papers only one main
+document gets the declarations, abstract-length and `\tag`-numbering checks; the other paper's
+front and back matter go unchecked while the run reports `PAPER LINT OK`. Seen in
+spatial-hemigroup-affine after its split into `paper/` and `paper-iso/` (its ADR-0001, #53,
+2026-10-04): the summary line names `paper/main.tex` only. Paper V's `paper-b/` and `paper-c/` are
+fragments without a main document, so the gap did not show there.
+
+Suggested shape: group the sources by paper directory and run the main-document checks once per
+directory that has a main document (a directory of fragments stays the normal "no main document"
+case), printing one `main document …` line per paper and prefixing each finding with its directory.
+The reference and cite-key checks can stay global, since `\ref`s across papers are already resolved
+against the union.
+
+---
+
 *No other open requests.*
