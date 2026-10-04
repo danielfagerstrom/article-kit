@@ -7,6 +7,16 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`scaffold/scripts/build-blueprint.sh` tolerates an article with no Lean (Q-0258).** The
+  leanok statement/proof-agreement step now runs `scripts/audit-leanok.py --check` only when
+  that script exists, rather than unconditionally; a plain `Formalization/` is not the signal,
+  since `linkage.toml` requires that path to exist even where there is no Lean development, as
+  an intentionally empty placeholder. The web-theorem-list step (`scripts/check-web-thms.py`,
+  web.tex's theorem list against theorems.tex) is likewise guarded, and now runs under `--web`
+  as well as the default and `--quick` builds, matching `check`. `linkage init --sync` into
+  `spatial-hemigroup-affine` (hub Q-0153) had overwritten that article's own copy, which has
+  neither script, with the framework's unconditional one, so `bash scripts/build-blueprint.sh
+  --quick` exited 2 there.
 - **`linkage check` advises on a shared proof that has drifted from its blueprint (Q-0234).**
   A marker's ref may now carry a proof pin, `<label>[@<sha12>]+<sha12>`, over the node's
   `shared_proof` (the proof without its machine-check bookkeeping, reference style reduced). The
