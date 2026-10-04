@@ -7,6 +7,12 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage check --pin-shared` rewrites a stale statement pin (Q-0296).** The advisory for a
+  stale statement pin (a pinned node has moved since the paper was written against it) has told
+  the reader to re-pin with `--pin-shared` since Q-0234's proof pins landed, but the stale marker
+  was never added to `f.unpinned` — only a never-pinned one was — so `--pin-shared` left it
+  untouched and the advisory fired on every run. Fixed to match the proof pin's behaviour, which
+  already collects both the stale and the never-pinned case. `tests/test_checks_shared.py`.
 - **`fidelity-review` § 5: a card reads an annotation's hypothesis side too** (Q-0236's companion
   line, which its unattended session could not write under `.claude/`). Four delivered WISHLIST
   entries removed again: the scope audit (Q-0108), the drifted shared proof (Q-0234), the deposit
