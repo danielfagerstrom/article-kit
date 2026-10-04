@@ -111,15 +111,41 @@ def test_an_unpinned_proof_that_differs_says_where(article):
     assert [m.line for m in f.proof_unpinned] == [1]
 
 
-def test_no_paper_proof_or_no_blueprint_proof_is_silent(article):
-    blueprint(article, REPAIRED)
-    paper(article, "cor:converse", proof=None)
-    assert tagged(article.check().advisory, "proof") == []
+def test_no_blueprint_proof_is_silent(article):
+    """Nothing on the blueprint side to lose coverage of."""
     blueprint(article, None)
     paper(article, "cor:converse", CIRCULAR)
     f = article.check()
     assert tagged(f.advisory, "proof") == []
     assert f.stats["proof_verbatim"] + f.stats["proof_tracked"] + f.stats["proof_drift"] == 0
+    assert f.stats["proof_unmatched"] == 0
+
+
+def test_no_paper_proof_and_nothing_matched_is_reported_unmatched(article):
+    """A blueprint proof of record with no paper proof anywhere -- not adjacent, and
+    nothing elsewhere in the paper resolves to this label -- is the silent loss of
+    coverage rule 4 now surfaces, rather than being indistinguishable from "proved
+    elsewhere on purpose"."""
+    blueprint(article, REPAIRED)
+    paper(article, "cor:converse", proof=None)
+    f = article.check()
+    (msg,) = tagged(f.advisory, "proof")
+    assert "paper/paper.tex:1 cor:converse" in msg
+    assert "neither adjacent" in msg and "nor matched" in msg
+    assert "% proof omitted" in msg
+    assert f.stats["proof_unmatched"] == 1
+    assert f.ok
+
+
+def test_proof_omitted_opts_out_of_the_unmatched_advisory(article):
+    blueprint(article, REPAIRED)
+    article.paper(
+        "% shared with blueprint cor:converse\n"
+        f"\\begin{{corollary}}\n  \\label{{cor:converse}}\n  {CONVERSE}\n\\end{{corollary}}\n"
+        "% proof omitted\n")
+    f = article.check()
+    assert tagged(f.advisory, "proof") == []
+    assert f.stats["proof_unmatched"] == 0
 
 
 # --- the escape hatch: --pin-shared ------------------------------------------------------

@@ -52,9 +52,16 @@ article repository*.
       "% no blueprint node: <reason>" opt-out (rule 12)
     - a shared statement that has drifted from its blueprint node (fatal under
       --strict-shared; see 3b)
-    - the proof environment directly after a shared statement, when it neither equals the
-      blueprint node's proof of record nor is pinned (`<label>+<sha12>`) to its current
-      version (3d; advisory under every flag -- a paper's proof may legitimately differ)
+    - the proof environment directly after a shared statement -- or, when none follows,
+      one matched to it elsewhere in the paper by a `% proof of <label>` marker or a
+      single `\\ref` in its heading (a proof moved to an appendix) -- when it neither
+      equals the blueprint node's proof of record nor is pinned (`<label>+<sha12>`) to
+      its current version (3d; advisory under every flag -- a paper's proof may
+      legitimately differ)
+    - a shared statement whose node has a proof of record but whose paper proof is
+      neither adjacent nor matched by label -- a silent loss of coverage made visible
+      (3d `[proof] unmatched`; opt out with `% proof omitted` when the paper means to
+      print none)
     - a \\leanok node with no \\lean{}, or a node marked both \\leanok and \\notready
     - a \\leanok statement whose proof environment carries no \\leanok: the node paints
       green-bordered on blue, which the graph's legend reads as "ready to be formalized"
@@ -226,10 +233,26 @@ def _proof_drift(mk: PaperMarker, nodes: list[Node], out: list[str],
     proof standing, and nothing saw it (module C, 2026-09-27). The same three states as
     the statement's, with `+<sha12>` as the pin; silent when the paper prints no proof
     there or no node it names carries one. Returns the state, for the counts.
+
+    `mk.shared_proof` already carries a proof matched by label when none is adjacent —
+    a statement moved to an appendix (Paper VII, PR #45) — so this compares it exactly
+    as the adjacent case. When neither is found and the node has one, that is itself a
+    finding (`unmatched`): the drift check has silently lost coverage of this proof,
+    unless `% proof omitted` says the paper means to print none.
     """
     with_proof = [n for n in nodes if n.shared_proof is not None]
-    if mk.shared_proof is None or not with_proof:
+    if not with_proof:
         return None
+    if mk.shared_proof is None:
+        if mk.proof_omitted:
+            return None
+        out.append(
+            f"[proof]  {mk.file}:{mk.line} {', '.join(n.label for n in with_proof)}: "
+            "the blueprint has a proof of record but the paper's proof is neither "
+            "adjacent to this statement nor matched to it by label (a `% proof of "
+            "<label>` marker, or a single \\ref in the moved proof's heading) — match "
+            "it, or mark `% proof omitted` if the paper deliberately leaves it out")
+        return "unmatched"
     if len(nodes) == 1 and mk.shared_proof == nodes[0].shared_proof:
         return "verbatim"
     if moved := [n.label for n in with_proof
@@ -437,7 +460,7 @@ def run(
     verbatim = tracked = no_env = 0
     proof_drift: list[str] = []
     proof_unpinned: list[PaperMarker] = []
-    proof_counts = {"verbatim": 0, "tracked": 0, "drift": 0}
+    proof_counts = {"verbatim": 0, "tracked": 0, "drift": 0, "unmatched": 0}
     for mk in markers:
         if missing := [lab for lab in mk.blueprint_labels if lab not in labels]:
             fatal.append(
@@ -598,6 +621,7 @@ def run(
         "proof_verbatim": proof_counts["verbatim"],
         "proof_tracked": proof_counts["tracked"],
         "proof_drift": proof_counts["drift"],
+        "proof_unmatched": proof_counts["unmatched"],
         "paper_unshared": len(unshared),
         "trust_base": tb.stats,
         "reached_unproved": len(reached_unproved),

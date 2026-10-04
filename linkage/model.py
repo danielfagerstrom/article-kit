@@ -195,6 +195,11 @@ class PaperMarker:
     """label -> the `shared_proof_sha` the paper's proof was written against, from a
     `<label>[@<sha12>]+<sha12>` ref. Empty when no proof is pinned."""
 
+    proof_omitted: bool = False
+    """A `% proof omitted` comment stands between this marker and the next — the paper
+    deliberately prints no proof for this statement, so check 3d's "unmatched" advisory
+    must not be permanent noise for it (LINKAGE.md rule 4)."""
+
     raw: str = ""
     """The marker's own text, so `--pin-shared` can rewrite it in place."""
 
