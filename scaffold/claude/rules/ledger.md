@@ -23,6 +23,12 @@ Framework-owned (`linkage init --sync`); do not edit here. The ledger's format a
   image.
 - An entry states what the citation carries and what it does not; every step the cited pages do
   not carry is listed at the head of `trust-boundary.txt`.
+- **A required module's interfaces are included, never copied.** When the Lean development
+  `require`s another article's package, its boundary enters this one by one line of
+  `trust-boundary.txt`, `include <package> @ <revision> [<path>]` (path default
+  `blueprint/trust-boundary.txt`), with the revision the one `lake-manifest.json` pins.
+  `linkage axioms` reads that file at the pinned commit, and the names it admits are grounded in
+  the other module's ledger, not this one's (LINKAGE.md rule 5).
 - **Admitting a name widens the trust base and is the author's decision.** An interface admitted
   after the fidelity review re-opens its card: it gets the interface pass against the page images
   before it is relied on.

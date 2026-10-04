@@ -7,6 +7,17 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage axioms`: a trust boundary includes a required module's boundary by reference
+  (Q-0298).** A line `include <package> @ <revision> [<path>]` in `blueprint/trust-boundary.txt`
+  admits exactly the names that file lists in the required package (default
+  `blueprint/trust-boundary.txt`), read with `git show` at the commit `lake-manifest.json` pins —
+  never the working tree. A package the manifest lacks, a revision other than its `inputRev` or
+  resolved sha, an unfetched package or a missing path is refused and admits nothing. Included
+  names are reported apart from the article's own and are not looked for in its `AXIOMS.md`; a
+  nested include resolves against the consumer's manifest. From Paper VII, which requires Paper V's
+  `SpatialHemigroup @ v0.1` and whose first guarded theorem through it would print
+  `SpatialLine.fourier_toolbox_levy_unique`. `docs/LINKAGE.md` rule 5,
+  `scaffold/claude/rules/ledger.md`, `tests/test_trust_include.py`. The WISHLIST entry is removed.
 - **`linkage check --pin-shared` rewrites a stale statement pin (Q-0296).** The advisory for a
   stale statement pin (a pinned node has moved since the paper was written against it) has told
   the reader to re-pin with `--pin-shared` since Q-0234's proof pins landed, but the stale marker
