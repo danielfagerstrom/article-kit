@@ -178,4 +178,29 @@ yet admitted". Keep the colour. Every article gets it on the next scaffold sync.
 
 ---
 
+## `linkage axioms`: a trust boundary that includes a required module's boundary by reference
+
+**Wanted by** `spatial-hemigroup-affine` (Paper VII, the Lean scaffold of Q-0281), 2026-10-04.
+
+Paper VII `require`s Paper V's Lean package (`SpatialHemigroup`, from the public export
+`spatial-hemigroup-scale-space-kernels` at tag `v0.1`), and the hub's `RELEASES.md` § "Dependencies
+between modules" says that requiring a module brings its axiom ledger into the consumer's trust base,
+so that the consumer's guard and trust boundary **list them by reference rather than copy them**.
+`linkage axioms` (`linkage/trust.py`) cannot express that: every non-comment line of
+`blueprint/trust-boundary.txt` is read as a name of this article's own and must appear in a
+`**Lean:**` segment of this article's `AXIOMS.md`. The first guarded theorem that routes through
+Paper V's classification (`SpatialLine.main_analysis`, which prints
+`SpatialLine.fourier_toolbox_levy_unique`) will therefore fail the guard, and the only workarounds
+are to copy V's names into VII's ledger (which the rule forbids) or to leave the theorem unguarded.
+
+**Suggested shape:** an include line in `trust-boundary.txt`, e.g.
+`include SpatialHemigroup @ v0.1 blueprint/trust-boundary.txt` (or the export's `axioms.txt`),
+resolved by `linkage axioms` from the required package's checkout at the revision the lake manifest
+pins (`.lake/packages/<pkg>/…`, or `git show <rev>:<path>` when the package is a source checkout),
+so the names it admits are exactly the required release's, never edited locally; the check refuses
+an include whose package or revision does not match `lake-manifest.json`. Paper VI will need the
+same, and so will any module that requires another.
+
+---
+
 *No other open requests.*
