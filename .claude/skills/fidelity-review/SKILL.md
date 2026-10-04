@@ -109,6 +109,13 @@ node labels before starting.
 - Any card touching a `\lean` tag re-checks that the tag names the declaration(s) proving **all**
   the node's clauses (a tag may list several, comma-separated) — not a sibling proving the headline
   one.
+- **A card reads the annotation's hypothesis side as carefully as its conclusion side.** Where a
+  `\statusT` annotation says what a clause's declarations carry, it lists the declaration's
+  hypotheses beside the node's, in order, each marked same, stronger, weaker or absent
+  (`docs/LINKAGE.md` rule 6); a card that finds the list missing or a hypothesis unmarked records a
+  finding. (Paper V module C: two chapter-15 annotations enumerated every conclusion difference and
+  missed a dropped `P.a = 0`, a `Finset` index printed as unbounded, and a signal class the print
+  never names; the first was the review's one false printed statement.)
 - Never write backslash-bearing content through a non-raw string (`\ref` → carriage return); the
   Edit tool or raw strings only.
 - **Admitting a name re-opens its card.** The verdict covers the interface names the review read;

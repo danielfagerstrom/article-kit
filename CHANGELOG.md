@@ -7,6 +7,12 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`fidelity-review` § 5: a card reads an annotation's hypothesis side too** (Q-0236's companion
+  line, which its unattended session could not write under `.claude/`). Four delivered WISHLIST
+  entries removed again: the scope audit (Q-0108), the drifted shared proof (Q-0234), the deposit
+  sentence (Q-0237) and the annotation's hypotheses (Q-0236). Their deletions were undone on
+  2026-10-01 when GitHub's "Update branch" merge of `main` into `queue/q-0236` (`749e395`)
+  resolved `WISHLIST.md` on the old side.
 - **`scaffold/scripts/build-blueprint.sh` tolerates an article with no Lean (Q-0258).** The
   leanok statement/proof-agreement step now runs `scripts/audit-leanok.py --check` only when
   that script exists, rather than unconditionally; a plain `Formalization/` is not the signal,
