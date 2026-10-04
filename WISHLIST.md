@@ -48,25 +48,6 @@ namespaced (`/article-kit:fidelity-review`).
 
 ---
 
-## `linkage check`: a proof moved to an appendix is no longer compared with the blueprint
-
-**Wanted by** `spatial-hemigroup-affine` (Paper VII, its paper's §3–§5 shortened into appendices,
-pull request #45), 2026-10-04.
-
-The `[proof]` advisory compares the `proof` environment that follows a `% shared with blueprint
-<label>` statement with the node's proof. Paper VII moved most proofs of §3–§5 to appendices, each
-headed "Proof of Proposition~\ref{...}" with its statement left in the main text, as journals expect
-of a long paper. After the move `linkage check` compared 4 proofs where it had compared 18: a proof
-that no longer sits right after its statement is silently unmatched, so the drift check stops covering
-exactly the proofs a long paper relegates, and nothing reports that it stopped.
-
-**Suggested shape:** match a proof to its node by label as well as by position — a marker on the moved
-proof (`% proof of <label>`, or the `\ref` in its heading) — and report a shared statement whose proof is
-neither adjacent nor marked, so a silent loss of coverage becomes visible. The comparison itself stays
-an advisory, as the drift wish above asks.
-
----
-
 ## Sync shared sub-agents from an article session, not only from a hub session
 
 **Wanted by** the wiki hub, 2026-08-15. Falls out of closing your `draft-reviewer` wish.

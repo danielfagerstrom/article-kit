@@ -18,6 +18,26 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   `SpatialHemigroup @ v0.1` and whose first guarded theorem through it would print
   `SpatialLine.fourier_toolbox_levy_unique`. `docs/LINKAGE.md` rule 5,
   `scaffold/claude/rules/ledger.md`, `tests/test_trust_include.py`. The WISHLIST entry is removed.
+- **`linkage check` matches a proof moved to an appendix to its shared statement by
+  label (Q-0297).** Check 3d (Q-0234) only ever looked directly after a `% shared with
+  blueprint` statement for its proof, so Paper VII's move of most §3–§5 proofs into
+  appendices (`spatial-hemigroup-affine` PR #45) silently dropped coverage from 18
+  compared proofs to 4. A proof with no adjacent match is now looked up elsewhere in the
+  paper by an explicit `% proof of <label>` comment, or a single `\ref` in its own
+  optional heading (`\begin{proof}[Proof of Proposition~\ref{label}]`) — or, with
+  neither, a single `\ref` on the line introducing it with no blank line in between, to
+  avoid filing a proof under an unrelated label its introductory paragraph happened to
+  cite. A matched proof is compared exactly as the adjacent case, `--pin-shared`
+  included; a shared statement whose node has a proof of record but whose paper proof is
+  neither adjacent nor matched is now reported `[proof] unmatched` (advisory, counted in
+  the summary), with `% proof omitted` as the opt-out for a paper that deliberately
+  prints none. Read-only runs: `spatial-hemigroup-affine` went from 4 compared proofs to
+  39 compared + 24 unmatched (of 64 proof environments); `spatial-hemigroup-scale-space`
+  from 25 compared to 25 compared + 73 unmatched (that paper does not yet use the moved-
+  proof convention, so the gain is entirely newly-surfaced unmatched findings). Advisory
+  only in both; neither article's exit code changed. `docs/LINKAGE.md` rule 4;
+  `tests/test_checks_moved_proof.py`, `tests/test_checks_shared_proof.py`. The WISHLIST
+  entry is removed.
 - **`linkage check --pin-shared` rewrites a stale statement pin (Q-0296).** The advisory for a
   stale statement pin (a pinned node has moved since the paper was written against it) has told
   the reader to re-pin with `--pin-shared` since Q-0234's proof pins landed, but the stale marker

@@ -122,6 +122,102 @@ def _split_ref(ref: str) -> tuple[str, str, str]:
     return label, sha, proof
 
 
+# --- matching a proof moved off its statement (check 3d, non-adjacent case) -------
+#
+# Paper VII (`spatial-hemigroup-affine`, PR #45) moved most proofs of §3-§5 into
+# appendices, each headed "Proof of Proposition~\ref{...}" with the statement left in
+# the main text. `PROOF_AHEAD` only ever looks *right after* the statement, so a moved
+# proof was invisible to check 3d: coverage silently dropped from 18 compared proofs to
+# 4, and nothing said so (WISHLIST, 2026-10-04).
+#
+# Three ways to resolve a `proof` environment to its label, tried in order: an explicit
+# `% proof of <label>` comment on the nearest non-blank line above `\begin{proof}`; a
+# single `\ref` in the proof's own optional heading (`\begin{proof}[Proof of
+# Proposition~\ref{label}]`, `[Proof of Theorem~\ref{label}, sufficiency ...]`); or,
+# when there is no such heading, a single `\ref` in the line of text that introduces it.
+# More than one `\ref` in either place is not a match -- guessing which one is the
+# subject would be worse than staying silent.
+PROOF_OF_RE = re.compile(r"%[ \t]*proof of[ \t]+([a-z]+:[\w-]+)[ \t]*$")
+PROOF_OMITTED_RE = re.compile(r"%[ \t]*proof omitted\b")
+# The optional heading is only read as one when it carries a `\ref` -- otherwise a
+# proof that happens to open "[...]" (bracketed math, an epigraph) is left as plain
+# body text, exactly as `PROOF_AHEAD` already treats every adjacent proof.
+_PROOF_HEADING = re.compile(r"\s*\[([^\]]*\\ref\{[^\]]*)\]")
+
+
+def _nearest_line(text: str, pos: int) -> str:
+    """The nearest non-blank line above `pos`, skipping blank lines -- tolerant, for the
+    explicit `% proof of <label>` marker, whose own grammar (one fixed comment, matched
+    verbatim) cannot mistake an unrelated line for itself."""
+    for line in reversed(text[:pos].splitlines()):
+        if line.strip():
+            return line
+    return ""
+
+
+def _introducing_line(text: str, pos: int) -> str:
+    r"""The line of text directly above `pos`, with **no blank line** between it and
+    `\begin{proof}` -- unlike `_nearest_line`, deliberately not tolerant of a gap.
+
+    This is the fallback that reads a bare `\ref` as naming the proof's subject, so it
+    must not reach across a paragraph break into unrelated prose: a theorem's own
+    "Sketch"-headed proof, introduced after a paragraph discussing it, sat one blank
+    line below a sentence that happened to cite a different lemma in passing
+    (`spatial-hemigroup-affine` appendix-orders.tex) -- read as adjacent, that sentence
+    would have filed the theorem's proof under the lemma's label instead.
+
+    `text[:pos].splitlines()`'s last element is already the line directly above `pos`
+    when `\begin{proof}` starts a fresh line (nothing of its own line precedes `pos`,
+    so that line contributes no entry); when the two share a line, it is `pos`'s own
+    line up to that point -- either way, the line to read.
+    """
+    lines = text[:pos].splitlines()
+    if not lines or not lines[-1].strip():
+        return ""  # a blank line (or the top of the file) directly above
+    return lines[-1]
+
+
+def _single_ref_label(text: str) -> str | None:
+    from .parse_latex import proof_ref_labels
+
+    refs = proof_ref_labels(text)
+    return next(iter(refs)) if len(refs) == 1 else None
+
+
+def _scan_proofs(text: str) -> list[tuple[int, str | None, str]]:
+    """Every `proof` environment: (start offset, heading or None, body)."""
+    out = []
+    for bm in re.finditer(r"\\begin\{proof\}", text):
+        rest = text[bm.end():]
+        hm = _PROOF_HEADING.match(rest)
+        heading, body_start = (hm.group(1), bm.end() + hm.end()) if hm else (None, bm.end())
+        em = re.search(r"\\end\{proof\}", text[body_start:])
+        if not em:
+            continue
+        out.append((bm.start(), heading, text[body_start:body_start + em.start()]))
+    return out
+
+
+def floating_proofs(cfg: Config) -> dict[str, tuple[str, str, int]]:
+    """Every `proof` environment resolvable to a blueprint label by marker or heading,
+    label -> (body, file, line) -- the pool a marker with no adjacent proof is matched
+    against. First mention wins on a collision between two proofs naming the same label.
+    """
+    out: dict[str, tuple[str, str, int]] = {}
+    for f in paper_files(cfg):
+        t = read(f)
+        rel = f.relative_to(cfg.root).as_posix()
+        for start, heading, body in _scan_proofs(t):
+            om = PROOF_OF_RE.match(_nearest_line(t, start).strip())
+            label = om.group(1) if om else None
+            if label is None:
+                label = _single_ref_label(heading) if heading is not None \
+                    else _single_ref_label(_introducing_line(t, start))
+            if label:
+                out.setdefault(label, (body, rel, t.count("\n", 0, start) + 1))
+    return out
+
+
 def paper_files(cfg: Config) -> list[Path]:
     """Every paper source, the directories in `linkage.toml` order, names sorted inside.
 
@@ -150,6 +246,7 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
 
     env_re = re.compile(
         r"\\begin\{(" + "|".join(cfg.statement_envs) + r")\}(.*?)\\end\{\1\}", re.S)
+    floating: dict[str, tuple[str, str, int]] | None = None  # built on first need
     out: list[PaperMarker] = []
     for f in paper_files(cfg):
         t = read(f)
@@ -169,6 +266,16 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
                     pinned[label] = sha
                 if psha:
                     proof_pinned[label] = psha
+            proof_omitted = bool(PROOF_OMITTED_RE.search(t[m.end():nxt]))
+            # No adjacent proof: a statement moved to an appendix (Paper VII, PR #45)
+            # still has one, just not here -- look it up by label before giving up.
+            if proof is None and not proof_omitted:
+                if floating is None:
+                    floating = floating_proofs(cfg)
+                for lab in labels:
+                    if lab in floating:
+                        proof = floating[lab][0]
+                        break
             out.append(PaperMarker(
                 file=f.relative_to(cfg.root).as_posix(),
                 blueprint_labels=labels,
@@ -180,6 +287,7 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
                 proof_refs=proof_ref_labels(proof) if proof is not None else None,
                 shared_proof=shared_proof(proof) if proof is not None else None,
                 proof_pinned=proof_pinned,
+                proof_omitted=proof_omitted,
                 raw=m.group(0),
             ))
     return out

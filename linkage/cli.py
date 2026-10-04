@@ -117,11 +117,15 @@ def cmd_check(args) -> int:
           f"{s['ledger_refs']} ledger refs, {s['paper_shared']} paper shared-statements "
           f"({verb} verbatim, {trk} tracked by sha, {drift} needing attention"
           + (f", {noenv} on prose" if noenv else "") + ").")
-    if pv := s.get("proof_verbatim", 0) + s.get("proof_tracked", 0) + s.get("proof_drift", 0):
-        # Only when a shared statement is followed by a proof both sides carry; advisory
-        # under every flag (check 3d).
+    unmatched = s.get("proof_unmatched", 0)
+    if (pv := s.get("proof_verbatim", 0) + s.get("proof_tracked", 0)
+            + s.get("proof_drift", 0)) or unmatched:
+        # Only when a shared statement's node carries a proof of record; advisory under
+        # every flag (check 3d). Unmatched proofs are not among the `pv` compared, since
+        # there is nothing on the paper side yet to compare against.
         print(f"  shared proofs: {pv} compared ({s['proof_verbatim']} verbatim, "
-              f"{s['proof_tracked']} tracked by sha, {s['proof_drift']} to re-read).")
+              f"{s['proof_tracked']} tracked by sha, {s['proof_drift']} to re-read)"
+              + (f", {unmatched} unmatched" if unmatched else "") + ".")
     if len(cfg.papers) > 1:
         # One line per paper only when there is more than one: with a single directory
         # it would repeat the count just printed.
