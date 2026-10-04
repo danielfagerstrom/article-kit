@@ -161,6 +161,43 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    Advisory under every flag, `--strict-shared` included: it never changes the exit code. The summary
    prints `shared proofs: N compared (v verbatim, t tracked by sha, d to re-read)` when there are any.
 
+   **A proof moved off its statement is matched by label, not only by position**
+   (2026-10-04, Q-0297). A long paper routinely moves most of its proofs into appendices for the
+   journal version — Paper VII (`spatial-hemigroup-affine`, PR #45) moved §3–§5's this way, each
+   headed "Proof of Proposition~\ref{...}" with the statement left in the main text — and until
+   this, the comparison above only ever looked *directly after* the marked statement: the move
+   silently dropped coverage from 18 compared proofs to 4, and nothing said so. When no `proof`
+   environment follows the statement, `linkage check` now looks for one elsewhere in the paper
+   (any configured `paths.paper` directory, any file), resolved to this marker's label by, in
+   order:
+
+   1. an explicit `% proof of <label>` comment on the line directly above the `\begin{proof}`;
+   2. a single `\ref` in the proof's own optional heading, `\begin{proof}[Proof of
+      Proposition~\ref{label}]` or `[Proof of Theorem~\ref{label}, sufficiency ...]` — the
+      heading text itself is dropped before comparison, so it reads exactly as an adjacent proof
+      would;
+   3. with no such heading, a single `\ref` on the line of text that introduces it, with **no
+      blank line** between that line and `\begin{proof}` — a paragraph discussing the result
+      before its proof, with a blank line separating the two, does not count: a "Sketch"-headed
+      proof once sat one blank line below a sentence that cited a different lemma in passing, and
+      reading that sentence as its introduction would have filed the proof under the wrong label.
+
+   More than one `\ref` in a heading or introducing line is not a match — guessing which one is
+   the subject would be worse than staying silent. A matched proof is compared exactly as the
+   adjacent case (verbatim / tracked / stale, `--pin-shared` included).
+
+   **A shared statement whose node has a proof of record but whose paper proof is neither
+   adjacent nor matched** is now itself a finding — the silent loss of coverage made visible —
+   reported as `[proof]  file:line label: ... neither adjacent ... nor matched ...` (advisory,
+   `--strict-shared` included) and counted in the summary as `shared proofs: ... N unmatched`.
+   A paper that deliberately prints no proof for a shared statement (proved elsewhere, by
+   citation, or left for the reader) opts out with its own marker, anywhere between the `%
+   shared with blueprint` marker and the next one:
+
+   ```
+   % proof omitted
+   ```
+
    **A repository may hold several papers** (2026-09-15). `paths.paper` in `linkage.toml` takes a
    directory *or a list of them*:
 
