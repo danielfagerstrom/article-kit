@@ -109,7 +109,10 @@ document gets the declarations, abstract-length and `\tag`-numbering checks; the
 front and back matter go unchecked while the run reports `PAPER LINT OK`. Seen in
 spatial-hemigroup-affine after its split into `paper/` and `paper-iso/` (its ADR-0001, #53,
 2026-10-04): the summary line names `paper/main.tex` only. Paper V's `paper-b/` and `paper-c/` are
-fragments without a main document, so the gap did not show there.
+fragments without a main document, so the gap did not show there. A second symptom of the same cause: the
+declaration headings are counted across *both* directories, so `paper/main.tex` reported "4/4
+declarations" while it had none and `paper-iso/` had all four. The affine repository checks its second
+paper with a local script meanwhile (`records/affine/check-paper-iso-backmatter.py`, #54).
 
 Suggested shape: group the sources by paper directory and run the main-document checks once per
 directory that has a main document (a directory of fragments stays the normal "no main document"
