@@ -15,6 +15,15 @@
 #   web       blueprint/web/            the same PLUS the dependency graph and [T]/[A] tags
 #   manifest  .manifest-preview.json    what the hub would transclude (pandoc-rendered)
 #
+# Two more checks run inside the `check` step, each only where an article added it:
+#   scripts/audit-leanok.py --check   leanok statement/proof agreement
+#   scripts/check-web-thms.py         web.tex's theorem list against theorems.tex
+# An article with no Lean development, or no separate web theorem list, carries neither script
+# and skips the corresponding check rather than failing on it. `Formalization/` is not itself the
+# signal: `linkage.toml` requires the path to exist even in a no-Lean article (as an intentionally
+# empty placeholder, per that article's own Formalization/README.md), so a Lean development is
+# only there once its audit script is.
+#
 # Owner: article-kit's scaffold/scripts/build-blueprint.sh. The copy in an article is a delivery
 # of it by `linkage init --sync`; change it there, not in the article.
 #
@@ -57,9 +66,19 @@ if [ "$DO_CHECK" = 1 ]; then
   # with the first and not the second paints as "proof ready, not done" while the check passes.
   # Six nodes were wrong that way before a reader noticed a blue box; two of the six were
   # introduced by the author who had just fixed the other four. Local until article-kit's
-  # WISHLIST entry lands.
-  step "leanok statement/proof agreement"
-  python scripts/audit-leanok.py --check
+  # WISHLIST entry lands. Skipped in an article with no Lean development: no copy of the script
+  # to run. (A bare, empty `Formalization/` is not a signal either way -- see the docstring.)
+  if [ -f scripts/audit-leanok.py ]; then
+    step "leanok statement/proof agreement"
+    python scripts/audit-leanok.py --check
+  fi
+fi
+
+if { [ "$DO_WEB" = 1 ] || [ "$DO_CHECK" = 1 ]; } && [ -f scripts/check-web-thms.py ]; then
+  # web.tex's theorem list against theorems.tex. Not every article carries this separate
+  # check; skip where the script was never added.
+  step "web theorem list vs theorems.tex"
+  python scripts/check-web-thms.py
 fi
 
 if [ "$DO_PRINT" = 1 ]; then
