@@ -122,4 +122,23 @@ against the union.
 
 ---
 
+## process: a proof change mirrors into the paper in the same pull request
+
+Lesson from spatial-hemigroup-affine (Paper VII, 2026-10-05). The Lean session rewrote blueprint proofs
+to the Lean route (`% CHANGED ... proof rewritten to the Lean route`) and merged them, while the papers
+transcribe those proofs verbatim; each merge left the papers' copies drifted, and a separate mirror pull
+request was needed four times in one day (#58, #62, #66/#67, #69), each racing the next Lean merge.
+PROCESS.md § 7 says "changes the paper forces on shared text are made in the blueprint and
+re-transcribed (the article mirror)", but not the other direction: who mirrors when the blueprint
+changes for its own reasons (a formalization rewrite, a referee fix).
+
+Suggested: one line in PROCESS.md § 5 (proving waves) and § 7, and a session rule in
+`scaffold/claude/rules/`: *a pull request that changes a proof of record or a shared statement that a
+paper prints re-transcribes the paper's copy in the same pull request, and opens only when `linkage
+check` shows no new proof drift or stale pin.* Optionally a `linkage check --strict-proofs` that fails
+on drift introduced by the branch (drift present on the base stays advisory), so CI enforces it. The
+affine repository adopted the rule in its `CLAUDE.md` (#69).
+
+---
+
 *No other open requests.*
