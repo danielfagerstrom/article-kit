@@ -141,4 +141,38 @@ affine repository adopted the rule in its `CLAUDE.md` (#69).
 
 ---
 
+## process: every ledger entry a Lean proof spends is a blueprint node, or the graph overclaims
+
+Lesson from spatial-hemigroup-affine (Paper VII, 2026-10-06). leanblueprint paints a node dark green
+("fully proved") when it and every `\uses` ancestor have a `\leanok` proof; definitions are exempt,
+and an axiom counts against a node only if it is itself a node without a proof. The affine module had
+not made its ledger entries into nodes. Its `[A]` nodes carried `\ledger{A3}` and a sorry-free Lean
+proof that calls the axiom, so all 87 proved nodes rendered dark green, though 41 rest on a cited
+fact. Paper V had avoided this by convention: each cited interface is an `[A]` node with no proof
+(`prop:fourier-toolbox`), and its spenders `\uses` it. Nothing in the framework required that. The
+fix there was nine interface nodes and fifty edges (spatial-hemigroup-affine #82).
+
+Suggested:
+- PROCESS.md § 5, the statement skeleton, says that each ledger entry the Lean declares as an axiom
+  gets an interface node: the entry's statement as used, `\lean{<axiom>}\leanok`, and no proof. Each
+  node naming the entry on its status line `\uses` it.
+- `linkage check` warns when a `\leanok` node's proof is `\leanok`, it carries `\ledger{AX}`, and no
+  node in its `\uses` closure is AX's interface node, i.e. the node would render fully proved while
+  resting on an axiom.
+
+---
+
+## `\ledger{}` for an entry of a required module's ledger
+
+From the same pull request (blind-review finding IFN-3). The affine module's Lean spends one interface
+of Paper V's package (`SpatialLine.fourier_toolbox_levy_unique`, V's ledger A3), and it is included by
+reference since Q-0298. Its blueprint interface node `prop:line-levy-unique` is `[A]` but has no form
+to ground it in: `\ledger{A3}` would resolve against this module's own A3. Check 7 passes today only
+because the prose says "entry A3 of [V]'s axiom ledger", which matches `A\d+`; a rewording would fail
+it. The manifest also projects `ledger: []`. Suggested: `\ledger{V:A3}`, resolved through the
+`include` line of `trust-boundary.txt` against the required module's `AXIOMS.md`, and projected into
+the manifest with its module.
+
+---
+
 *No other open requests.*
