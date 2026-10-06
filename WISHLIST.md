@@ -175,4 +175,36 @@ the manifest with its module.
 
 ---
 
+## process: three writing rules from an author's section review (Paper VII, pass 6)
+
+The author's first comments on the isotropic paper of spatial-hemigroup-affine (2026-10-06, PROCESS.md
+§ 8 pass 6, its introduction), after passes 1–3 and two blind reviews had passed it. Each is a general
+rule; the first two are not in `WRITING.md` or `PUBLICATION-TEMPLATE.md`, the third is and was not
+enforced:
+
+1. **Programme-internal labels never reach the reader.** "the line paper [V] [2] and its cone module
+   [B] [3]": the roman numerals of the programme's papers and the letters of their modules mean
+   nothing to a reader. A cited paper is named as any paper is (author and year, or the bibliography
+   number with a word of what it is). Where shared statements carry such a label (`[V, Thm.~7.3]` in a
+   blueprint statement transcribed verbatim), the label should be a macro the blueprint and the paper
+   define differently, as `\ledger{A3}` already prints the paper's cited-fact name: the blueprint keeps
+   its short form, the paper prints a real citation, and `linkage check` still compares source text.
+   Suggested: a `WRITING.md` § 1 rule, a scaffold macro (`\prog{V}{Thm.~7.3}` or similar), and a
+   `linkage paper` advisory on a bare `[V`/`[B`-style label in paper prose.
+2. **The introduction poses the questions before the answers, in plain language.** The paper's
+   "answer" paragraph summarized every result with its technical detail in one paragraph (classes,
+   polar profiles, thresholds, Bessel functions, extreme rays), and its prior-work paragraphs did the
+   same; the author found them unreadable. The introduction says what is asked and why, then what is
+   found, at the level of a reader of the abstract; the technical statement of each result is its
+   section's. Suggested: a line in `PUBLICATION-TEMPLATE.md` § B.2 and a reviewer flag
+   ("introduction states a result in more technical detail than the question it answers").
+3. **Every name carries a real reference, and a term below the reader's floor is cited where it is
+   introduced** (`WRITING.md` § 3 has the second half). Missed by every pass: "due to Zolotarev and to
+   Wolfe" citing only Sato's remark that names them, and self-decomposable laws and the Matérn
+   covariance introduced without a source. Suggested: the register reviewer's vague-attribution tag
+   extended to a named author without a bibliography entry of their own, and to the first use of a
+   named class or family without a citation.
+
+---
+
 *No other open requests.*
