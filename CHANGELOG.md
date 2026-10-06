@@ -7,6 +7,18 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+## v0.2.0 — 2026-10-06 — a required module's trust boundary by reference
+
+Everything since v0.1.0. Cut for Paper VII (`spatial-hemigroup-affine`), whose axiom guard reads a
+`trust-boundary.txt` with an `include` line: `linkage axioms --check` at v0.1.0 reads that line as
+an axiom name and fails, so the guard needs this tag's `linkage_ref`. A minor bump under the `v0`
+rule. Nothing turns a passing article's advisory into a failure:
+- the reusable workflows gain only an optional input (`docs.yml`'s `push_artifacts`, default true)
+  and run `linkage boundary` as a no-op without a `[boundary]` table;
+- `linkage paper`'s fatal checks run only where an article calls them.
+
+A module moves to this tag when it next runs (`docs/RELEASE.md`, "Versioning the framework").
+
 - **`linkage axioms`: a trust boundary includes a required module's boundary by reference
   (Q-0298).** A line `include <package> @ <revision> [<path>]` in `blueprint/trust-boundary.txt`
   admits exactly the names that file lists in the required package (default
