@@ -175,7 +175,7 @@ the manifest with its module.
 
 ---
 
-## process: three writing rules from an author's section review (Paper VII, pass 6)
+## process: writing rules from an author's section review (Paper VII, pass 6)
 
 The author's first comments on the isotropic paper of spatial-hemigroup-affine (2026-10-06, PROCESS.md
 § 8 pass 6, its introduction), after passes 1–3 and two blind reviews had passed it. Each is a general
@@ -204,6 +204,21 @@ enforced:
    covariance introduced without a source. Suggested: the register reviewer's vague-attribution tag
    extended to a named author without a bibliography entry of their own, and to the first use of a
    named class or family without a citation.
+4. **A cited result is stated with its citation, not re-justified** (the author on § 2, same day): "if we
+   cite something, we don't need to explain how it is proved or what axioms it is based on, it is the
+   job of the cited paper." The papers had sentences retelling how a cited paper proves a fact and on
+   which axioms it rests ("In [B] the existence of the delay law ..."), a habit carried over from the
+   blueprint's annotations, which record exactly that for the trust base.
+5. **No sentence whose only content is what is *not* used** ("No statement of this paper uses those
+   facts ..."): it does not clarify anything for a reader; what rests on what is said once, in the
+   trust-base subsection. Same origin: blueprint-annotation vocabulary leaking into paper prose.
+6. **A concept a reader of the target venue does not know is introduced, not only defined**: the
+   author asked for an introduction to subordination "for a computer vision reader" before its
+   definitions — what it is in plain words, why it matters to the paper, one familiar example.
+
+   Suggested for 4–6: a `WRITING.md` § 2 line on blueprint vocabulary in paper prose (provenance,
+   non-use, axiom accounting belong to annotations and the trust base), and register-reviewer tags
+   for each.
 
 ---
 
