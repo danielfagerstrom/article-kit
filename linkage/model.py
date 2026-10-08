@@ -65,6 +65,13 @@ class Node:
     ledger: list[str] = field(default_factory=list)
     """Axiom-ledger entry ids this node is grounded in, de-duplicated, first-mention order."""
 
+    status_ledger: list[str] = field(default_factory=list)
+    """The subset of `ledger` that sits on the status line itself (between `\\statusT`/
+    `\\statusA` and its `\\emph{...}` annotation), rather than in the annotation's prose
+    or elsewhere in the body. Check 14 reads this, not `ledger`: an Assignment clause
+    can mention an entry while saying it is NOT spent ("\\ledger{A5} is not spent"), and
+    that mention must not look like a claim. Not projected to the manifest."""
+
     statement: str = ""
     """Statement text normalized for stable hashing."""
 

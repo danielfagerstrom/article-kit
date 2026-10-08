@@ -115,6 +115,21 @@ def status_annotation(body: str) -> str:
     return (m.group(1) or "") if m else ""
 
 
+def status_ledger(body: str) -> list[str]:
+    """The `\\ledger{}` entries on the status line itself -- between `\\statusT`/
+    `\\statusA` and the trailing `\\emph{...}` annotation, which STATUS_ANNOTATION_RE
+    already tolerates there. A `\\ledger{}` the annotation's prose mentions (e.g.
+    "\\ledger{A5} is not spent") lies inside that `\\emph{...}` group, not before it, so
+    it is excluded here -- unlike `Node.ledger`, which scans the whole body and catches
+    both. De-duplicated, first-mention order.
+    """
+    m = STATUS_ANNOTATION_RE.search(body)
+    if not m:
+        return []
+    end = m.start(1) if m.group(1) else m.end()
+    return list(dict.fromkeys(re.findall(r"\\ledger\{([^}]*)\}", body[m.start():end])))
+
+
 # --- the shared-statement projection (check 3's drift comparison) ---------------
 #
 # The paper shares a blueprint node's *mathematics*, not its formalisation commentary.
@@ -249,6 +264,7 @@ def blueprint_nodes(tex: str, cfg: Config) -> list[Node]:
                 # says what that entry carries (LINKAGE.md rule 7) — and the hub projects
                 # this list as the node's sources, where a repeat is noise.
                 ledger=list(dict.fromkeys(re.findall(r"\\ledger\{([^}]*)\}", body))),
+                status_ledger=status_ledger(body),
                 statement=normalize_statement(body),
                 shared_statement=shared_statement(body),
                 proof=normalize_statement(pm.group(1)) if pm else None,

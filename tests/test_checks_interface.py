@@ -104,6 +104,20 @@ def test_a_t_node_without_a_proof_is_not_an_interface_node(article):
     assert "add a node stating A1" in msg
 
 
+def test_an_assignment_clause_disclaiming_an_entry_is_not_the_subject(article):
+    r"""Q-0378: the status line cites A1; the Assignment clause says A2 is NOT spent.
+    `Node.ledger` (whole-body scan) would catch both; `status_ledger` (status-line only)
+    catches only A1 -- the false positive five of these gave on Paper VII."""
+    f = check(article, interface("prop:tail", "A1", "tail_bound")
+              + statement(label="lem:a", lean="spend_a1", leanok=True, uses=("prop:tail",),
+                         status="A", ledger=("A1",), proof="By the cited bound.",
+                         proof_leanok=True,
+                         note=assignment(r"\ledger{A1} carries the bound; "
+                                        r"\ledger{A2} is not spent.")))
+    assert f.fatal == []
+    assert tagged(f.advisory, "iface") == []
+
+
 def test_an_unproved_spender_is_not_the_subject(article):
     r"""Not \leanok: the graph does not paint it proved, so nothing is over-reported."""
     f = check(article, statement(label="lem:a", status="A", ledger=("A2",),
