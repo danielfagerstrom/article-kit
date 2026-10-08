@@ -453,6 +453,44 @@ def run(
             "sound is AXIOMS.md's review (permitted, ADR-0010 rule 2)"
         )
 
+    # 14. a proved node that spends a ledger entry reaches the entry's interface node
+    # (2026-10-08, Q-0356)
+    #
+    # leanblueprint paints a node fully proved when it and every \uses ancestor carry
+    # \leanok, and an axiom the Lean proof calls counts against the node only if the axiom
+    # is itself a labelled node without a proof. `spatial-hemigroup-affine` (Paper VII)
+    # had made no such nodes: its [A] nodes carried \ledger{A3} and a sorry-free proof
+    # calling the axiom, so all 87 proved nodes painted dark green though 41 of them rest
+    # on a cited fact the graph never showed (fixed by hand in its #82, nine interface
+    # nodes and fifty edges). Paper V had avoided it by convention only: each cited
+    # interface its own [A] node with no proof (`prop:fourier-toolbox`), \uses'd by every
+    # node that spends it. PROCESS.md section 5 now states that convention; this reads it.
+    #
+    # The interface node for an entry AX is a node whose own ledger is exactly [AX] and
+    # which has no proof. The walk goes through [A] nodes, as leanblueprint's colouring
+    # does. One exemption: an interface node is not asked to \uses itself. Advisory, as
+    # check 10: the graph under-reports, the trust story does not change -- the ledger
+    # entry is checked by checks 2 and 6 either way.
+    interface_of: dict[str, set[str]] = {}
+    for n in nodes:
+        if n.label and n.proof is None and len(n.ledger) == 1:
+            interface_of.setdefault(n.ledger[0], set()).add(n.label)
+    for n in sorted(nodes, key=lambda n: n.label or ""):
+        if not n.leanok or not n.label or not n.ledger:
+            continue
+        reached = set(uses_paths(n.label, by_label)) | {n.label}
+        for a in n.ledger:
+            if not interface_of.get(a, set()) & reached:
+                advisory.append(
+                    f"[iface]  {n.label}: \\leanok and names \\ledger{{{a}}}, but no \\uses "
+                    f"ancestor is {a}'s interface node (a node whose ledger is exactly "
+                    f"[{a}], with no proof) -- the graph paints it fully proved though it "
+                    f"rests on a cited fact; "
+                    + (f"\\uses {_who(sorted(interface_of[a]))}" if a in interface_of else
+                       f"add a node stating {a} as used, \\lean{{<axiom>}}\\leanok, no "
+                       "proof, and \\uses it")
+                    + " (PROCESS.md section 5)")
+
     # 3. paper shared statements
     labels = bp.labels
     drifted: list[str] = []
