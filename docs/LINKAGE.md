@@ -734,6 +734,36 @@ naming them keeps the difference between "open" and "leaned on while open" visib
    reported as named but not read; the export route has the exact answer. And a stamp says when a
    block was produced, not that it is current: only the pin comparison and `--fresh-axioms` say that.
 
+14. **A proved node that spends a ledger entry reaches the entry's interface node** (2026-10-08,
+   Q-0356/Q-0378). leanblueprint paints a node fully proved when it and every `\uses` ancestor carry
+   `\leanok`, and a cited axiom counts against a node only if the axiom is itself a labelled node
+   without a proof. `spatial-hemigroup-affine` (Paper VII) had made no such nodes: its `[A]` nodes
+   carried `\ledger{A3}` and a sorry-free proof calling the axiom directly, so all 87 proved nodes
+   painted dark green though 41 of them rest on a cited fact the graph never showed it resting on
+   (fixed by hand in its #82, nine interface nodes and fifty edges). Paper V had avoided this by
+   convention only: each cited interface its own `[A]` node with no proof (`prop:fourier-toolbox`),
+   `\uses`'d by every node that spends it — PROCESS.md § 5 now states that convention, and this check
+   enforces it.
+
+   **The interface node** for an entry `AX` is an `[A]` node whose *status line* carries `\ledger{AX}`
+   alone and which has no proof. The walk goes through `[A]` nodes, as leanblueprint's colouring does.
+   A `\leanok` node that names an entry on its own status line, and whose `\uses` closure contains no
+   such interface node for it, is advised — reached transitively, so the interface node need not be a
+   direct `\uses`. One exemption: an interface node is not asked to `\uses` itself.
+
+   **Only the status line**, not the whole body: both ends of the comparison read `Node.status_ledger`
+   (the `\ledger{}` tokens between `\statusT`/`\statusA` and the status annotation), not `Node.ledger`,
+   which also catches a `\ledger{}` the body mentions in passing. An `[A]` node's Assignment clause can
+   name an entry while saying it is *not* spent ("`\ledger{A5}` is not spent") or that a different
+   node spends it ("`\ledger{A2}` is not read"); read against the whole body this looked like a claim,
+   and gave five false advisories on Paper VII (Q-0378). The same distinction retires the earlier
+   restriction to `[A]`-only spenders: a `[T]` node's `\ledger{}` mentions are commentary elsewhere in
+   its body ("cites nothing ... `\ledger{A3}`'s territory", six such on Paper VII), never on its own
+   status line, so reading the status line already excludes them without naming `[T]` out explicitly.
+
+   Advisory, as rule 10: the graph under-reports a node's trust story rather than changing it — the
+   ledger entry itself is still checked by rules 2 and 6.
+
 The **wiki edge** is cross-repo: pass `--wiki <path-to-Notes>` to also check that every `\notes{slug}`
 resolves to a `slug.md` under the wiki.
 
