@@ -41,11 +41,14 @@ box for the drafted prose, where `linkage check` is the box for the upstream art
       reader cannot resolve, into a work the sentence never names. Advisory: the
       abbreviation may be typographic rather than a pointer
 
-Everything the declarations, the abstract and the `\tag` check need comes from the
-paper's **main document** — the file carrying `\begin{document}`. A paper directory
-holding only section fragments (the scaffold smoke article, a module still being
-assembled) has none, so those three checks are skipped and the summary line says so,
-rather than reporting a fragment collection as a paper missing its front matter.
+Everything the declarations, the abstract and the `\tag` check need comes from a
+paper's **main document** — the file carrying `\begin{document}`. A repository may
+configure more than one `paths.paper` directory (`spatial-hemigroup-affine`'s `paper/`
+and `paper-iso/`), so these three checks run once per directory that has a main
+document, each scoped to its own files. A directory holding only section fragments
+(the scaffold smoke article, a module still being assembled) has none, so those three
+checks are skipped for it and the summary line says so, rather than reporting a
+fragment collection as a paper missing its front matter.
 """
 from __future__ import annotations
 
@@ -173,8 +176,11 @@ class Segment:
 class Sources:
     cfg: Config
     files: list[Source] = field(default_factory=list)
-    main: Source | None = None
-    order: list[Segment] = field(default_factory=list)
+    mains: dict[Path, Source] = field(default_factory=dict)
+    """`paths.paper` directory -> its main document, for every directory that has one."""
+    orders: dict[Path, list[Segment]] = field(default_factory=dict)
+    """`paths.paper` directory -> its document order (`_document_order`), keyed like
+    `mains` — one assembled document per module, not one for the whole repository."""
     statements: list[Statement] = field(default_factory=list)
     labels: dict[str, tuple[str, int]] = field(default_factory=dict)
     bib_files: list[str] = field(default_factory=list)
@@ -241,9 +247,12 @@ def read(cfg: Config) -> Sources:
     for f in paper_files(cfg):
         add(f)
 
-    src.main = next((s for s in src.files if r"\begin{document}" in s.text), None)
-    if src.main is not None:
-        src.order = _document_order(src.main, by_path)
+    for d in cfg.papers:
+        main = next((s for s in src.files
+                     if s.module == d and r"\begin{document}" in s.text), None)
+        if main is not None:
+            src.mains[d] = main
+            src.orders[d] = _document_order(main, by_path)
 
     env_re = re.compile(
         r"\\begin\{(" + "|".join(cfg.statement_envs) + r")\}(.*?)\\end\{\1\}", re.S)
@@ -439,17 +448,30 @@ def _items(src: Sources, f: Findings) -> None:
                     f"({st.rel}:{st.line}) — the pointer names an item that is not there")
 
 
-def _tags(src: Sources, f: Findings) -> int:
+def _order_files(order: list[Segment]) -> list[Source]:
+    """The files `order` reaches, deduplicated, in the order the document first reaches
+    them — the one module's own document, not every paper directory's files."""
+    seen: set[Path] = set()
+    out: list[Source] = []
+    for seg in order:
+        if seg.src.path not in seen:
+            seen.add(seg.src.path)
+            out.append(seg.src)
+    return out
+
+
+def _tags(order: list[Segment], f: Findings) -> int:
     r"""Check 4 — a hand-written `\tag{N.M}` whose `N` is not the enclosing section's.
 
     The number is written by hand exactly where LaTeX would not supply it, so nothing
     keeps it in step when a section moves; a blind review of Paper I found a `\tag{3.7}`
     in section 4. The section number comes from the document order, which is why this
-    check needs the main document.
+    check needs the main document — one module's own order, since a tag's section comes
+    from where it falls in *that* module's document, not another module's.
     """
-    if not src.order:
+    if not order:
         return 0
-    events = [(m, seg.src) for seg in src.order
+    events = [(m, seg.src) for seg in order
               for m in SECTION_EVENT_RE.finditer(seg.src.text, seg.start, seg.end)]
 
     # Which identifiers this document's sections actually carry. A tag naming anything
@@ -511,27 +533,28 @@ def _pointers(src: Sources, f: Findings) -> None:
                 f"which work, or reference the label")
 
 
-def _declarations(src: Sources, f: Findings) -> list[str]:
-    """Advisory — the declarations PUBLICATION-TEMPLATE § A calls mandatory."""
-    if src.main is None:
-        return []
+def _declarations(main: Source, module_files: list[Source], f: Findings) -> list[str]:
+    """Advisory — the declarations PUBLICATION-TEMPLATE § A calls mandatory.
+
+    Scoped to one module's own files: a heading in a *different* module's front matter
+    must not stand in for this one's — that is how a two-paper repository came to report
+    4/4 declarations for a module that wrote none of its own.
+    """
     headings = " || ".join(
-        m.group(1) for s in src.files for m in HEADING_RE.finditer(s.text))
+        m.group(1) for s in module_files for m in HEADING_RE.finditer(s.text))
     missing = [name for name, pat in DECLARATIONS
                if not re.search(pat, headings, re.I)]
     for name in missing:
         f.advisory.append(
-            f"[decl]   {src.main.rel}: no heading declares '{name}' — "
+            f"[decl]   {main.rel}: no heading declares '{name}' — "
             f"PUBLICATION-TEMPLATE § A calls it mandatory and the template does not "
             f"force it")
     return missing
 
 
-def _abstract(src: Sources, f: Findings) -> int | None:
+def _abstract(main: Source, module_files: list[Source], f: Findings) -> int | None:
     """Advisory — the abstract against the template's ~150–250 words."""
-    if src.main is None:
-        return None
-    for s in src.files:
+    for s in module_files:
         if m := ABSTRACT_RE.search(s.text):
             n = word_count(m.group(1))
             if not (ABSTRACT_MIN <= n <= ABSTRACT_MAX):
@@ -541,25 +564,49 @@ def _abstract(src: Sources, f: Findings) -> int | None:
                     f"(PUBLICATION-TEMPLATE § A)")
             return n
     f.advisory.append(
-        f"[abstr]  {src.main.rel}: no abstract environment in the main document")
+        f"[abstr]  {main.rel}: no abstract environment in the main document")
     return 0
 
 
 def lint(cfg: Config) -> Findings:
-    """Every paper check, over every paper directory `linkage.toml` names."""
+    r"""Every paper check, over every paper directory `linkage.toml` names.
+
+    The declarations, abstract and `\tag` checks run once *per module that has a main
+    document* — a repository of several papers (`spatial-hemigroup-affine`'s `paper/`
+    and `paper-iso/`) has one `\begin{document}` each, and a single global main would
+    give only the first its front-matter checks while reporting the whole repository
+    clean. A module with no main document (a fragments-only directory) keeps the
+    "no main document" case, scoped to that module. The reference and cite-key checks
+    stay global: a `\ref` resolves against the union of labels across every module.
+    """
     src = read(cfg)
     f = Findings()
-    missing_decl = _declarations(src, f)
-    abstract = _abstract(src, f)
+    papers = []
+    for d in cfg.papers:
+        main = src.mains.get(d)
+        entry: dict = {
+            "dir": d.relative_to(cfg.root).as_posix(),
+            "main": None,
+            "missing_declarations": [],
+            "abstract_words": None,
+            "tags_checked": 0,
+        }
+        if main is not None:
+            order = src.orders[d]
+            module_files = _order_files(order)
+            entry["main"] = main.rel
+            entry["missing_declarations"] = _declarations(main, module_files, f)
+            entry["abstract_words"] = _abstract(main, module_files, f)
+            entry["tags_checked"] = _tags(order, f)
+        papers.append(entry)
+
     referenced, n_refs = _refs(src, f)
     orphans = _orphans(src, f, referenced)
     n_cites, n_nodoi = _cites(src, f)
     _items(src, f)
-    n_tags = _tags(src, f)
     _pointers(src, f)
     f.stats = {
         "files": len(src.files),
-        "main": src.main.rel if src.main else None,
         "statements": sum(1 for st in src.statements if st.label),
         "labels": len(src.labels),
         "refs": n_refs,
@@ -568,8 +615,14 @@ def lint(cfg: Config) -> Findings:
         "bib_files": list(src.bib_files),
         "bib_entries": len(src.bib),
         "no_doi": n_nodoi,
-        "abstract_words": abstract,
-        "missing_declarations": missing_decl,
-        "tags_checked": n_tags,
+        "papers": papers,
     }
+    if len(papers) == 1:
+        # The single-paper case reads exactly as it always did: one flat set of keys,
+        # not a one-element breakdown a caller has to unwrap.
+        p = papers[0]
+        f.stats["main"] = p["main"]
+        f.stats["missing_declarations"] = p["missing_declarations"]
+        f.stats["abstract_words"] = p["abstract_words"]
+        f.stats["tags_checked"] = p["tags_checked"]
     return f

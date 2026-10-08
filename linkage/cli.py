@@ -163,16 +163,20 @@ def cmd_paper(args) -> int:
           f"{s['statements']} numbered result(s), {s['refs']} reference(s), "
           f"{s['cites']} cite key(s) against "
           f"{', '.join(s['bib_files']) or 'no .bib'}.")
-    if s["main"]:
-        words = s["abstract_words"]
-        print(f"  main document {s['main']}: abstract {words} word(s), "
-              f"{4 - len(s['missing_declarations'])}/4 declarations, "
-              f"{s['tags_checked']} hand-written \\tag(s) checked.")
-    else:
-        # A directory of section fragments is a normal state (a module still being
-        # assembled, the scaffold smoke article), not a paper missing its front matter.
-        print("  no main document (no \\begin{document}) — the declarations, the "
-              "abstract and the \\tag numbering are not checked")
+    multi = len(cfg.papers) > 1
+    for p in s["papers"]:
+        prefix = f"{p['dir']}: " if multi else ""
+        if p["main"]:
+            words = p["abstract_words"]
+            print(f"  {prefix}main document {p['main']}: abstract {words} word(s), "
+                  f"{4 - len(p['missing_declarations'])}/4 declarations, "
+                  f"{p['tags_checked']} hand-written \\tag(s) checked.")
+        else:
+            # A directory of section fragments is a normal state (a module still being
+            # assembled, the scaffold smoke article), not a paper missing its front
+            # matter.
+            print(f"  {prefix}no main document (no \\begin{{document}}) — the "
+                  "declarations, the abstract and the \\tag numbering are not checked")
     for a in f.advisory:
         print("  advisory " + a)
     if f.fatal:

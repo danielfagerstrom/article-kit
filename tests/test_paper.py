@@ -393,6 +393,56 @@ def test_every_paper_directory_is_read(article):
     assert msg.startswith("[ref]    paper-b/paper.tex:1")
 
 
+def test_each_papers_main_document_is_checked_on_its_own(article):
+    r"""The two-paper defect this closes (spatial-hemigroup-affine's `paper/` and
+    `paper-iso/`): a single global main gave only the first paper's declarations,
+    abstract and \tag checks, while the summary line reported the whole repository
+    clean. Each paper's own declaration count must come from its own headings, not
+    whichever paper happened to supply the one main the old code picked."""
+    article.papers("paper", "paper-iso")
+    article.paper(document("Prose."), dir="paper")
+    article.paper(document("Prose.", declarations=r"\section*{Funding}None."),
+                  dir="paper-iso")
+    f = paper.lint(article.cfg)
+
+    by_dir = {p["dir"]: p for p in f.stats["papers"]}
+    assert by_dir["paper"]["main"] == "paper/paper.tex"
+    assert by_dir["paper-iso"]["main"] == "paper-iso/paper.tex"
+    assert by_dir["paper"]["missing_declarations"] == []
+    assert by_dir["paper-iso"]["missing_declarations"] == [
+        "author contributions", "competing interests", "data availability"]
+
+    decl_msgs = tagged(f.advisory, "decl")
+    assert len(decl_msgs) == 3
+    assert all(m.startswith("[decl]   paper-iso/paper.tex") for m in decl_msgs)
+
+    rc, out, _ = run_cli("--root", str(article.root), "paper")
+    assert rc == 0
+    assert "paper: main document paper/paper.tex" in out
+    assert "paper-iso: main document paper-iso/paper.tex" in out
+
+
+def test_a_fragment_only_paper_keeps_no_main_document_scoped_to_itself(article):
+    r"""The other half of the same defect: a module with no `\begin{document}` of its
+    own must not silently borrow a sibling module's main, nor make the sibling's checks
+    disappear."""
+    article.papers("paper", "paper-b")
+    article.paper(document("Prose."), dir="paper")
+    article.paper(r"\section{S}\label{sec:s} Fragment only.", dir="paper-b")
+    f = paper.lint(article.cfg)
+
+    by_dir = {p["dir"]: p for p in f.stats["papers"]}
+    assert by_dir["paper"]["main"] == "paper/paper.tex"
+    assert by_dir["paper-b"]["main"] is None
+    assert by_dir["paper-b"]["missing_declarations"] == []
+    assert by_dir["paper-b"]["tags_checked"] == 0
+
+    rc, out, _ = run_cli("--root", str(article.root), "paper")
+    assert rc == 0
+    assert "paper: main document paper/paper.tex" in out
+    assert "paper-b: no main document" in out
+
+
 # --- the comment stripper -------------------------------------------------------------
 
 
