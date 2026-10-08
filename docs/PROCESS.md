@@ -99,9 +99,12 @@ axiom against a node only through an unproved node (Paper VII had 41 such, fixed
 `linkage check` advises on a `\leanok` `[A]` node whose `\uses` ancestors include no interface node
 for an entry it names (check 14). When a
 Lean proof takes another route than the printed one, the blueprint proof is rewritten to the checked
-route. Statement changes in the safe direction (narrowing, splitting, restating an interface at its
-source's letter) carry a `% CHANGED` marker and a ledger row; a widening waits for the author. The
-marker goes on its own line, before the changed text, never after it — appended after a replacement
+route, and the pull request that rewrites it re-transcribes the paper's copy of that proof or
+statement in the same pull request, opening only once `linkage check` shows no new proof drift or
+stale pin introduced by the branch (drift already on the base stays advisory). Statement changes
+in the safe direction (narrowing, splitting, restating an interface at its source's letter) carry a
+`% CHANGED` marker and a ledger row; a widening waits for the author. The marker goes on its own
+line, before the changed text, never after it — appended after a replacement
 that stopped mid-line, it turns the rest of that line into comment, which the scaffolded
 `scripts/check-swallowed-prose.py` gates.
 
@@ -131,7 +134,10 @@ trust base in one subsection (§ 1.1) with the headline `#print axioms` block. T
 [`WRITING.md`](WRITING.md), the section contracts and the exposition rubric
 [`PUBLICATION-TEMPLATE.md`](PUBLICATION-TEMPLATE.md). A module that follows another restates what it
 uses of it. Changes the paper forces on shared text are made in the blueprint and re-transcribed
-(the article mirror).
+(the article mirror). The reverse direction binds too, under the same gate (§ 5): a pull request
+that changes a proof of record or a shared statement for the blueprint's own reasons re-transcribes
+the paper's copy in that same pull request, opening only once `linkage check` shows no new proof
+drift or stale pin introduced by the branch.
 
 ### 8. The passes
 

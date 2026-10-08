@@ -132,12 +132,11 @@ PROCESS.md § 7 says "changes the paper forces on shared text are made in the bl
 re-transcribed (the article mirror)", but not the other direction: who mirrors when the blueprint
 changes for its own reasons (a formalization rewrite, a referee fix).
 
-Suggested: one line in PROCESS.md § 5 (proving waves) and § 7, and a session rule in
-`scaffold/claude/rules/`: *a pull request that changes a proof of record or a shared statement that a
-paper prints re-transcribes the paper's copy in the same pull request, and opens only when `linkage
-check` shows no new proof drift or stale pin.* Optionally a `linkage check --strict-proofs` that fails
-on drift introduced by the branch (drift present on the base stays advisory), so CI enforces it. The
-affine repository adopted the rule in its `CLAUDE.md` (#69).
+Done: PROCESS.md §§ 5 and 7 now each state the rule in both directions (Q-0355). Still open: a
+session rule in `scaffold/claude/rules/` carrying the same wording as template content for every
+article repository's `.claude/rules/` (the affine repository's own version stays local to its
+`CLAUDE.md`, #69); and, optionally, a `linkage check --strict-proofs` that fails on drift introduced
+by the branch (drift present on the base stays advisory), so CI enforces it.
 
 ---
 
