@@ -85,6 +85,25 @@ def test_a_node_with_a_proof_is_not_an_interface_node(article):
     assert [m.split()[1] for m in tagged(f.advisory, "iface")] == ["lem:a:", "lem:c:"]
 
 
+def test_a_t_node_mentioning_an_entry_in_prose_is_not_the_subject(article):
+    r"""`Node.ledger` holds every \ledger{} in the body; a [T] node's are commentary
+    ("cites nothing ... \ledger{A2}'s territory"), as six were on Paper VII after #82."""
+    f = check(article, statement(label="lem:a", lean="spend_a1", leanok=True,
+                                 proof="Direct.", proof_leanok=True,
+                                 note=r"Cites nothing; \ledger{A2}'s territory."))
+    assert tagged(f.advisory, "iface") == []
+
+
+def test_a_t_node_without_a_proof_is_not_an_interface_node(article):
+    r"""A [T] definition whose note mentions A1 does not ground A1's spenders."""
+    f = check(article, statement(env="definition", label="def:d", lean="spend_a1",
+                                 leanok=True, note=r"Vocabulary; read with \ledger{A1}.")
+              + spender("lem:a", "A1", "deeper", uses=("def:d",)))
+    (msg,) = tagged(f.advisory, "iface")
+    assert msg.startswith("[iface]  lem:a:")
+    assert "add a node stating A1" in msg
+
+
 def test_an_unproved_spender_is_not_the_subject(article):
     r"""Not \leanok: the graph does not paint it proved, so nothing is over-reported."""
     f = check(article, statement(label="lem:a", status="A", ledger=("A2",),

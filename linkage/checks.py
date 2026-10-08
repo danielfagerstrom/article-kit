@@ -466,17 +466,23 @@ def run(
     # interface its own [A] node with no proof (`prop:fourier-toolbox`), \uses'd by every
     # node that spends it. PROCESS.md section 5 now states that convention; this reads it.
     #
-    # The interface node for an entry AX is a node whose own ledger is exactly [AX] and
-    # which has no proof. The walk goes through [A] nodes, as leanblueprint's colouring
-    # does. One exemption: an interface node is not asked to \uses itself. Advisory, as
-    # check 10: the graph under-reports, the trust story does not change -- the ledger
-    # entry is checked by checks 2 and 6 either way.
+    # The interface node for an entry AX is an [A] node whose own ledger is exactly [AX]
+    # and which has no proof. The walk goes through [A] nodes, as leanblueprint's
+    # colouring does. Only [A] nodes are read, on both ends: `Node.ledger` holds every
+    # \ledger{} in the body, not just the status line's, and a [T] node's are commentary
+    # -- run on Paper VII after its #82, all six [T] findings were prose like "cites
+    # nothing ... \ledger{A3}'s territory" (LINKAGE.md rule 2: [A] nodes cite the
+    # ledger). An [A] node's Assignment clause can still name an entry it does not spend
+    # ("\ledger{A5} is not spent"); the check cannot tell, which is one reason it advises.
+    # One exemption: an interface node is not asked to \uses itself. Advisory, as check
+    # 10: the graph under-reports, the trust story does not change -- the ledger entry is
+    # checked by checks 2 and 6 either way.
     interface_of: dict[str, set[str]] = {}
     for n in nodes:
-        if n.label and n.proof is None and len(n.ledger) == 1:
+        if n.label and n.status == "A" and n.proof is None and len(n.ledger) == 1:
             interface_of.setdefault(n.ledger[0], set()).add(n.label)
     for n in sorted(nodes, key=lambda n: n.label or ""):
-        if not n.leanok or not n.label or not n.ledger:
+        if not n.leanok or not n.label or n.status != "A" or not n.ledger:
             continue
         reached = set(uses_paths(n.label, by_label)) | {n.label}
         for a in n.ledger:

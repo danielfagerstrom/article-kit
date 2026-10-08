@@ -90,7 +90,14 @@ upstream node only if it is typed and reviewed.
 Proofs proceed leaf-first along the dependency graph, each by a `mathematician` agent in its own
 worktree. **One Lean-building agent at a time** on this machine (two ran it out of memory). Every
 merge is gated by `lake build`, the axiom guard run to completion with its exit code checked, and
-`linkage check`. A proved declaration moves out of `Skeleton/` and its node goes `\leanok`. When a
+`linkage check`. A proved declaration moves out of `Skeleton/` and its node goes `\leanok`. Each
+ledger entry the Lean declares as an axiom gets its own **interface node**: an `[A]` node stating
+the entry as used, `\lean{<axiom>}\leanok`, `\ledger{AX}` and no proof (Paper V's
+`prop:fourier-toolbox`). Every node naming the entry on its status line `\uses` that interface node.
+Without it the graph paints a node resting on the axiom fully proved, since leanblueprint counts an
+axiom against a node only through an unproved node (Paper VII had 41 such, fixed in #82);
+`linkage check` advises on a `\leanok` `[A]` node whose `\uses` ancestors include no interface node
+for an entry it names (check 14). When a
 Lean proof takes another route than the printed one, the blueprint proof is rewritten to the checked
 route. Statement changes in the safe direction (narrowing, splitting, restating an interface at its
 source's letter) carry a `% CHANGED` marker and a ledger row; a widening waits for the author. The
