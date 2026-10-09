@@ -45,6 +45,21 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    update every edge that names it.
 2. **`[A]` nodes cite the ledger** with `\ledger{AXX}`, and `AXX` must be an entry in `AXIOMS.md`.
    Legacy prose "ledger AXX" is still recognised; migrate it to the macro when you touch a node.
+
+   **A qualified reference cites a required module's own ledger** (2026-10-09, Q-0374):
+   `\ledger{<package>:AXX}`, e.g. `\ledger{SpatialHemigroup:A3}`, for a cited interface the
+   Lean development spends through a required package rather than this article's own
+   `AXIOMS.md` — the case a `\uses`-able interface node cannot cover when the interface
+   itself belongs to the required module (rule 5's includes, below). `<package>` is the
+   name an `include <package> @ <revision> [<path>]` line of `trust-boundary.txt` already
+   keys, so a qualified reference needs no alias table: resolution fails closed, exactly as
+   an unresolved `include` does, when no such line names `<package>`, or when `AXX` is not
+   a `## AXX` entry (with a `**Cite:**` line) of that package's own `AXIOMS.md`, read with
+   `git show` at the commit the include resolved to — never this article's own ledger, and
+   never asked to ground the required module's `AXIOMS.md` entry a second time (that
+   module's own `linkage axioms --check` already did). It renders inline as "ledger AXX of
+   `<package>`"; the manifest projects `{"id": "AXX", "module": "<package>", ...}` for it
+   (a bare reference keeps projecting `{"id": "AXX", ...}` with no `module` key, unchanged).
 3. **`[T]` nodes name their Lean decl** with `\lean{}` and mark `\leanok` once proved. A `\notready`
    node need not have a Lean decl yet.
 
@@ -467,7 +482,10 @@ It reads `content.tex` and inlines its `\input{parts/...}` includes, so the spli
 It enforces the **in-repo** edges and fails (exit 1) on:
 
 - a `\leanok` node whose `\lean{Decl}` is not declared in `Formalization/` (rule 3);
-- a `\ledger{AXX}` / "ledger AXX" with no `## AXX` entry in `AXIOMS.md`, or an entry with no `**Cite:**` line (rule 2);
+- a `\ledger{AXX}` / "ledger AXX" with no `## AXX` entry in `AXIOMS.md`, or an entry with no `**Cite:**`
+  line (rule 2); for a qualified `\ledger{<package>:AXX}`, the same against `<package>`'s own
+  `AXIOMS.md` (read at the commit its `include` line in `trust-boundary.txt` resolved to), or
+  against no entry at all when `<package>` names no such `include` line;
 - a paper `% shared with blueprint <label>` naming a label the blueprint does not have (rule 4);
 - a `\leanok` on a node's *proof* whose statement carries none (rule 10);
 - under `--strict-shared`: a shared paper statement whose text has drifted from its blueprint

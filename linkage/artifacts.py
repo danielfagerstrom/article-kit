@@ -58,16 +58,18 @@ def lean_declared_names(cfg: Config) -> set[str]:
     return names
 
 
-def ledger_entries(cfg: Config) -> dict[str, LedgerEntry]:
+def ledger_entries_from_text(text: str, key: str) -> dict[str, LedgerEntry]:
     """`AXX` -> its ledger entry, with the primary citation off the ``**Cite:**`` line.
 
     The line's grammar (AXIOMS.md, backfilled 2026-07-26): ``**Cite:** @citekey — anchor``,
     optionally more ``·``-separated segments (corroborations); the FIRST segment is the
     primary and is what the manifest projects. ``**Cite:** — pending (…)`` yields null
     citekey/anchor; a missing line leaves `has_cite_line` False (fatal check 6 flags it).
+
+    Takes the ledger's text directly rather than a `Config`, so a qualified `\\ledger{}`
+    reference (Q-0374) can resolve the same way against a *required module's* own
+    `AXIOMS.md`, fetched by `trust.read_required_axioms` instead of read off disk.
     """
-    text = read(cfg.axioms)
-    key = cfg.ledger_key
     out: dict[str, LedgerEntry] = {}
     for m in re.finditer(rf"(?ms)^##\s*({key})\b(.*?)(?=^##\s*{key}\b|\Z)", text):
         aid, body = m.group(1), m.group(2)
@@ -84,6 +86,11 @@ def ledger_entries(cfg: Config) -> dict[str, LedgerEntry]:
             has_cite_line=True,
         )
     return out
+
+
+def ledger_entries(cfg: Config) -> dict[str, LedgerEntry]:
+    """`AXX` -> its ledger entry, for this article's own `AXIOMS.md`."""
+    return ledger_entries_from_text(read(cfg.axioms), cfg.ledger_key)
 
 
 def render_safe_commands(cfg: Config) -> set[str]:

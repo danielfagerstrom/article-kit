@@ -84,9 +84,11 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .artifacts import unshared_statements
+from . import trust
+from .artifacts import ledger_entries_from_text, unshared_statements
 from .config import Config
 from .model import Blueprint, ControlChar, LedgerEntry, Node, PaperMarker
+from .parse_latex import split_ledger_ref
 from .render import unknown_commands
 
 # ADR-0011: an [A] node declares, in its status annotation, what its citation carries and
@@ -361,14 +363,52 @@ def run(
                 )
 
     # 2. ledger refs resolve / 6. and carry a citation
+    #
+    # A qualified reference (`\ledger{SpatialHemigroup:A3}`, Q-0374) resolves against the
+    # *required module's own* AXIOMS.md, never this article's: the module's own `linkage
+    # axioms --check` grounded its entries, and re-grounding them here is what the include
+    # mechanism (trust.py, LINKAGE.md rule 5) already forbids for the Lean names. The
+    # package name is resolved the same way an `include` line's is — against
+    # `trust-boundary.txt` and the manifest's pin — so a reference to a module nothing
+    # includes, or to an id that module's ledger does not have, fails closed exactly as an
+    # unresolved include does.
+    resolution: trust.Resolution | None = None
+    required_ledgers: dict[str, dict[str, LedgerEntry]] = {}
     for a in sorted(bp.ledger_refs):
-        entry = ledger.get(a)
+        module, aid = split_ledger_ref(a)
+        if module is None:
+            entry = ledger.get(aid)
+            if entry is None:
+                fatal.append(f"[ledger] {a}: no '## {a}' entry in {cfg.axioms.name}")
+            elif not entry.has_cite_line:
+                # the manifest projects each entry's primary citation — a referenced entry
+                # without a **Cite:** line would emit an unverifiable bare id
+                fatal.append(f"[ledger] {a}: no '**Cite:**' line in {cfg.axioms.name} "
+                             "(format: '**Cite:** @citekey — anchor')")
+            continue
+        if module not in required_ledgers:
+            if resolution is None:
+                resolution = trust.resolve(cfg)
+            inc = next((i for i in resolution.included if i.package == module), None)
+            if inc is None:
+                fatal.append(
+                    f"[ledger] {a}: {module} is not included by "
+                    f"{trust.trust_file(cfg).name} — a qualified \\ledger{{}} reference "
+                    "resolves against a module named in an `include <package> @ "
+                    "<revision>` line there")
+                continue
+            try:
+                text = trust.read_required_axioms(cfg, inc)
+            except OSError as e:
+                fatal.append(f"[ledger] {a}: cannot read {module}'s AXIOMS.md at "
+                             f"{inc.commit[:12]}: {e}")
+                continue
+            required_ledgers[module] = ledger_entries_from_text(text, cfg.ledger_key)
+        entry = required_ledgers[module].get(aid)
         if entry is None:
-            fatal.append(f"[ledger] {a}: no '## {a}' entry in {cfg.axioms.name}")
+            fatal.append(f"[ledger] {a}: no '## {aid}' entry in {module}'s AXIOMS.md")
         elif not entry.has_cite_line:
-            # the manifest projects each entry's primary citation — a referenced entry
-            # without a **Cite:** line would emit an unverifiable bare id
-            fatal.append(f"[ledger] {a}: no '**Cite:**' line in {cfg.axioms.name} "
+            fatal.append(f"[ledger] {a}: no '**Cite:**' line in {module}'s AXIOMS.md "
                          "(format: '**Cite:** @citekey — anchor')")
 
     # 5. every node declares its [T]/[A] status — the hub's grading keys on it
