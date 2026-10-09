@@ -7,6 +7,16 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage check`, rule 13: a `\leanok` statement's ledger entries are read from `#print axioms`,
+  not the source scan (Q-0383).** The trust-base comparison read the `linkage closure` constant map,
+  whose source scan resolves identifiers textually and reported Paper VII's affine statements as
+  resting on A2, which `#print axioms` shows they do not (Q-0377). It now reads Lean's output under
+  `--fresh-axioms`, else the boundary harness's `#guard_msgs` pin; an unpinned declaration is an
+  advisory, and the section's named entries are then not compared against it. A committed
+  `lean-uses.json` export, still read by `linkage closure`, now fails `linkage check` when it is
+  older than the Lean sources — by digest when stamped (`linkage closure --stamp-export`), else by
+  modification time. An article that kept the export only for rule 13 can delete it.
+
 ## v0.2.0 — 2026-10-06 — a required module's trust boundary by reference
 
 Everything since v0.1.0. Cut for Paper VII (`spatial-hemigroup-affine`), whose axiom guard reads a

@@ -18,7 +18,8 @@ elan). So:
 *export* — if the article carries a `lean-uses.json` export (`paths.lean_uses`, written by a
 meta program that walks each declaration's `ConstantInfo.value` in a built environment), that
 is read and believed. It is the exact constant set, elaborated: instances, `simp` sets and
-notation are all resolved by then.
+notation are all resolved by then. Being a generated file nothing regenerates, it can go
+stale: `linkage check` fails on one older than the Lean sources (`export_staleness`).
 
 *source scan* — otherwise the declaration's source text is scanned for identifier tokens, in
 the spirit of `.claude/skills/fidelity-review/scripts/f7sweep.py`, which does the coarser

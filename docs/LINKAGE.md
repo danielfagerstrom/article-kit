@@ -496,6 +496,7 @@ It enforces the **in-repo** edges and fails (exit 1) on:
 - a marked trust-base subsection (`% trust base: begin` … `end`) that gives a statement a status the
   blueprint does not, names a ledger entry its statements do not read or leaves out one they do, or
   prints an unstamped or out-of-date `#print axioms` block (rule 13; silent without the marker);
+- a committed `lean-uses.json` export older than the Lean sources it was generated from (rule 11);
 - a `\command` in a statement or proof that the render pipeline cannot handle (the clean-render gate);
 - a stray control character in any `.tex`, `.md` or `.lean` source — anything below U+0020 that
   is not LF, or CR immediately before LF (rule 9);
@@ -591,6 +592,15 @@ naming them keeps the difference between "open" and "leaned on while open" visib
    |---|---|---|
    | **export** | `paths.lean_uses` (default `Formalization/lean-uses.json`), `{"Decl.Name": ["Const", …]}` written by a Lean meta program over a built environment | used when the file exists, or `--export PATH` |
    | **source scan** | the declaration's own source text, identifier tokens resolved against this article's declarations only | the default, and what the tests exercise |
+
+   **A committed export must not be stale** (2026-10-09, Q-0383). It is generated from the Lean sources
+   and nothing regenerates it when they change, so `linkage check` fails (`[lean-uses]`) on one older
+   than they are. An export may carry a stamp, the reserved key `"_sources": "sha256:<hex>"`, which
+   `linkage closure --stamp-export` writes; a stamped export is compared by that digest (over every
+   `.lean` file under `paths.lean` outside `.lake/`, in order of its relative POSIX path: the path, a
+   NUL, its bytes, a NUL), which survives a fresh clone. An unstamped one is compared by modification
+   time with the newest Lean source, which a checkout can reorder — stamp it. Rule 13 no longer reads
+   the export at all, so an article that kept one only for the trust-base comparison can delete it.
 
    The source scan is the coarse-to-fine descendant of `f7sweep.py`, which asks the file-level version
    of the same question (is a `\uses` target's declaration in the Lean file's transitive *import*
@@ -720,15 +730,20 @@ naming them keeps the difference between "open" and "leaned on while open" visib
    2. **Ledger entries.** The entries the region *names* — an id matching `ledger_key` (a bare `A7` or
       `\ledger{A7}`), or an interface axiom of `trust-boundary.txt` by its short name (`tail\_bound`
       reads as `tail_bound`) — against the entries its `\ref`'d statements *read*. For a `\leanok`
-      node, what it reads is the set of boundary axioms its `\lean{}` declarations reach in the
-      `linkage closure` index (the `lean-uses.json` export when there is one, the source scan
-      otherwise), mapped to entries through the ledger's `**Lean:**` segments. For any other node it
-      is the `\ledger{}` entries of the `[A]` nodes it rests on ahead of the trust boundary, the node
-      itself included. An entry named and not read, or read and not named, fails. When the region
-      lists boundary names as well, the same comparison runs name by name, because two names grounded
-      by one entry would otherwise hide a missing row. A `\leanok` node whose declaration is not in
-      this repository's index (a shared package) turns the comparison off for its region, with an
-      advisory.
+      node, what it reads is the set of boundary axioms `#print axioms` prints for its `\lean{}`
+      declarations — Lean's output now under `--fresh-axioms`, otherwise the boundary harness's
+      `#guard_msgs` pin of the declaration (rule 5), which the Lean build keeps current — mapped to
+      entries through the ledger's `**Lean:**` segments. Not the `linkage closure` constant map
+      (rule 11): its source scan resolves identifiers textually, and reported Paper VII's affine
+      statements as resting on a ledger entry `#print axioms` shows they do not reach (2026-10-09,
+      Q-0383). For any other node it is the `\ledger{}` entries of the `[A]` nodes it rests on ahead
+      of the trust boundary, the node itself included. An entry named and not read, or read and not
+      named, fails. When the region lists boundary names as well, the same comparison runs name by
+      name, because two names grounded by one entry would otherwise hide a missing row. A `\leanok`
+      declaration with no `#print axioms` output to read — unpinned, and no `--fresh-axioms` —
+      gets an advisory; what is read is still exact, so an entry read and not named still fails, but
+      an entry named and not read is not reported for that region, since the unread declaration may
+      be the one that reads it. The cure is a pin.
    3. **Axiom blocks.** A `verbatim`, `Verbatim`, `BVerbatim`, `lstlisting` or `minted` block in the
       region holding Lean's `#print axioms` output must carry a **stamp**: a comment line
       `% printed at <commit>` or `% printed at <YYYY-MM-DD>` among the comment lines directly above
@@ -738,8 +753,10 @@ naming them keeps the difference between "open" and "leaned on while open" visib
       declaration under `#guard_msgs`, the block must print the pinned set.
 
    **The fresh run is opt-in.** `linkage check --fresh-axioms` also writes a scratch file importing
-   each printed declaration's module and runs it through `lake env lean` in the Lean directory, and
-   fails where the printed block differs from what Lean prints now, or where Lean could not be run.
+   the module of each printed declaration and of each `\leanok` declaration the regions `\ref`, runs
+   it once through `lake env lean` in the Lean directory, and fails where a printed block differs
+   from what Lean prints now, or where Lean could not be run; the ledger comparison reads the same
+   output ahead of the pins.
    It needs a built project, so it is for a desk or a Lean CI job; the default run, like every other
    check here, reads source text only.
 
@@ -747,10 +764,9 @@ naming them keeps the difference between "open" and "leaned on while open" visib
    machine-checked") is not a row it can read — list the statements. It reads only the fixed words
    above, so a status written in other words is not checked, and it reads a `\ref` to any statement
    as that statement's row, so a region that mentions an unrelated result in passing includes that
-   result's ledger entries. The source-scan route shares `linkage closure`'s blind spots (rule 11): a
-   boundary axiom reached only through a `simp` set or an instance is invisible to it, and would be
-   reported as named but not read; the export route has the exact answer. And a stamp says when a
-   block was produced, not that it is current: only the pin comparison and `--fresh-axioms` say that.
+   result's ledger entries. A pin is only as current as the last Lean build that elaborated the
+   harness; `--fresh-axioms` is current by construction. And a stamp says when a block was produced,
+   not that it is current: only the pin comparison and `--fresh-axioms` say that.
 
 14. **A proved node that spends a ledger entry reaches the entry's interface node** (2026-10-08,
    Q-0356/Q-0378). leanblueprint paints a node fully proved when it and every `\uses` ancestor carry

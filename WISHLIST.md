@@ -200,22 +200,4 @@ enforced:
 
 ---
 
-## `linkage check --fresh-axioms`: the trust-base comparison should read `#print axioms`, not a source scan
-
-From spatial-hemigroup-affine (Paper VII), Q-0377 (2026-10-08), when both papers got their "What is
-machine-checked" subsection after the formalization closed. The comparison of a paper's `% trust base`
-block with the Lean attributed to each printed statement the admitted declarations its source scan found
-reachable, and reported the affine statements as resting on ledger A2 (the polar criterion), which
-`#print axioms` shows they do not: the scan over-approximates the constant closure. The session worked
-around it with a generated `Formalization/lean-uses.json` (each declaration's used constants, from the
-Lean environment, matching `#print axioms` exactly), which `linkage` reads when present; it must be
-regenerated after every Lean change and can go stale silently.
-
-Wanted: `linkage` produces that map itself from the built environment (it already runs `lake env lean`
-for `--fresh-axioms`), or uses `#print axioms` output directly for the comparison, so no generated file
-lives in an article repository; or, if the file stays, a staleness check against the Lean sources'
-hashes so CI fails when it is out of date.
-
----
-
 *No other open requests.*
