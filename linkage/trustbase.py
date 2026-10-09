@@ -475,7 +475,7 @@ def check(bp: Blueprint, cfg: Config, markers: list[PaperMarker], *,
                 res.fatal.append(
                     f"[trust-base] {regs[0].file}:{regs[0].line}: --fresh-axioms: {err}")
             printed.insert(0, now)
-    for reg, prose in zip(regs, proses):
+    for reg, prose in zip(regs, proses, strict=True):
         res.stats["claims"] += _check_status(reg, prose, labels, bp, res)
         _check_ledger(cfg, reg, prose, labels, bp, printed, index, res)
         res.stats["blocks"] += _check_blocks(cfg, reg, res, now=now)
