@@ -661,11 +661,19 @@ def run(
     # 13. the paper's trust-base subsection against the development (2026-09-27)
     #
     # Silent for a paper without the `% trust base: begin` marker. Imported here because
-    # it reads the `linkage closure` index, and closure imports this module.
+    # it reads the `linkage closure` source index, and closure imports this module.
     from .trustbase import check as trust_base
     tb = trust_base(bp, cfg, markers, fresh=fresh_axioms)
     fatal.extend(tb.fatal)
     advisory.extend(tb.advisory)
+
+    # 13b. a committed constant-map export older than the Lean it was generated from
+    # (2026-10-09, Q-0383). Nothing in `check` reads it any more -- rule 13 reads
+    # `#print axioms` -- but `linkage closure` believes it, and a generated file nothing
+    # regenerates goes stale silently.
+    from .closure import export_staleness
+    if (stale := export_staleness(cfg)) is not None:
+        fatal.append(f"[lean-uses] {stale}")
 
     # 9. control characters in sources
     #

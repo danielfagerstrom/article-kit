@@ -2,7 +2,7 @@
 
     linkage check [--wiki PATH] [--emit-manifest PATH] [--require-render]
     linkage paper
-    linkage closure [--export PATH] [--json]
+    linkage closure [--export PATH] [--json] [--stamp-export]
     linkage manifest [PATH] [--require-render]
     linkage demand [--wiki PATH]
     linkage release export [--module NAME] [--out DIR] [--doi DOI] [--build|--dry-run]
@@ -198,6 +198,11 @@ def cmd_closure(args) -> int:
     answer at all (an unreadable export).
     """
     cfg, bp = _load(args.root)
+    if args.stamp_export:
+        path = closure.stamp_export(cfg, args.export)
+        print(f"Stamped {path.name} with the digest of the Lean sources under "
+              f"{cfg.lean.name}/ -- `linkage check` fails once they change.")
+        return 0
     index, route = closure.build_index(cfg, args.export)
     a = closure.audit(bp, cfg, index)
     s = a.stats
@@ -556,6 +561,9 @@ def build_parser() -> argparse.ArgumentParser:
                          "of scanning the declaration sources (default: paths.lean_uses, "
                          "when that file exists)")
     cl.add_argument("--json", action="store_true", help="machine-readable output")
+    cl.add_argument("--stamp-export", action="store_true",
+                    help="record the digest of the Lean sources in the export, so `linkage "
+                         "check` fails when they change after it was generated; then stop")
     cl.set_defaults(func=cmd_closure)
 
     m = sub.add_parser("manifest", help="write the manifest only")
