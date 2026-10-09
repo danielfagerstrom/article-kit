@@ -100,6 +100,12 @@ the rules in § 2 and § 3, not by ornament.
 results descriptively: *the non-existence theorem*, *the characterization theorem*. Never refer to
 another deliverable of the constellation by section number.
 
+**A cited paper is named as any paper is.** Author and year, or the bibliography number with a word
+of what it is — never the programme's internal paper letters or module letters ("the line paper [V]
+and its cone module [B]" names nothing a reader outside the constellation can resolve). Where a
+statement shared verbatim with the blueprint carries such a label inside its own transcribed
+citation (a `\ledger{A3}`-style cite), that is a macro question, not a prose one: see § 4.
+
 **Understate the twist.** The conceptual centre of an article should be set up so that it lands,
 then stated flatly. A result that is genuinely surprising does not need to be told that it is.
 
@@ -186,6 +192,14 @@ derivations and where they turn) must be on the page, not merely named.
 - **Borrowed facts are stated, not folded in.** A result taken from the literature becomes its own
   numbered theorem or definition with a page anchor read from the axiom ledger, never from memory.
   This is the prose-level counterpart of that ledger, and it is gate item 3.
+- **Blueprint habits do not transfer to paper prose, in either direction.** A cited result is stated
+  with its citation, not re-derived, re-explained, or marked with what it is *not* used for in the
+  citing prose: provenance, axiom accounting and non-use are the trust-base subsection's business
+  (§ 4), said there once, never scattered through prose that retells how a cited paper proves its
+  fact. The habit runs the other way for a concept below the reader's floor (§ 0): the blueprint's
+  definition alone is its shorthand for a specialist reader, not an introduction, so the paper
+  introduces the concept in plain words — what it is, why it matters here, one familiar example —
+  before giving its formal definition.
 - **Define each technical term on first use**, emphasised, and cite where it comes from; place a
   named family in its literature, the scale-space literature included. Never drop an exotic term
   unglossed (§ 0). A paragraph that introduces a proof idea explains each new object in its own
@@ -243,6 +257,16 @@ decisions, so each article's `adr/` records its own; this standard records that 
 - **A reference into an unreleased module** is prose about further work, with a LaTeX comment
   `% TODO(module X): cite <label> when released` beside it, never a `\ref` into text the release
   does not contain.
+- **A programme-internal label inside a shared statement is a macro question, not a prose one.**
+  § 1's rule against printing `[V]`/`[B]`-style labels to a paper's reader still applies when such a
+  label sits inside a statement transcribed verbatim from the blueprint. The fix, when it exists, is
+  a macro the blueprint and the paper render differently — on the model of `\ledger{A3}`, which
+  already prints the cited-fact's name rather than the raw label — so the blueprint keeps its short
+  form, the paper prints a real citation, and `linkage check` still compares the source text
+  (`\prog{V}{Thm.~7.3}` or similar). **Not built**: `scaffold/blueprint/linkage-macros.tex` is owned
+  by, and synced from, the `linkage` repo, so the macro is that repo's item, not an article's or this
+  one's to add here. Until it exists, a transcribed statement's citation is rewritten by hand to a
+  real reference wherever it reaches a paper.
 - **Every compression is ledgered** where one article compresses another (the conference
   extraction): each statement names what it compresses, what was dropped, and why it is still
   faithful, with a hash, so that a late page-fitting trim cannot pass silently.

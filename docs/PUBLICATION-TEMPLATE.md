@@ -79,11 +79,19 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
   mathematical question; (b) state the gap/question precisely; (c) an explicit
   **Contributions** paragraph or list; (d) high-level positioning vs. prior work;
   (e) a roadmap sentence.
+- **Questions before answers.** The introduction states what is asked and why,
+  then what is found, each at the level of a reader of the abstract. A result's
+  own technical statement — its classes, its thresholds, its named special
+  functions — belongs to that result's own section, not to the introduction's
+  summary paragraph or its prior-work paragraphs.
 - **Det.:** an explicit contributions passage exists; a roadmap sentence exists;
   every later section is reachable from the roadmap.
 - **LLM:** "Is the gap stated as a precise question or hand-waved? Is each listed
   contribution actually delivered by a later section (map each to its section)?
-  Does the intro overclaim scope the theorems don't reach?"
+  Does the intro overclaim scope the theorems don't reach? Does the introduction's
+  result or prior-work paragraph state a result in more technical detail than the
+  question it answers — a class, a threshold, a named special function that
+  belongs to that result's own section instead?"
 
 ### 3. Related work / Background  (~10%; may merge into §2)
 - **Contract:** position against the literature *and* establish the mathematical
