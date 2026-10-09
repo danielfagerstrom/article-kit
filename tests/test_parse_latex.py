@@ -109,6 +109,23 @@ def test_the_render_source_still_drops_a_status_line_ledger_ref():
     assert P.normalize_for_render(body) == "It holds."
 
 
+# --- split_ledger_ref: the bare-vs-qualified distinction (Q-0374) ---------------------
+
+
+def test_split_ledger_ref_is_bare_for_the_own_ledger_form():
+    assert P.split_ledger_ref("A2") == (None, "A2")
+
+
+def test_split_ledger_ref_splits_on_the_first_colon():
+    assert P.split_ledger_ref("SpatialHemigroup:A3") == ("SpatialHemigroup", "A3")
+
+
+def test_a_qualified_ledger_ref_renders_naming_its_module():
+    body = r"Carried by \ledger{SpatialHemigroup:A3}."
+    assert P.normalize_statement(body) == "Carried by ."
+    assert P.normalize_for_render(body) == "Carried by ledger A3 of SpatialHemigroup."
+
+
 # --- shared_statement: the comparison key for rule 3b --------------------------------
 
 

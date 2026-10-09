@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from .artifacts import git_provenance
 from .config import Config
 from .model import Blueprint, LedgerEntry
-from .parse_latex import expand_inputs
+from .parse_latex import expand_inputs, split_ledger_ref
 from .render import check_pin, render_markdown, render_residue
 
 MANIFEST_VERSION = 2
@@ -31,6 +31,18 @@ class ManifestError(RuntimeError):
 
 def sha12(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()[:12]
+
+
+def _ledger_projection(a: str, ledger: dict[str, LedgerEntry]) -> dict:
+    """One `n.ledger` entry's manifest projection — own-module unqualified, or carrying
+    the required module's name for a qualified reference (Q-0374), which this article's
+    own `ledger` dict cannot resolve a citation for (that lives in the required module's
+    own AXIOMS.md; `linkage check` is what cross-checks it, not the manifest emitter)."""
+    module, aid = split_ledger_ref(a)
+    if module is None:
+        return (ledger[aid].projection() if aid in ledger
+                else {"id": aid, "citekey": None, "anchor": None})
+    return {"id": aid, "module": module, "citekey": None, "anchor": None}
 
 
 def build(
@@ -86,11 +98,7 @@ def build(
             # each ledger ref carries the entry's primary citation, so the hub can
             # cross-check the citekey against library.json and show the source in claim
             # chips / block status lines
-            "ledger": [
-                (ledger[a].projection() if a in ledger
-                 else {"id": a, "citekey": None, "anchor": None})
-                for a in n.ledger
-            ],
+            "ledger": [_ledger_projection(a, ledger) for a in n.ledger],
             "leanok": n.leanok,
             "notready": n.notready,
             "lean": n.lean,

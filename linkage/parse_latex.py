@@ -77,15 +77,36 @@ def normalize_statement(body: str) -> str:
     return re.sub(r"\s+", " ", body).strip()
 
 
+def split_ledger_ref(ref: str) -> tuple[str | None, str]:
+    r"""A `\ledger{}` reference split into (required module, entry id).
+
+    `module` is `None` for the bare own-ledger form (`A3`); a qualified reference
+    (`SpatialHemigroup:A3`) splits on the first colon — the package name the
+    `include <package> @ <revision>` line of `trust-boundary.txt` already keys, so
+    resolution needs no alias table (Q-0374). The bracket-matching regexes below
+    already capture a colon, since they take everything up to the closing brace; this
+    is the one place that gives the two forms their meaning.
+    """
+    module, sep, rest = ref.partition(":")
+    return (module, rest) if sep else (None, ref)
+
+
+def _render_ledger_ref(m: re.Match[str]) -> str:
+    module, aid = split_ledger_ref(m.group(1))
+    return f"ledger {aid} of {module}" if module else f"ledger {aid}"
+
+
 def normalize_for_render(body: str) -> str:
     """The statement/proof source handed to pandoc — normalize_statement's sibling.
 
     Differs in exactly one way: an *in-prose* ``\\ledger{A2}`` renders as the text
     "ledger A2" (its PDF macro expansion) instead of being deleted — deletion leaves
     dangling punctuation in rendered proofs ("taken as an interface (, the Lean …)",
-    found by the H5 migration). Ledger refs on the *status line* still vanish with it
-    (the status-strip below tolerates \\ledger tokens between the \\quads). The sha
-    fields keep using normalize_statement, so this changes rendered output only.
+    found by the H5 migration). A qualified reference (``\\ledger{SpatialHemigroup:A2}``)
+    renders as "ledger A2 of SpatialHemigroup". Ledger refs on the *status line* still
+    vanish with it (the status-strip below tolerates \\ledger tokens between the
+    \\quads). The sha fields keep using normalize_statement, so this changes rendered
+    output only.
     """
     body = re.sub(r"(?<!\\)%[^\n]*", "", body)
     body = re.sub(r"\\(?:label|lean|uses|notes)\{[^}]*\}", "", body)
@@ -96,7 +117,7 @@ def normalize_for_render(body: str) -> str:
         body,
     )
     body = re.sub(r"\\(?:statusT|statusA|notready|leanok)\b", "", body)
-    body = re.sub(r"\\ledger\{([^}]*)\}", r"ledger \1", body)
+    body = re.sub(r"\\ledger\{([^}]*)\}", _render_ledger_ref, body)
     return re.sub(r"\s+", " ", body).strip()
 
 

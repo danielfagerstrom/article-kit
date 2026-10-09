@@ -42,7 +42,7 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from .config import Config
 
@@ -139,6 +139,34 @@ def read_at(repo: Path, commit: str, path: str) -> str:
         msg = r.stderr.decode("utf-8", "replace").strip().splitlines()
         raise OSError(msg[-1] if msg else f"git show exited {r.returncode}")
     return r.stdout.decode("utf-8")
+
+
+def required_axioms_path(inc: Included) -> str:
+    """The required module's own `AXIOMS.md`, as a path relative to its repository root.
+
+    The sibling of the included `trust-boundary.txt`: the default
+    `blueprint/trust-boundary.txt` ships beside `blueprint/AXIOMS.md`, the same
+    convention every article's own `Config.axioms` default assumes locally. `PurePosixPath`
+    rather than `Path`: `inc.path` is a `git show` path, forward-slashed whatever platform
+    this runs on, and stringifying a `Path` would corrupt it with backslashes on Windows.
+    """
+    return str(PurePosixPath(inc.path).parent / "AXIOMS.md")
+
+
+def read_required_axioms(cfg: Config, inc: Included) -> str:
+    """A required module's own `AXIOMS.md`, read at the commit its include resolved to.
+
+    `inc` must come from a `Resolution.included` list — `resolve()` already confirmed the
+    package is pinned to a git revision and fetched, so this only reads a sibling file of
+    the one it read there (Q-0374: a qualified `\\ledger{<package>:<id>}` reference resolves
+    against this, never against the consuming article's own `AXIOMS.md`). Raises `OSError`,
+    as `read_at` does, when the manifest cannot be read or the file is absent at that commit.
+    """
+    found = manifest_packages(cfg)
+    if found is None:
+        raise OSError("no readable lake-manifest.json")
+    _pkgs, pkg_dir = found
+    return read_at(pkg_dir / inc.package, inc.commit, required_axioms_path(inc))
 
 
 def _rev_matches(written: str, entry: dict) -> bool:

@@ -99,6 +99,16 @@ def test_each_ledger_reference_carries_its_primary_citation(article):
                             "anchor": "Thm 3.1, p. 88"}]
 
 
+def test_a_qualified_ledger_reference_carries_its_module(article):
+    """Q-0374: the manifest cannot fetch a required module's own AXIOMS.md, so it carries
+    the module name instead of silently resolving to nothing -- `linkage check` is what
+    cross-checks the id against that module's ledger."""
+    article.blueprint(statement(label="thm:b", status="A", ledger=("SpatialHemigroup:A3",),
+                                note=assignment(r"\ledger{SpatialHemigroup:A3} carries it.")))
+    assert build(article)["labels"]["thm:b"]["ledger"] == [
+        {"id": "A3", "module": "SpatialHemigroup", "citekey": None, "anchor": None}]
+
+
 def test_an_unresolvable_ledger_reference_projects_a_bare_id(article):
     """The manifest is emitted even when check 2 fails — the checker reports, not this."""
     article.blueprint(statement(label="thm:b", status="A", ledger=("A9",),
