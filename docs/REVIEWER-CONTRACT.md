@@ -160,6 +160,7 @@ flag:
 | `ENVELOPE` | a statement environment carrying proof, rationale or conjecture |
 | `POINTER` | a reference that resolves to the wrong thing, or to nothing a checker can see |
 | `TRANSCLUSION` | upstream (blueprint) carries context this text dropped |
+| `PROVENANCE` | blueprint-annotation content (how a cited result is proved, what it rests on, what it is *not* used for) in paper prose, where it belongs to the trust-base subsection alone |
 
 **Notation**
 
@@ -167,6 +168,7 @@ flag:
 |---|---|
 | `NOTATION` | one symbol, two objects |
 | `UNDEFINED` | a symbol or term used and never introduced anywhere |
+| `UNSOURCED` | a named author, class or family used with no citation of its own — not a bare symbol (that is `UNDEFINED`), a name that reads as established with nothing behind it |
 
 **Voice** — `MOTIVATION` (formalism before its reason), `PICTURE` (no intuition or figure where one is
 owed), `PROSE` (the argument is not followable from the text alone), plus the surface tags from
@@ -176,11 +178,12 @@ owed), `PROSE` (the argument is not followable from the text alone), plus the su
 Policy is set **per tag**, not per instance — the point of a fixed vocabulary. Expect a small number of
 tags to carry most of the volume, and one rule each then replaces dozens of decisions.
 
-### The seven that are not prose-surface, by example
+### The tags that are not prose-surface, by example
 
 These are the tags the note's §1 vocabulary does not reach; the first six carried eight of the ten
-threads in the trial batch, and `QUANTITY` was added with the scope-audit mode. Each is given as the
-reviewer needs it: what the defect *is*, what it is not, and one instance.
+threads in the trial batch, `QUANTITY` was added with the scope-audit mode, and `UNSOURCED` and
+`PROVENANCE` were added from the author's Paper VII pass-6 section review (2026-10-06, Q-0375). Each
+is given as the reviewer needs it: what the defect *is*, what it is not, and one instance.
 
 **`SCOPE` — the claim is wider than the result it rests on.** The text asserts something of a class,
 a range or a construction for which only a subcase is established. A claim that is *wrong* is Lean's
@@ -256,6 +259,32 @@ that uses it does not say so. The *absence* of the marker anywhere is `note-eval
 > §1.1 trust base says so; this sentence presents it as settled in-document.
 > *probe:* mark the import where it is used, as the trust base marks it. *refs:*
 > `thm:completeness`.
+
+**`UNSOURCED` — a named author, class or family used with no citation of its own.** Not
+`UNDEFINED`: the name is glossed, or glossable from context, so it does not read as a bare unexplained
+symbol. The defect is that it reads as sourced when it is not — borrowed through a citation that
+names something else.
+
+> *anchor:* `the delay law's tail is regularly varying, due to Zolotarev and to Wolfe`
+> *claim:* Zolotarev and Wolfe have no bibliography entry of their own at this anchor; the only
+> citation in reach is Sato's remark, which names them in passing.
+> *probe:* cite Zolotarev's and Wolfe's own papers, or attribute the sentence to Sato's remark by
+> name instead of borrowing the names it mentions as independently sourced. *refs:*
+> `def:regularly-varying`, `thm:tail-behaviour`.
+
+**`PROVENANCE` — blueprint-annotation content in paper prose.** The sentence's only content is how
+a cited result is proved, what axioms or ledger entries it rests on, or what it is *not* used for —
+the habit the blueprint's annotations carry for the trust base, carried into prose where a reader
+needs the result, not its provenance. Not `TRANSCLUSION`, which is a blueprint hypothesis the paper's
+*statement* dropped; here the statement is fine and an extra sentence talks about its proof or its
+(non-)use instead.
+
+> *anchor:* `In [B] the existence of the delay law is established using the ledger's A3 axiom`
+> *claim:* the sentence re-explains how the cited paper proves its fact and which axiom it rests on;
+> that is the cited paper's business, and the trust-base subsection already states the axiom
+> accounting once.
+> *probe:* cite the result and drop the explanation, or move the axiom accounting to the trust-base
+> subsection if it is missing there. *refs:* `thm:delay-existence`, `sec:trust-base`.
 
 ## The scope-audit mode
 
