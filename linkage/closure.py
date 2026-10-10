@@ -268,10 +268,12 @@ def export_staleness(cfg: Config) -> str | None:
     """Why the export at `paths.lean_uses` is out of date, or None (or when there is none).
 
     A stamped export (`SOURCES_KEY`) is compared by digest, which is exact and survives a
-    fresh clone. An unstamped one cannot be: CI always runs on a fresh clone, where
-    checkout order -- not edit history -- sets every file's modification time, so a
-    comparison against the newest Lean source's mtime is meaningless there and is not
-    attempted; an unstamped export fails outright, with the command that stamps it.
+    fresh clone. An unstamped one cannot be compared at all: CI always runs on a fresh
+    clone, where checkout order -- not edit history -- sets every file's modification
+    time, so a comparison against the newest Lean source's mtime is meaningless there and
+    is not attempted. That case is `export_unstamped`'s, and an advisory, not a failure
+    (the author, 2026-10-10): an article that has not stamped its export has done nothing
+    wrong yet, and since rule 13 stopped reading the export nothing fatal depends on it.
     """
     path = cfg.lean_uses
     if path is None or not path.is_file():
@@ -282,12 +284,27 @@ def export_staleness(cfg: Config) -> str | None:
         return str(e)
     stamp = data.get(SOURCES_KEY) if isinstance(data, dict) else None
     if stamp is None:
-        return (f"{path.name} carries no _sources stamp, so its currency cannot be "
-                "verified -- run `linkage closure --stamp-export` and commit the result")
+        return None
     now = sources_digest(cfg)
     return None if stamp == now else (
         f"{path.name} was generated from Lean sources ({stamp}) that have changed since "
         f"({now}) -- regenerate it, or delete it if nothing reads it")
+
+
+def export_unstamped(cfg: Config) -> str | None:
+    """Why the export's currency cannot be checked -- it carries no stamp -- or None."""
+    path = cfg.lean_uses
+    if path is None or not path.is_file():
+        return None
+    try:
+        data = load_export(path)
+    except ExportError:
+        return None                                   # unreadable: `export_staleness` says so
+    if isinstance(data, dict) and data.get(SOURCES_KEY) is None:
+        return (f"{path.name} carries no _sources stamp, so its currency is not checked "
+                "-- run `linkage closure --stamp-export` and commit the result, or delete "
+                "the export if nothing reads it")
+    return None
 
 
 def stamp_export(cfg: Config, path: Path | None = None) -> Path:

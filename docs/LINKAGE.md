@@ -593,16 +593,17 @@ naming them keeps the difference between "open" and "leaned on while open" visib
    | **export** | `paths.lean_uses` (default `Formalization/lean-uses.json`), `{"Decl.Name": ["Const", …]}` written by a Lean meta program over a built environment | used when the file exists, or `--export PATH` |
    | **source scan** | the declaration's own source text, identifier tokens resolved against this article's declarations only | the default, and what the tests exercise |
 
-   **A committed export must carry a stamp, or `linkage check` refuses it** (2026-10-09, Q-0383;
-   tightened 2026-10-10, Q-0388). It is generated from the Lean sources and nothing regenerates it
+   **A committed export carries a stamp, or `linkage check` cannot date it and says so**
+   (2026-10-09, Q-0383; 2026-10-10, Q-0388). It is generated from the Lean sources and nothing regenerates it
    when they change, so a stale one is wrong silently. The reserved key `"_sources": "sha256:<hex>"`,
    which `linkage closure --stamp-export` writes, is compared by that digest (over every `.lean` file
    under `paths.lean` outside `.lake/`, in order of its relative POSIX path: the path, a NUL, its
    bytes, a NUL) — exact, and it survives a fresh clone. **There is no modification-time fallback.**
    CI always runs on a fresh clone, where checkout order — not edit history — sets every file's
    mtime, so comparing an unstamped export against the newest Lean source's mtime answered a question
-   the timestamps could not actually settle; an unstamped export now fails (`[lean-uses]`) outright,
-   with the command that stamps it. Rule 13 no longer reads the export at all, so an article that
+   the timestamps could not actually settle. A stamped export whose digest no longer matches fails
+   (`[lean-uses]`); an unstamped one is an **advisory** naming the command that stamps it, since its
+   currency is unknown rather than wrong and nothing fatal reads it. Rule 13 no longer reads the export at all, so an article that
    kept one only for the trust-base comparison can delete it.
 
    The source scan is the coarse-to-fine descendant of `f7sweep.py`, which asks the file-level version

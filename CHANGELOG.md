@@ -8,7 +8,7 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 ## Unreleased
 
 - **The reusable `lean.yml` runs `linkage check --fresh-axioms` after the build, and a
-  committed `lean-uses.json` export with no stamp is refused outright (Q-0388).** Q-0383
+  committed `lean-uses.json` export with no stamp is no longer dated by mtime (Q-0388).** Q-0383
   made rule 13's ledger comparison read `#print axioms` under `--fresh-axioms` or a
   `#guard_msgs` pin, but assumed the articles are pinned; none is, and the reusable
   workflows never ran `linkage check` where Lean exists, so the comparison read nothing
@@ -19,8 +19,9 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   never name, now fails CI. The export's modification-time fallback is gone: CI is
   always a fresh clone, where checkout order rather than edit history sets every file's
   mtime, so it could never honestly answer "is this export current" there. An unstamped
-  export now fails `linkage check` (`[lean-uses]`) outright, naming `linkage closure
-  --stamp-export`; a stamped one is still compared by digest, unchanged. The advisory
+  export is now an advisory (`[lean-uses]`) naming `linkage closure --stamp-export`: its
+  currency is unknown, not wrong, and nothing fatal reads it (the author, 2026-10-10); a
+  stamped one is still compared by digest and fails when stale, unchanged. The advisory
   for an unpinned, unread declaration now names `--fresh-axioms` and the Lean CI job
   first, pinning second. `docs/LINKAGE.md` rules 11 and 13; `tests/test_trust_base.py`.
   The default (offline) `linkage check` and `linkage closure`'s advisory audit are

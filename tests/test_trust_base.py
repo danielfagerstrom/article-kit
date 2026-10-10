@@ -262,12 +262,15 @@ def test_fresh_axioms_reads_lean_ahead_of_the_pins(article, monkeypatch):
 # --- a committed export older than the Lean it was generated from ----------------------
 
 
-def test_an_unstamped_export_fails_outright(article):
+def test_an_unstamped_export_is_an_advisory_not_a_failure(article):
     r"""No modification-time fallback: CI is always a fresh clone, where checkout order,
-    not edit history, sets every file's mtime, so an unstamped export is refused rather
-    than dated by it -- stamp it with `linkage closure --stamp-export`."""
+    not edit history, sets every file's mtime, so an unstamped export is not dated by it.
+    Its currency is simply not checked, and the check says so without failing: nothing
+    fatal reads the export since rule 13 stopped (the author, 2026-10-10)."""
     build(article).lean_uses({"Art.main": ["Art.tail_bound"]})
-    (msg,) = tagged(article.check().fatal, "lean-uses")
+    f = article.check()
+    assert tagged(f.fatal, "lean-uses") == []
+    (msg,) = tagged(f.advisory, "lean-uses")
     assert "lean-uses.json carries no _sources stamp" in msg
     assert "linkage closure --stamp-export" in msg
 
