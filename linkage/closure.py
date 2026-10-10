@@ -18,7 +18,8 @@ elan). So:
 *export* — if the article carries a `lean-uses.json` export (`paths.lean_uses`, written by a
 meta program that walks each declaration's `ConstantInfo.value` in a built environment), that
 is read and believed. It is the exact constant set, elaborated: instances, `simp` sets and
-notation are all resolved by then.
+notation are all resolved by then. Being a generated file nothing regenerates, it can go
+stale: `linkage check` fails on one older than the Lean sources (`export_staleness`).
 
 *source scan* — otherwise the declaration's source text is scanned for identifier tokens, in
 the spirit of `.claude/skills/fidelity-review/scripts/f7sweep.py`, which does the coarser
@@ -194,11 +195,13 @@ def apply_export(index: DeclIndex, export: dict) -> DeclIndex:
     elaborated away. Names outside this article are dropped: the audit compares against
     blueprint nodes, and a Mathlib constant maps to no node. An exported declaration this
     package's scan never saw is indexed too (module unknown), so an article may export names
-    the source scan cannot locate.
+    the source scan cannot locate. The reserved key `SOURCES_KEY` is the stamp
+    `export_staleness` reads, not a declaration.
     """
     if not isinstance(export, dict):
         raise ExportError("the export must be a JSON object mapping declaration names to "
                           "the list of constants each one uses")
+    export = {k: v for k, v in export.items() if k != SOURCES_KEY}
     for name, consts in export.items():
         if not isinstance(consts, list):
             raise ExportError(f"{name}: expected a list of constant names, got "
@@ -230,6 +233,75 @@ def build_index(cfg: Config, export: Path | None = None) -> tuple[DeclIndex, str
     if export is not None:
         raise ExportError(f"{export}: no such file")
     return index, "source scan"
+
+
+# --- a stale export ----------------------------------------------------------------------
+#
+# The export is a generated file committed beside the sources it was generated from, and
+# nothing regenerates it when they change: Q-0377's export had to be rebuilt by hand after
+# every Lean edit. `linkage check` therefore refuses one that is older than its sources.
+
+SOURCES_KEY = "_sources"
+"""The export's optional stamp: `sources_digest` of the tree it was generated from."""
+
+
+def _lean_sources(cfg: Config) -> list[Path]:
+    return sorted(f for f in cfg.lean.rglob("*.lean") if ".lake" not in f.parts)
+
+
+def sources_digest(cfg: Config) -> str:
+    """`sha256:<hex>` over every `.lean` file under `cfg.lean` outside `.lake/`: for each,
+    in order of its `cfg.lean`-relative POSIX path, the path, a NUL, its bytes, a NUL."""
+    import hashlib
+
+    h = hashlib.sha256()
+    for f in _lean_sources(cfg):
+        h.update(f.relative_to(cfg.lean).as_posix().encode("utf-8") + b"\0")
+        h.update(f.read_bytes() + b"\0")
+    return "sha256:" + h.hexdigest()
+
+
+def export_staleness(cfg: Config) -> str | None:
+    """Why the export at `paths.lean_uses` is out of date, or None (or when there is none).
+
+    A stamped export (`SOURCES_KEY`) is compared by digest, which is exact and survives a
+    fresh clone; an unstamped one by modification time against the newest Lean source,
+    which a checkout can reorder -- hence the stamp.
+    """
+    path = cfg.lean_uses
+    if path is None or not path.is_file():
+        return None
+    try:
+        data = load_export(path)
+    except ExportError as e:
+        return str(e)
+    stamp = data.get(SOURCES_KEY) if isinstance(data, dict) else None
+    if stamp is not None:
+        now = sources_digest(cfg)
+        return None if stamp == now else (
+            f"{path.name} was generated from Lean sources ({stamp}) that have changed since "
+            f"({now}) -- regenerate it, or delete it if nothing reads it")
+    sources = _lean_sources(cfg)
+    newest = max(sources, key=lambda f: f.stat().st_mtime_ns, default=None)
+    if newest is not None and newest.stat().st_mtime_ns > path.stat().st_mtime_ns:
+        return (f"{path.name} is older than {newest.relative_to(cfg.lean).as_posix()} -- "
+                "regenerate it (and stamp it with `linkage closure --stamp-export`), or "
+                "delete it if nothing reads it")
+    return None
+
+
+def stamp_export(cfg: Config, path: Path | None = None) -> Path:
+    """Record the current `sources_digest` in the export, in place; the path written."""
+    path = path or cfg.lean_uses
+    if path is None or not path.is_file():
+        raise ExportError(f"{path}: no such file")
+    data = load_export(path)
+    if not isinstance(data, dict):
+        raise ExportError(f"{path}: the export must be a JSON object")
+    data = {SOURCES_KEY: sources_digest(cfg),
+            **{k: v for k, v in data.items() if k != SOURCES_KEY}}
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
+    return path
 
 
 # --- the audit ---------------------------------------------------------------------------

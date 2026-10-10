@@ -24,10 +24,12 @@ Three comparisons, all on source text by default:
    A row saying both is ambiguous and reported, never guessed at.
 2. **Ledger entries.** The entries the region names (an id matching `ledger_key`, or an
    interface axiom of `trust-boundary.txt` by name) against the entries its statements read:
-   for a `\leanok` node, the boundary axioms its declarations reach (the `linkage closure`
-   index — the export when there is one, else the source scan) mapped to their entries
-   through the ledger's `**Lean:**` segments; for any other node, the `\ledger{}` entries of
-   the `[A]` nodes it rests on ahead of the trust boundary (itself included).
+   for a `\leanok` node, the boundary axioms `#print axioms` prints for its declarations
+   (Lean's output now under `--fresh-axioms`, else the boundary harness's `#guard_msgs`
+   pin) mapped to their entries through the ledger's `**Lean:**` segments; for any other
+   node, the `\ledger{}` entries of the `[A]` nodes it rests on ahead of the trust boundary
+   (itself included). Not the `linkage closure` constant map: its source scan resolves
+   tokens textually and reaches axioms a proof does not use (Q-0383).
 3. **Axiom blocks.** A verbatim block in the region carrying Lean's `#print axioms` output
    must be stamped — `% printed at <commit>` or `<YYYY-MM-DD>` on a comment line directly
    above it — may print only Lean core and declared interface axioms, must agree with the
@@ -216,34 +218,57 @@ def _entries_by_name(cfg: Config) -> dict[str, set[str]]:
     return out
 
 
-def _read_by(lab: str, bp: Blueprint, index, boundary: dict[str, str],
-             by_name: dict[str, set[str]]) -> tuple[set[str], set[str], list[str]] | None:
-    """(entries, boundary names, unresolved declarations) node `lab` reads."""
+def _lookup(tag: str, table: dict[str, tuple[str, ...]], index) -> tuple[str, ...] | None:
+    """`table`'s `#print axioms` output for the declaration a `\\lean{}` tag names.
+
+    Exact name first (the tag, then the full name the source index resolves it to), then a
+    unique final component -- the suffix rule the rest of the package uses for tags.
+    """
+    full = index.resolve(tag) if index is not None else None
+    for name in (tag, full):
+        if name is not None and name in table:
+            return table[name]
+    short = tag.split(".")[-1]
+    cands = [d for d in table if d.split(".")[-1] == short]
+    return table[cands[0]] if len(cands) == 1 else None
+
+
+def _read_by(lab: str, bp: Blueprint, printed: list[dict[str, tuple[str, ...]]], index,
+             boundary: set[str], by_name: dict[str, set[str]]
+             ) -> tuple[set[str], set[str], list[str]]:
+    """(entries, boundary names, declarations with no axioms to read) node `lab` reads.
+
+    A `\\leanok` node reads what `#print axioms` prints for its declarations -- from Lean
+    now under `--fresh-axioms`, else from the boundary harness's `#guard_msgs` pin -- and
+    nothing else: never the `linkage closure` constant map, whose source-scan route
+    resolves tokens textually and so reaches axioms a proof does not use (Q-0377, Q-0383).
+    """
     from .checks import uses_paths
 
     n = bp.by_label[lab]
     if n.leanok and n.lean:
         entries: set[str] = set()
         names: set[str] = set()
-        unresolved: list[str] = []
+        unknown: list[str] = []
         for d in n.lean:
-            full = index.resolve(d) if index is not None else None
-            if full is None:
-                unresolved.append(d)
+            axioms = next((a for t in printed if (a := _lookup(d, t, index)) is not None),
+                          None)
+            if axioms is None:
+                unknown.append(d)
                 continue
-            reach = index.closure(full) | {full}
-            for bfull, short in boundary.items():
-                if bfull in reach:
+            for ax in axioms:
+                if (short := ax.split(".")[-1]) in boundary:
                     names.add(short)
                     entries |= by_name.get(short, set())
-        return entries, names, unresolved
+        return entries, names, unknown
     ahead = [lab, *uses_paths(lab, bp.by_label, stop_at_axiom=True)]
     return ({a for x in ahead if (m := bp.by_label.get(x)) and m.status == "A"
              for a in m.ledger}, set(), [])
 
 
 def _check_ledger(cfg: Config, reg: Region, prose: str, labels: dict[str, list[str]],
-                  bp: Blueprint, index, res: Result) -> None:
+                  bp: Blueprint, printed: list[dict[str, tuple[str, ...]]], index,
+                  res: Result) -> None:
     declared = trust.declared(cfg)
     by_name = _entries_by_name(cfg)
     text = LABEL_ARG_RE.sub(" ", prose).replace(r"\_", "_")
@@ -252,26 +277,17 @@ def _check_ledger(cfg: Config, reg: Region, prose: str, labels: dict[str, list[s
                    if re.search(rf"(?<![\w']){re.escape(d.split('.')[-1])}(?![\w'])", text)}
     for short in named_names:
         named |= by_name.get(short, set())
-
-    # boundary axiom (full name, as the index resolves it) -> its short name
-    boundary: dict[str, str] = {}
-    if index is not None:
-        for d in declared:
-            if (full := index.resolve(d)) is not None:
-                boundary[full] = d.split(".")[-1]
+    boundary = {d.split(".")[-1] for d in declared}
 
     read: dict[str, list[str]] = {}
     read_names: dict[str, list[str]] = {}
+    unknown: dict[str, list[str]] = {}
     lean_nodes = 0
     for ref in dict.fromkeys(_refs(prose)):
         for lab in labels.get(ref, []):
-            entries, names, unresolved = _read_by(lab, bp, index, boundary, by_name)
-            if unresolved:
-                res.advisory.append(
-                    f"[trust-base] {reg.file}:{reg.line}: {lab}'s declaration(s) "
-                    f"{', '.join(unresolved)} are not in this repository's Lean index -- "
-                    "the section's ledger entries are not compared")
-                return
+            entries, names, missing = _read_by(lab, bp, printed, index, boundary, by_name)
+            if missing:
+                unknown[lab] = missing
             lean_nodes += bool(bp.by_label[lab].leanok and bp.by_label[lab].lean)
             for a in entries:
                 read.setdefault(a, []).append(lab)
@@ -279,7 +295,16 @@ def _check_ledger(cfg: Config, reg: Region, prose: str, labels: dict[str, list[s
                 read_names.setdefault(s, []).append(lab)
 
     where = f"{reg.file}:{reg.line}"
-    for a in sorted(named - set(read)):
+    # What is read is exact, so an entry read and not named is a finding whatever else is
+    # unknown; an entry named and not read is one only when every statement's axioms were
+    # read -- an unread declaration may be the one that reads it.
+    if unknown:
+        res.advisory.append(
+            f"[trust-base] {where}: no `#print axioms` output for "
+            + "; ".join(f"{lab}'s {', '.join(ds)}" for lab, ds in unknown.items())
+            + " -- pin it under #guard_msgs in the boundary harness, or run "
+              "--fresh-axioms; entries the section names are not checked against them")
+    for a in sorted(named - set(read)) if not unknown else ():
         res.fatal.append(
             f"[trust-base] {where}: the section names ledger entry {a}, but none of the "
             "statements it \\ref's reads it -- a cited fact that has left their trust base")
@@ -290,7 +315,7 @@ def _check_ledger(cfg: Config, reg: Region, prose: str, labels: dict[str, list[s
     if named_names and lean_nodes:
         # The same comparison by boundary name, when the section lists names: two
         # names grounded by one entry would otherwise hide a missing row.
-        for s in sorted(named_names - set(read_names)):
+        for s in sorted(named_names - set(read_names)) if not unknown else ():
             res.fatal.append(
                 f"[trust-base] {where}: the section lists interface axiom {s}, which none "
                 "of its machine-checked statements reaches")
@@ -329,8 +354,13 @@ def _run_lean(cfg: Config, source: str) -> str:
     return r.stdout + r.stderr
 
 
-def fresh_axioms(cfg: Config, decls: list[str], index) -> tuple[dict[str, tuple], str | None]:
-    """What `#print axioms` prints for each of `decls` now: `(axioms by decl, error)`."""
+def fresh_axioms(cfg: Config, decls: list[str], index, required: list[str] | None = None
+                 ) -> tuple[dict[str, tuple], str | None]:
+    """What `#print axioms` prints for each of `decls` now: `(axioms by decl, error)`.
+
+    The error names a declaration of `required` (default: all of `decls`) Lean printed
+    nothing for; the others are read where Lean could, and left out where it could not.
+    """
     mods = sorted({index.module[full] for d in decls
                    if index is not None and (full := index.resolve(d)) in index.module})
     src = "".join(f"import {m}\n" for m in mods) + "".join(
@@ -340,12 +370,19 @@ def fresh_axioms(cfg: Config, decls: list[str], index) -> tuple[dict[str, tuple]
     except (OSError, subprocess.SubprocessError) as e:
         return {}, f"could not run Lean ({e})"
     got = {m.group("decl"): _axioms(m) for m in OUTPUT_RE.finditer(out)}
-    missing = [d for d in decls if d not in got]
+    missing = [d for d in (decls if required is None else required) if d not in got]
     return got, (f"Lean printed no axioms for {', '.join(missing)}: "
                  + (out.strip().splitlines() or ["(no output)"])[-1]) if missing else None
 
 
-def _check_blocks(cfg: Config, reg: Region, res: Result, *, fresh: bool, index) -> int:
+def _printed_decls(reg: Region) -> list[str]:
+    """The declarations the region's `#print axioms` blocks print."""
+    return [m.group("decl") for b in BLOCK_RE.finditer(reg.text)
+            for m in OUTPUT_RE.finditer(b.group("body"))]
+
+
+def _check_blocks(cfg: Config, reg: Region, res: Result, *,
+                  now: dict[str, tuple[str, ...]] | None) -> int:
     allowed = set(trust.allowlist(cfg))
     has_boundary = trust.trust_file(cfg).exists()
     pinned = _pinned(cfg)
@@ -386,10 +423,7 @@ def _check_blocks(cfg: Config, reg: Region, res: Result, *, fresh: bool, index) 
                 res.fatal.append(
                     f"[trust-base] {where}: {decl} is printed as {_fmt(got)}, but its "
                     f"#guard_msgs pin in {cfg.boundary.guard.name} says {_fmt(pin)}")
-    if fresh and printed:
-        now, err = fresh_axioms(cfg, list(dict.fromkeys(d for _, d, _ in printed)), index)
-        if err:
-            res.fatal.append(f"[trust-base] {reg.file}:{reg.line}: --fresh-axioms: {err}")
+    if now is not None:
         for where, decl, got in printed:
             if decl in now and set(now[decl]) != set(got):
                 res.fatal.append(
@@ -415,18 +449,34 @@ def check(bp: Blueprint, cfg: Config, markers: list[PaperMarker], *,
     if not regs:
         return res
 
-    from .closure import ExportError, build_index
-    try:
-        index, _route = build_index(cfg)
-    except ExportError as e:
-        index = None
-        res.advisory.append(f"[trust-base] the Lean index could not be read ({e}) -- "
-                            "ledger entries are compared for prose-only statements alone")
+    # The source index only locates declarations (a tag's full name, the module to import);
+    # what a declaration reaches is read from `#print axioms`, never from its constant map.
+    from .closure import scan_lean
+    index = scan_lean(cfg)
     labels = _label_map(bp, markers)
-    for reg in regs:
-        # Comments and printed blocks are not claims: blank them, keeping offsets.
-        prose = BLOCK_RE.sub(_blank, COMMENT_RE.sub(_blank, reg.text))
+    # Comments and printed blocks are not claims: blank them, keeping offsets.
+    proses = [BLOCK_RE.sub(_blank, COMMENT_RE.sub(_blank, reg.text)) for reg in regs]
+
+    # `#print axioms` output to read: Lean's now, under --fresh-axioms, ahead of the pins.
+    # One Lean run for the whole check -- every printed block and every \leanok node's
+    # declarations -- since each run elaborates the imports again.
+    printed: list[dict[str, tuple[str, ...]]] = [_pinned(cfg)]
+    now: dict[str, tuple[str, ...]] | None = None
+    if fresh:
+        shown = list(dict.fromkeys(d for reg in regs for d in _printed_decls(reg)))
+        tags = [d for prose in proses for ref in dict.fromkeys(_refs(prose))
+                for lab in labels.get(ref, []) if (n := bp.by_label[lab]).leanok
+                for d in n.lean]
+        decls = list(dict.fromkeys(
+            [*shown, *((index.resolve(t) or t) for t in tags)]))
+        if decls:
+            now, err = fresh_axioms(cfg, decls, index, required=shown)
+            if err:
+                res.fatal.append(
+                    f"[trust-base] {regs[0].file}:{regs[0].line}: --fresh-axioms: {err}")
+            printed.insert(0, now)
+    for reg, prose in zip(regs, proses, strict=True):
         res.stats["claims"] += _check_status(reg, prose, labels, bp, res)
-        _check_ledger(cfg, reg, prose, labels, bp, index, res)
-        res.stats["blocks"] += _check_blocks(cfg, reg, res, fresh=fresh, index=index)
+        _check_ledger(cfg, reg, prose, labels, bp, printed, index, res)
+        res.stats["blocks"] += _check_blocks(cfg, reg, res, now=now)
     return res

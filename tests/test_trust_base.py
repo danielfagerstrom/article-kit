@@ -78,8 +78,14 @@ def section(rows: dict[str, str] | None = None, *, stamp: str = STAMP, block: st
     return "\\section{Results}\n" + body
 
 
-def build(article, paper: str | None = None):
+# What `#print axioms` prints for LEAN's two checked declarations, as the boundary harness
+# pins it: the ledger comparison reads this, not the source.
+PINS = {"Art.main": ("propext", "Art.tail_bound"), "Art.a_lemma": ()}
+
+
+def build(article, paper: str | None = None, pins: dict | None = None):
     article.blueprint(BLUEPRINT).axioms(LEDGER).lean(LEAN).trust("Art.tail_bound")
+    article.guard(PINS if pins is None else pins)
     article.paper(section() if paper is None else paper)
     return article
 
@@ -164,7 +170,8 @@ def test_an_entry_read_but_not_named_fails(article):
 
 def test_an_entry_named_but_no_longer_read_fails(article):
     # The tail bound has been proved: `main` no longer reaches the axiom.
-    build(article).lean(LEAN.replace("exact tail_bound", "exact trivial"))
+    build(article, pins={**PINS, "Art.main": ("propext",)})
+    article.lean(LEAN.replace("exact tail_bound", "exact trivial"))
     fatal, _, _ = findings(article)
     assert any("names ledger entry A1, but none of the statements" in m for m in fatal)
     assert any("interface axiom tail_bound, which none" in m for m in fatal)
@@ -172,13 +179,119 @@ def test_an_entry_named_but_no_longer_read_fails(article):
 
 def test_a_boundary_name_missing_from_the_list_fails(article):
     # Sixteen names, not fourteen: `main` now reaches a second interface of the same entry.
-    build(article).trust("Art.tail_bound", "Art.mode_bound")
+    build(article, section(block=BLOCK.replace("Art.tail_bound]",
+                                               "Art.mode_bound, Art.tail_bound]")),
+          pins={**PINS, "Art.main": ("propext", "Art.mode_bound", "Art.tail_bound")})
+    article.trust("Art.tail_bound", "Art.mode_bound")
     article.axioms(LEDGER.replace("**Lean:** `Art.tail_bound`",
                                   "**Lean:** `Art.tail_bound`, `Art.mode_bound`"))
     article.lean(LEAN.replace("exact tail_bound", "have := mode_bound\n  exact tail_bound"))
     fatal, _, _ = findings(article)
     assert fatal == ["[trust-base] paper/paper.tex:3: thm:b reach(es) interface axiom "
                      "mode_bound, which the section's list of names leaves out"]
+
+
+# --- what a \leanok node reads is `#print axioms`, not the source scan (Q-0383) -----------
+
+# `affine` names the axiom's short name as a binder, so the source scan resolves the token
+# to `Art.tail_bound`; Lean elaborates it to the bound variable and `#print axioms` prints
+# nothing. Q-0377's affine statements were reported as reading ledger A2 the same way.
+AFFINE_LEAN = LEAN.replace("end Art", "theorem affine (tail_bound : True) : True := tail_bound"
+                                      "\n\nend Art")
+AFFINE_NODE = statement(label="thm:aff", lean="Art.affine", leanok=True, proof="Direct.",
+                        proof_leanok=True)
+AFFINE_ROW = {"thm:aff": "Theorem~\\ref{thm:aff} & machine-checked & --- \\\\\n"}
+
+
+def affine(article, pins: dict | None = None):
+    build(article, section(AFFINE_ROW, stamp="", block=""),
+          pins={**PINS, "Art.affine": ()} if pins is None else pins)
+    return article.blueprint(BLUEPRINT + AFFINE_NODE).lean(AFFINE_LEAN)
+
+
+def test_the_source_scan_would_reach_an_axiom_the_proof_does_not_use(article):
+    from linkage.closure import scan_lean
+
+    affine(article)
+    assert "Art.tail_bound" in scan_lean(article.cfg).closure("Art.affine")
+
+
+def test_a_statement_is_not_read_as_reaching_what_only_its_source_mentions(article):
+    fatal, advisory, f = findings(affine(article))
+    assert fatal == [] and advisory == []
+    assert f.ok, f.fatal
+
+
+def test_an_export_does_not_change_what_a_statement_reads(article):
+    # An export claiming `affine` uses the axiom (stale, or wrong) is not believed here.
+    affine(article).lean_uses({"Art.affine": ["Art.tail_bound"], "Art.main": []})
+    assert findings(article)[0] == []
+
+
+def test_a_statement_with_no_printed_axioms_is_reported_and_not_guessed(article):
+    # No pin for `affine` and no --fresh-axioms: nothing to read, so the section's named
+    # entries are not compared against it -- but what *is* read is still compared.
+    rows = {**AFFINE_ROW, "thm:b": ROWS["thm:b"].replace("A1 (\\texttt{tail\\_bound})", "---")}
+    build(article, section(rows, stamp="", block=""))
+    article.blueprint(BLUEPRINT + AFFINE_NODE).lean(AFFINE_LEAN)
+    fatal, advisory, _ = findings(article)
+    (msg,) = advisory
+    assert "no `#print axioms` output for thm:aff's Art.affine" in msg
+    assert fatal == ["[trust-base] paper/paper.tex:3: thm:b read(s) ledger entry A1, which "
+                     "the section never names"]
+
+
+def test_fresh_axioms_reads_lean_ahead_of_the_pins(article, monkeypatch):
+    affine(article, pins=PINS)  # `affine` unpinned
+    printed = {"Art.main": "[propext, Art.tail_bound]", "Art.a_lemma": "[]",
+               "Art.affine": "[Art.tail_bound]"}
+    sources: list[str] = []
+
+    def lean(cfg, src):
+        sources.append(src)
+        return "".join(f"'{d}' depends on axioms: {ax}\n" for d, ax in printed.items())
+
+    monkeypatch.setattr("linkage.trustbase._run_lean", lean)
+    (msg,) = tagged(article.check(fresh_axioms=True).fatal, "trust-base")
+    assert "thm:aff read(s) ledger entry A1, which the section never names" in msg
+    assert sources == ["import Main\n#print axioms Art.affine\n"]
+    printed["Art.affine"] = "[]"
+    assert tagged(article.check(fresh_axioms=True).fatal, "trust-base") == []
+
+
+# --- a committed export older than the Lean it was generated from ----------------------
+
+
+def test_a_stale_unstamped_export_fails_the_check(article):
+    import os
+
+    build(article).lean_uses({"Art.main": ["Art.tail_bound"]})
+    export = article.cfg.lean_uses
+    assert tagged(article.check().fatal, "lean-uses") == []
+    lean = article.root / "Formalization" / "Main.lean"
+    t = export.stat().st_mtime_ns
+    os.utime(lean, ns=(t + 10**9, t + 10**9))
+    (msg,) = tagged(article.check().fatal, "lean-uses")
+    assert "lean-uses.json is older than Main.lean" in msg
+
+
+def test_a_stamped_export_is_compared_by_digest(article):
+    import os
+
+    build(article).lean_uses({"Art.main": ["Art.tail_bound"]})
+    rc, out, _ = run_cli("--root", str(article.root), "closure", "--stamp-export")
+    assert rc == 0 and "Stamped lean-uses.json" in out
+    # Touched but unchanged: the digest still matches, whatever the timestamps say.
+    lean = article.root / "Formalization" / "Main.lean"
+    t = article.cfg.lean_uses.stat().st_mtime_ns
+    os.utime(lean, ns=(t + 10**9, t + 10**9))
+    assert tagged(article.check().fatal, "lean-uses") == []
+    # The stamp is not read as a declaration.
+    from linkage.closure import SOURCES_KEY, build_index
+    assert SOURCES_KEY not in build_index(article.cfg)[0].direct
+    article.lean(LEAN.replace("exact tail_bound", "exact trivial"))
+    (msg,) = tagged(article.check().fatal, "lean-uses")
+    assert "generated from Lean sources (sha256:" in msg and "have changed since" in msg
 
 
 # --- drift 3: the printed axioms blocks ------------------------------------------------
@@ -196,16 +309,14 @@ def test_a_date_stamp_is_enough(article):
 
 def test_a_block_printed_before_the_boundary_moved_fails(article):
     block = BLOCK.replace("Art.tail_bound]", "Art.tail_bound, Art.old_fact]")
-    (msg,) = findings(build(article, section(block=block)))[0]
-    assert "Art.old_fact" in msg and "does not declare" in msg
+    fatal = findings(build(article, section(block=block)))[0]
+    assert any("Art.old_fact" in m and "does not declare" in m for m in fatal)
 
 
 def test_a_block_is_compared_with_its_guard_pin(article):
-    build(article).boundary('[boundary]\nguard = "Formalization/Guard.lean"\n')
-    article.lean("/-- info: 'Art.main' depends on axioms: [propext] -/\n"
-                 "#guard_msgs in\n#print axioms Art.main\n", name="Guard.lean")
-    (msg,) = findings(article)[0]
-    assert "#guard_msgs pin in Guard.lean says [propext]" in msg
+    build(article, pins={**PINS, "Art.main": ("propext",)})
+    fatal = findings(article)[0]
+    assert any("#guard_msgs pin in Guard.lean says [propext]" in m for m in fatal)
 
 
 def test_fresh_axioms_compares_with_lean(article, monkeypatch):
@@ -219,9 +330,12 @@ def test_fresh_axioms_compares_with_lean(article, monkeypatch):
     monkeypatch.setattr("linkage.trustbase._run_lean", lean)
     assert tagged(article.check().fatal, "trust-base") == []  # not run by default
     assert sources == []
-    (msg,) = tagged(article.check(fresh_axioms=True).fatal, "trust-base")
-    assert "Lean prints [propext] now" in msg
-    assert sources == ["import Main\n#print axioms Art.main\n"]
+    fatal = tagged(article.check(fresh_axioms=True).fatal, "trust-base")
+    assert any("Lean prints [propext] now" in m for m in fatal)
+    # ... and the ledger comparison reads the same run: `main` no longer reaches A1.
+    assert any("names ledger entry A1, but none of the statements" in m for m in fatal)
+    # One run for the printed block and every \leanok node the section refs.
+    assert sources == ["import Main\n#print axioms Art.main\n#print axioms Art.a_lemma\n"]
 
 
 def test_fresh_axioms_without_lean_fails_saying_so(article, monkeypatch):

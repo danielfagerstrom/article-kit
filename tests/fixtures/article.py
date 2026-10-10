@@ -165,6 +165,21 @@ class Article:
         toml = self.root.joinpath("linkage.toml").read_text(encoding="utf-8")
         return self.file("linkage.toml", toml + "\n" + table)
 
+    def guard(self, pins: dict[str, tuple[str, ...]], name: str = "Guard.lean") -> Article:
+        r"""A boundary harness pinning each declaration's `#print axioms` under `#guard_msgs`.
+
+        `()` pins a declaration as axiom-free. Configures `[boundary] guard` the first time;
+        a later call rewrites the file only.
+        """
+        toml = self.root.joinpath("linkage.toml").read_text(encoding="utf-8")
+        if "[boundary]" not in toml:
+            self.boundary(f'[boundary]\nguard = "Formalization/{name}"\n')
+        text = "".join(
+            (f"/-- info: '{d}' depends on axioms: [{', '.join(ax)}] -/\n" if ax
+             else f"/-- info: '{d}' does not depend on any axioms -/\n")
+            + f"#guard_msgs in\n#print axioms {d}\n\n" for d, ax in pins.items())
+        return self.lean(text, name=name)
+
     def trust(self, *names: str) -> Article:
         """Declare the article's interface axioms (`blueprint/trust-boundary.txt`)."""
         return self.file("blueprint/trust-boundary.txt", "".join(f"{n}\n" for n in names))

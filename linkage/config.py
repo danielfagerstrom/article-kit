@@ -206,7 +206,8 @@ class Config:
     r"""An exported constant map for `linkage closure` (`paths.lean_uses`, default
     `lean-uses.json` inside `paths.lean`): `{"Decl.Name": ["Const.One", …]}`, written by a Lean
     meta program out of a built environment. It need not exist -- the audit falls back to
-    scanning the declaration sources -- so it is not in `missing()`."""
+    scanning the declaration sources -- so it is not in `missing()`; when it does, `linkage
+    check` fails on it once it is older than the Lean sources (`closure.export_staleness`)."""
 
     lean_packages: tuple[str, ...] = ()
     r"""Lake packages whose sources also count as "declared here".
