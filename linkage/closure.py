@@ -239,10 +239,13 @@ def build_index(cfg: Config, export: Path | None = None) -> tuple[DeclIndex, str
 #
 # The export is a generated file committed beside the sources it was generated from, and
 # nothing regenerates it when they change: Q-0377's export had to be rebuilt by hand after
-# every Lean edit. `linkage check` therefore refuses one that is older than its sources.
+# every Lean edit. `linkage check` therefore refuses one whose digest does not match --
+# and, since CI never has edit-history mtimes to fall back on, refuses an unstamped one
+# outright rather than guessing from timestamps (Q-0388).
 
 SOURCES_KEY = "_sources"
-"""The export's optional stamp: `sources_digest` of the tree it was generated from."""
+"""The export's stamp -- `sources_digest` of the tree it was generated from -- without
+which `export_staleness` refuses the export outright."""
 
 
 def _lean_sources(cfg: Config) -> list[Path]:
@@ -265,8 +268,10 @@ def export_staleness(cfg: Config) -> str | None:
     """Why the export at `paths.lean_uses` is out of date, or None (or when there is none).
 
     A stamped export (`SOURCES_KEY`) is compared by digest, which is exact and survives a
-    fresh clone; an unstamped one by modification time against the newest Lean source,
-    which a checkout can reorder -- hence the stamp.
+    fresh clone. An unstamped one cannot be: CI always runs on a fresh clone, where
+    checkout order -- not edit history -- sets every file's modification time, so a
+    comparison against the newest Lean source's mtime is meaningless there and is not
+    attempted; an unstamped export fails outright, with the command that stamps it.
     """
     path = cfg.lean_uses
     if path is None or not path.is_file():
@@ -276,18 +281,13 @@ def export_staleness(cfg: Config) -> str | None:
     except ExportError as e:
         return str(e)
     stamp = data.get(SOURCES_KEY) if isinstance(data, dict) else None
-    if stamp is not None:
-        now = sources_digest(cfg)
-        return None if stamp == now else (
-            f"{path.name} was generated from Lean sources ({stamp}) that have changed since "
-            f"({now}) -- regenerate it, or delete it if nothing reads it")
-    sources = _lean_sources(cfg)
-    newest = max(sources, key=lambda f: f.stat().st_mtime_ns, default=None)
-    if newest is not None and newest.stat().st_mtime_ns > path.stat().st_mtime_ns:
-        return (f"{path.name} is older than {newest.relative_to(cfg.lean).as_posix()} -- "
-                "regenerate it (and stamp it with `linkage closure --stamp-export`), or "
-                "delete it if nothing reads it")
-    return None
+    if stamp is None:
+        return (f"{path.name} carries no _sources stamp, so its currency cannot be "
+                "verified -- run `linkage closure --stamp-export` and commit the result")
+    now = sources_digest(cfg)
+    return None if stamp == now else (
+        f"{path.name} was generated from Lean sources ({stamp}) that have changed since "
+        f"({now}) -- regenerate it, or delete it if nothing reads it")
 
 
 def stamp_export(cfg: Config, path: Path | None = None) -> Path:

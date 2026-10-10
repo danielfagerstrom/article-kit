@@ -593,14 +593,17 @@ naming them keeps the difference between "open" and "leaned on while open" visib
    | **export** | `paths.lean_uses` (default `Formalization/lean-uses.json`), `{"Decl.Name": ["Const", …]}` written by a Lean meta program over a built environment | used when the file exists, or `--export PATH` |
    | **source scan** | the declaration's own source text, identifier tokens resolved against this article's declarations only | the default, and what the tests exercise |
 
-   **A committed export must not be stale** (2026-10-09, Q-0383). It is generated from the Lean sources
-   and nothing regenerates it when they change, so `linkage check` fails (`[lean-uses]`) on one older
-   than they are. An export may carry a stamp, the reserved key `"_sources": "sha256:<hex>"`, which
-   `linkage closure --stamp-export` writes; a stamped export is compared by that digest (over every
-   `.lean` file under `paths.lean` outside `.lake/`, in order of its relative POSIX path: the path, a
-   NUL, its bytes, a NUL), which survives a fresh clone. An unstamped one is compared by modification
-   time with the newest Lean source, which a checkout can reorder — stamp it. Rule 13 no longer reads
-   the export at all, so an article that kept one only for the trust-base comparison can delete it.
+   **A committed export must carry a stamp, or `linkage check` refuses it** (2026-10-09, Q-0383;
+   tightened 2026-10-10, Q-0388). It is generated from the Lean sources and nothing regenerates it
+   when they change, so a stale one is wrong silently. The reserved key `"_sources": "sha256:<hex>"`,
+   which `linkage closure --stamp-export` writes, is compared by that digest (over every `.lean` file
+   under `paths.lean` outside `.lake/`, in order of its relative POSIX path: the path, a NUL, its
+   bytes, a NUL) — exact, and it survives a fresh clone. **There is no modification-time fallback.**
+   CI always runs on a fresh clone, where checkout order — not edit history — sets every file's
+   mtime, so comparing an unstamped export against the newest Lean source's mtime answered a question
+   the timestamps could not actually settle; an unstamped export now fails (`[lean-uses]`) outright,
+   with the command that stamps it. Rule 13 no longer reads the export at all, so an article that
+   kept one only for the trust-base comparison can delete it.
 
    The source scan is the coarse-to-fine descendant of `f7sweep.py`, which asks the file-level version
    of the same question (is a `\uses` target's declaration in the Lean file's transitive *import*
@@ -752,13 +755,18 @@ naming them keeps the difference between "open" and "leaned on while open" visib
       printed before a cited fact left the boundary. When the boundary harness (rule 5) pins the same
       declaration under `#guard_msgs`, the block must print the pinned set.
 
-   **The fresh run is opt-in.** `linkage check --fresh-axioms` also writes a scratch file importing
-   the module of each printed declaration and of each `\leanok` declaration the regions `\ref`, runs
-   it once through `lake env lean` in the Lean directory, and fails where a printed block differs
-   from what Lean prints now, or where Lean could not be run; the ledger comparison reads the same
-   output ahead of the pins.
-   It needs a built project, so it is for a desk or a Lean CI job; the default run, like every other
-   check here, reads source text only.
+   **The fresh run needs a build, so it is opt-in on the `--fresh-axioms` flag — and the
+   reusable `lean.yml` now passes it** (2026-10-10, Q-0388). `linkage check --fresh-axioms` writes a
+   scratch file importing the module of each printed declaration and of each `\leanok` declaration
+   the regions `\ref`, runs it once through `lake env lean` in the Lean directory, and fails where a
+   printed block differs from what Lean prints now, or where Lean could not be run; the ledger
+   comparison reads the same output ahead of the pins. Before this the comparison ran nowhere in CI:
+   no article's guard file carries a `#guard_msgs` pin, so every `\leanok` declaration's axioms were
+   unread and rule 13's ledger comparison was advisory by default everywhere it mattered.
+   `lean.yml`'s Lean CI job now runs the whole check this way as its last guard, right after the
+   build — the Lean environment the scratch file needs is already there, one more `lake env lean`
+   call beside guard 4's. A desk run is still the same command; the default (offline) run, like every
+   other check here, reads source text only and is unchanged.
 
    **What it cannot see.** A claim written without a `\ref` ("nothing in this section is
    machine-checked") is not a row it can read — list the statements. It reads only the fixed words
