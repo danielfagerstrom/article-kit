@@ -6,6 +6,11 @@
 
 slug = "@@SLUG@@"
 
+# The name the shared library's record of homes knows this article by, where it is not the
+# slug (LINKAGE.md rule 15) — a top-level key, so it stays above `[paths]`:
+#
+#   library_article = "line"
+
 [paths]
 blueprint = "blueprint/src/content.tex"
 axioms    = "blueprint/AXIOMS.md"

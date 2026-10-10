@@ -7,6 +7,23 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage check`, rule 15: a node that tags a shared-library declaration is the declaration's
+  home, cites the home, or is reported (Q-0392).** The shared library has no blueprint (hub
+  ADR-0026, amended 2026-10-10); a statement's prose is the blueprint node of the article that
+  first needed it, and nothing checked that a later article cites that node instead of stating
+  the lemma again. `linkage/homes.py` reads the library's `site/library/data.json` (Q-0391) with
+  `git show` at the revision the lake manifest pins and classifies each tagging node as home,
+  citation, standard material, owed or uncited use. Two macros in the framework's
+  `linkage-macros.tex`, both no-ops in the PDF and stripped from the statement text:
+  `\statedin{<article>:<label>}` cites a home, `\restates{<article>:<label>[@<sha12>]}` marks a
+  repeated statement, which is compared with the home's text where a required package ships it
+  and reported as uncompared where none does. Advisory throughout, with one summary line; an
+  article that requires no package with a record sees no change. New: `library_article` in
+  `linkage.toml` (default `slug`), `--library-record PATH` and `--library-article NAME` on
+  `check` (and `$LINKAGE_LIBRARY_RECORD`, `$LINKAGE_LIBRARY_ARTICLE`) for a run against a record
+  no article pins yet. **An article picks the macros up with `linkage init --sync`**; until
+  then `check` reports its `linkage-macros.tex` as differing from the framework's.
+  `docs/LINKAGE.md` rule 15; `tests/test_homes.py`.
 - **The reusable `lean.yml` runs `linkage check --fresh-axioms` after the build, and a
   committed `lean-uses.json` export with no stamp is no longer dated by mtime (Q-0388).** Q-0383
   made rule 13's ledger comparison read `#print axioms` under `--fresh-axioms` or a
