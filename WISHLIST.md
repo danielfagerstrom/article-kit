@@ -245,3 +245,16 @@ The author on §§ 3.3, 3.4 and 4 of the same paper, having read it to the end (
 ---
 
 *No other open requests.*
+
+---
+
+## `linkage review` rejects two tags the reviewer contract defines
+
+`docs/REVIEWER-CONTRACT.md` defines the structure tags `PROVENANCE` (axiom or source accounting in
+paper prose that the trust-base subsection already carries) and `UNSOURCED` (a named author or result
+with no bibliography entry of its own). `linkage/review.py` (`STRUCTURE_TAGS`) does not accept either:
+a blind register review of the isotropic paper of spatial-hemigroup-affine (2026-10-10, Q-0408) had
+four records rejected and re-tagged them `CONTRACT` and `POINTER`, three with a note in the claim and
+one without. The pooled counts per tag are then wrong for exactly the two defects the author's own
+review of that paper kept finding (rules 3 and 4–5 of the section-review entry above). Wanted: the
+two tags in `STRUCTURE_TAGS`, and a test that every tag the contract names is accepted.
