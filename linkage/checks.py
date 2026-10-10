@@ -671,9 +671,13 @@ def run(
     # (2026-10-09, Q-0383). Nothing in `check` reads it any more -- rule 13 reads
     # `#print axioms` -- but `linkage closure` believes it, and a generated file nothing
     # regenerates goes stale silently.
-    from .closure import export_staleness
+    from .closure import export_staleness, export_unstamped
     if (stale := export_staleness(cfg)) is not None:
         fatal.append(f"[lean-uses] {stale}")
+    # An export with no stamp cannot be dated (no mtime fallback: it lies on a fresh clone).
+    # Advisory, not fatal (2026-10-10): nothing fatal reads the export since rule 13 left it.
+    if (unstamped := export_unstamped(cfg)) is not None:
+        advisory.append(f"[lean-uses] {unstamped}")
 
     # 9. control characters in sources
     #

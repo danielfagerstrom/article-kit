@@ -7,15 +7,34 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The reusable `lean.yml` runs `linkage check --fresh-axioms` after the build, and a
+  committed `lean-uses.json` export with no stamp is no longer dated by mtime (Q-0388).** Q-0383
+  made rule 13's ledger comparison read `#print axioms` under `--fresh-axioms` or a
+  `#guard_msgs` pin, but assumed the articles are pinned; none is, and the reusable
+  workflows never ran `linkage check` where Lean exists, so the comparison read nothing
+  anywhere and "named but not read" was always an advisory. `lean.yml` gains a guard —
+  gated the same way as the neighbouring linkage steps (`axiom_guard_file` set, the
+  default) — that runs the whole check with `--fresh-axioms` right after the build and
+  the axiom guard, so a ledger entry a statement's axioms do not reach, or reach and
+  never name, now fails CI. The export's modification-time fallback is gone: CI is
+  always a fresh clone, where checkout order rather than edit history sets every file's
+  mtime, so it could never honestly answer "is this export current" there. An unstamped
+  export is now an advisory (`[lean-uses]`) naming `linkage closure --stamp-export`: its
+  currency is unknown, not wrong, and nothing fatal reads it (the author, 2026-10-10); a
+  stamped one is still compared by digest and fails when stale, unchanged. The advisory
+  for an unpinned, unread declaration now names `--fresh-axioms` and the Lean CI job
+  first, pinning second. `docs/LINKAGE.md` rules 11 and 13; `tests/test_trust_base.py`.
+  The default (offline) `linkage check` and `linkage closure`'s advisory audit are
+  unchanged.
 - **`linkage check`, rule 13: a `\leanok` statement's ledger entries are read from `#print axioms`,
   not the source scan (Q-0383).** The trust-base comparison read the `linkage closure` constant map,
   whose source scan resolves identifiers textually and reported Paper VII's affine statements as
   resting on A2, which `#print axioms` shows they do not (Q-0377). It now reads Lean's output under
   `--fresh-axioms`, else the boundary harness's `#guard_msgs` pin; an unpinned declaration is an
   advisory, and the section's named entries are then not compared against it. A committed
-  `lean-uses.json` export, still read by `linkage closure`, now fails `linkage check` when it is
-  older than the Lean sources — by digest when stamped (`linkage closure --stamp-export`), else by
-  modification time. An article that kept the export only for rule 13 can delete it.
+  `lean-uses.json` export, still read by `linkage closure`, fails `linkage check` when it is
+  stale (see the Q-0388 entry above for exactly how staleness is decided). An article that kept
+  the export only for rule 13 can delete it.
 
 ## v0.2.0 — 2026-10-06 — a required module's trust boundary by reference
 

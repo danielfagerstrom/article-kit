@@ -4,7 +4,7 @@ name: Lean CI (reusable)
 # local; this re-verifies the proofs on every push and pull request, so verification does not
 # depend on the author's desktop.
 #
-# Four guards, in order of what they protect:
+# Five guards, in order of what they protect:
 #   1. the build itself (leanprover/lean-action, with `lake exe cache get` for Mathlib)
 #   2. no `sorry` in the library sources
 #   3. the boundary harness (`linkage boundary`) — a per-theorem `#guard_msgs` axiom pin, a
@@ -13,6 +13,11 @@ name: Lean CI (reusable)
 #      a `[boundary]` table in linkage.toml, and a no-op without one
 #   4. the trust boundary — `#print axioms` on the headline theorems must reduce to Lean core
 #      plus the article's declared analytic interfaces and nothing else
+#   5. `linkage check --fresh-axioms` — the same check the manifest job runs offline, but
+#      with the library just built, so rule 13's trust-base ledger comparison (LINKAGE.md)
+#      reads what Lean prints now instead of trusting only a `#guard_msgs` pin: a ledger
+#      entry named that a statement's axioms do not reach, or reached and never named, fails
+#      here. A no-op for an article with no `% trust base: begin` marker.
 #
 # Guard 4's allowlist used to be duplicated inline here. It now comes from the article's
 # `blueprint/trust-boundary.txt` via `linkage axioms`, which additionally refuses any name
@@ -320,3 +325,14 @@ jobs:
             exit 1
           fi
           echo "OK: trust base reduces to Lean core + the declared analytic interfaces only."
+
+      # Guard 5 (see the header): the full source-level check, with the library already
+      # built so `--fresh-axioms` can elaborate `#print axioms` for real rather than only
+      # reading a `#guard_msgs` pin. `linkage check` runs from the repo root and finds its
+      # own `linkage.toml`, whose `paths.lean` is where `--fresh-axioms` runs its own
+      # `lake env lean` call (the same build guard 4 already used) — no working-directory
+      # is set here.
+      - name: Guard — linkage check (`--fresh-axioms`)
+        if: inputs.axiom_guard_file != ''
+        run: |
+          linkage check --fresh-axioms

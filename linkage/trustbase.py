@@ -302,8 +302,9 @@ def _check_ledger(cfg: Config, reg: Region, prose: str, labels: dict[str, list[s
         res.advisory.append(
             f"[trust-base] {where}: no `#print axioms` output for "
             + "; ".join(f"{lab}'s {', '.join(ds)}" for lab, ds in unknown.items())
-            + " -- pin it under #guard_msgs in the boundary harness, or run "
-              "--fresh-axioms; entries the section names are not checked against them")
+            + " -- run `linkage check --fresh-axioms` (what the Lean CI job now runs), or "
+              "pin it under #guard_msgs in the boundary harness; entries the section names "
+              "are not checked against them")
     for a in sorted(named - set(read)) if not unknown else ():
         res.fatal.append(
             f"[trust-base] {where}: the section names ledger entry {a}, but none of the "
