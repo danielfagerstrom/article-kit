@@ -5,7 +5,8 @@
 %
 %   (a) the leanblueprint API (\lean, \leanok, \uses, \notready, \proves), stubbed as no-ops
 %       so the blueprint also compiles with plain pdflatex;
-%   (b) the linkage macros proper (\ledger, \notes, \sscite, and the [T]/[A] status tags).
+%   (b) the linkage macros proper (\ledger, \notes, \sscite, \statedin, \restates, and the
+%       [T]/[A] status tags).
 %       The checker and the hub manifest key on these names, and the hub reads every
 %       satellite's manifest with one reader — so an article that renamed them would emit a
 %       manifest nothing could consume.
@@ -32,9 +33,18 @@
 %                Renders as the typewriter @citekey both in the PDF and, via macro expansion
 %                at manifest emit, in transcluded wiki blocks — where it matches the hub's
 %                claim-ref convention and stays checkable.
+% \statedin{line:def:cascade-family} : this node uses a shared-library statement whose home
+%                is that node of that article (LINKAGE.md rule 15). A no-op in the PDF, as
+%                \lean and \uses are: write the citation a reader sees beside it, as the
+%                paper prints it (\cite[Def.~3.2]{...}); the checker resolves this one.
+% \restates{line:def:cascade-family} : this node repeats that home's statement so that a
+%                reader can follow; the checker compares the two texts. An editorial
+%                rendering pins the home's sha: \restates{line:def:cascade-family@<sha12>}.
 \newcommand{\ledger}[1]{ledger~#1}
 \newcommand{\notes}[1]{}
 \newcommand{\sscite}[1]{\texttt{@#1}}
+\newcommand{\statedin}[1]{}
+\newcommand{\restates}[1]{}
 
 % -- Status tags --------------------------------------------------------------
 % [T] proved-target  : Lean must prove this from primitives + the [A] interfaces.

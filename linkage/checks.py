@@ -71,6 +71,10 @@ article repository*.
       what to formalise next. Its dependent count stops at [A] nodes, unlike the fatal walk
       above -- a node that reaches the statement only through a cited interface would gain
       nothing from formalising it -- and both counts are printed
+    - a node that tags a shared-library declaration whose home is another node and neither
+      cites the home (\\statedin, or a \\uses path inside one blueprint) nor marks itself a
+      restatement of it (\\restates); a marked restatement that differs from the home's
+      text, or whose home is not reachable (15; linkage/homes.py)
 
 The wiki edge (\\notes{slug} <-> a Notes content note) is cross-repo; it is checked only
 when a vault path is supplied.
@@ -84,7 +88,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import trust
+from . import homes, trust
 from .artifacts import ledger_entries_from_text, unshared_statements
 from .config import Config
 from .model import Blueprint, ControlChar, LedgerEntry, Node, PaperMarker
@@ -286,6 +290,8 @@ def run(
     wiki: Path | None = None,
     strict_shared: bool = False,
     fresh_axioms: bool = False,
+    library_record: Path | None = None,
+    library_article: str | None = None,
 ) -> Findings:
     """Every in-repo edge, plus the wiki edge when a vault path is given."""
     f = Findings()
@@ -542,6 +548,17 @@ def run(
                        "proof, and \\uses it")
                     + " (PROCESS.md section 5)")
 
+    # 15. a shared-library statement has one home (2026-10-10, Q-0392)
+    #
+    # The shared library has no blueprint (hub ADR-0026 as amended): a statement's prose
+    # is the blueprint node of the article that first needed it, and a later article cites
+    # that node instead of stating the lemma again. `homes` reads the library's record at
+    # the manifest's pin and says, for each node tagging a library declaration, whether it
+    # is the home, cites it, or does neither. Advisory in every case: no released library
+    # tag carries the record yet, and no article has written a citation.
+    lib = homes.check(bp, cfg, homes.load(cfg, library_record), library_article)
+    advisory.extend(lib.advisory)
+
     # 3. paper shared statements
     labels = bp.labels
     drifted: list[str] = []
@@ -725,6 +742,8 @@ def run(
         "proof_unmatched": proof_counts["unmatched"],
         "paper_unshared": len(unshared),
         "trust_base": tb.stats,
+        "homes": lib.stats,
+        "homes_notes": lib.notes,
         "reached_unproved": len(reached_unproved),
         "reached_on_paper": len(reached_on_paper),
         "unproved": sorted(unproved),
