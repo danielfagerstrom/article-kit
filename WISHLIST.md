@@ -198,6 +198,32 @@ enforced:
    non-use, axiom accounting belong to annotations and the trust base), and register-reviewer tags
    for each.
 
+The author on § 3 of the same paper (2026-10-10):
+
+7. **A result the paper restates is cited at its restatement.** § 2 restated the earlier papers'
+   definitions and theorems, and § 3 still cited the earlier papers ("in the sense of [V, Def. 3.1]",
+   with the axioms listed again inside a lemma). Once a statement has a number in this paper, every
+   later use refers to that number; the original's number stays on the restatement only. The cause is
+   again a blueprint statement transcribed verbatim: the blueprint has no § 2, so it cites the source.
+   Suggested: a second macro beside the label macro of rule 1, taking the paper's own label
+   (`\restated{V}{Def.~3.1}{def:line-family}`), which prints the located citation in the blueprint and
+   `Definition~\ref{...}` in the paper; and a `linkage paper` advisory on an external located citation
+   whose target the paper restates (the restatement's title names it).
+8. **A subsection opens by saying what it does and why it works, before its first statement.** "Now it
+   is basically a list of statements": two sentences and four lemmas. Rule 6 at the scale of a
+   subsection: the idea in the reader's own terms (here a projection of a kernel onto a line, the
+   projection-slice theorem), then the plan. Suggested: a reviewer flag on a subsection whose prose
+   before the first numbered statement is under some length, and on a definition introduced with no
+   sentence saying what it is for or how it relates to the notation already in use ("a reminder that
+   `k_d` comes from (2.1)").
+9. **Axioms are stated as a definition, at the level the programme states them, before any
+   reformulation.** The paper defined its families on kernels and gave the operator axioms inline, in a
+   paragraph and inside a lemma, because the kernel theory was proved first. The order of proof is not
+   the order of presentation: the definition a reader of the series expects comes first, the
+   equivalent working form second, and a lemma connects them. Suggested: a line in
+   `PUBLICATION-TEMPLATE.md` on a paper in a series (same order of axioms, definition, representation
+   lemma, classification as its predecessors).
+
 ---
 
 *No other open requests.*
