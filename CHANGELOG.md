@@ -7,6 +7,25 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+## v0.3.0 — 2026-10-10 — the trust base read from Lean, and a home for every shared statement
+
+Everything since v0.2.0. Cut for Paper VII (`spatial-hemigroup-affine`), which waits on it for the
+cross-module `\ledger{}` (Q-0379), for dropping its hand-made `lean-uses.json` (Q-0389) and for
+rule 15's citations (Q-0395), and for Paper V's adoption of rule 15 (Q-0396). A minor bump under
+the `v0` rule. **One thing here makes a passing article fail, and it is meant to:**
+- the reusable `lean.yml` now runs `linkage check --fresh-axioms` after the build. A marked
+  trust-base section that names a ledger entry its statements' axioms do not reach, or leaves out
+  one they do, fails the Lean job; before this tag the comparison read nothing in CI.
+
+Nothing else does:
+- check 14 (interface nodes) and rule 15 (homes) are advisory;
+- a committed `lean-uses.json` fails only when it carries a stamp that no longer matches; an
+  unstamped one is an advisory;
+- `\ledger{<package>:<id>}`, `\statedin{}` and `\restates{}` are new syntax, used by nobody until
+  an article writes them. The two macros arrive with `linkage init --sync`.
+
+A module moves to this tag when it next runs (`docs/RELEASE.md`, "Versioning the framework").
+
 - **`linkage check`, rule 15: a node that tags a shared-library declaration is the declaration's
   home, cites the home, or is reported (Q-0392).** The shared library has no blueprint (hub
   ADR-0026, amended 2026-10-10); a statement's prose is the blueprint node of the article that
@@ -52,6 +71,24 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   `lean-uses.json` export, still read by `linkage closure`, fails `linkage check` when it is
   stale (see the Q-0388 entry above for exactly how staleness is decided). An article that kept
   the export only for rule 13 can delete it.
+- **`\ledger{<package>:<id>}`: a node cites an entry of a required module's ledger (Q-0374).**
+  Resolved through the `include <package> @ <revision>` line of `blueprint/trust-boundary.txt`
+  against that module's own `AXIOMS.md` at the pinned revision, failing closed when the package is
+  not included or the entry is absent there; the manifest projects it with its module. The
+  own-module `\ledger{AXX}` is unchanged. `docs/LINKAGE.md`; `tests/test_ledger_module.py`.
+- **`linkage check`, check 14: a fully proved node that rests on a ledger entry `\uses` the
+  entry's interface node (Q-0356), read from the status line only (Q-0378).** leanblueprint
+  paints a node fully proved when it and its `\uses` ancestors have proofs, so an `[A]` node whose
+  Lean calls an axiom rendered as proved unless the axiom is itself a node without a proof (Paper
+  VII: 41 nodes, fixed there in its #82). `docs/PROCESS.md` § 5 states the convention; the check
+  advises (`[iface]`). It reads the `\ledger{}` tokens on the status line (`Node.status_ledger`,
+  not projected into the manifest), so an entry an Assignment clause mentions as *not* spent is
+  not taken for a spend. `docs/LINKAGE.md` rule 14; `tests/test_checks_interface.py`.
+- **`linkage paper` checks every paper's main document in a multi-paper repository (Q-0354).**
+- **Process and writing rules** (documents only): a blueprint proof change is mirrored into the
+  paper in the same pull request (`docs/PROCESS.md`, Q-0355); the rules from the author's
+  pass-6 review of Paper VII (`docs/WRITING.md`, `docs/PUBLICATION-TEMPLATE.md`,
+  `docs/REVIEWER-CONTRACT.md`, Q-0375).
 
 ## v0.2.0 — 2026-10-06 — a required module's trust boundary by reference
 
