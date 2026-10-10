@@ -72,6 +72,15 @@ class Node:
     can mention an entry while saying it is NOT spent ("\\ledger{A5} is not spent"), and
     that mention must not look like a claim. Not projected to the manifest."""
 
+    stated_in: list[str] = field(default_factory=list)
+    r"""`\statedin{<article>:<label>}` references: this node uses a shared-library statement
+    and cites its home, the blueprint node that states it (LINKAGE.md rule 15). Raw, as
+    written; `homes.parse_ref` gives them meaning. Not projected to the manifest."""
+
+    restates: list[str] = field(default_factory=list)
+    r"""`\restates{<article>:<label>[@<sha12>]}` references: this node repeats the statement
+    of that home so that a reader can follow, and is compared with it (rule 15)."""
+
     statement: str = ""
     """Statement text normalized for stable hashing."""
 

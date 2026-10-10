@@ -1,6 +1,7 @@
 """`linkage` — the article-repo command line.
 
     linkage check [--wiki PATH] [--emit-manifest PATH] [--require-render]
+                  [--library-record PATH] [--library-article NAME]
     linkage paper
     linkage closure [--export PATH] [--json] [--stamp-export]
     linkage manifest [PATH] [--require-render]
@@ -20,10 +21,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
-from . import artifacts, checks, closure, config, leanclones, parse_latex
+from . import artifacts, checks, closure, config, homes, leanclones, parse_latex
 from . import manifest as manifest_mod
 from . import release as release_mod
 from . import zenodo as zenodo_mod
@@ -77,6 +79,9 @@ def cmd_check(args) -> int:
         wiki=args.wiki,
         strict_shared=args.strict_shared,
         fresh_axioms=args.fresh_axioms,
+        library_record=args.library_record or (
+            Path(p) if (p := os.environ.get(homes.ENV_RECORD)) else None),
+        library_article=args.library_article or os.environ.get(homes.ENV_ARTICLE),
     )
 
     # Framework-owned scaffolding must exist in the article tree (TeX resolves \input
@@ -141,6 +146,12 @@ def cmd_check(args) -> int:
         # Only for a paper carrying the marker, so every other article's output is unchanged.
         print(f"Trust base: {tb['regions']} marked subsection(s), {tb['claims']} status "
               f"claim(s), {tb['blocks']} printed axioms block(s) read (LINKAGE.md rule 13).")
+    # Only for an article requiring a shared library that carries a record of homes, or
+    # one that predates it; every other article's output is unchanged (rule 15).
+    if line := homes.summary(s.get("homes", {})):
+        print(line)
+    for note in s.get("homes_notes", ()):
+        print(f"Library homes: {note} (LINKAGE.md rule 15).")
     for a in f.advisory:
         print("  advisory " + a)
     if f.fatal:
@@ -544,6 +555,15 @@ def build_parser() -> argparse.ArgumentParser:
                    help="also run `#print axioms` through Lean (`lake env lean`) for every "
                         "declaration a trust-base subsection prints, and fail where the "
                         "printed block differs -- needs a built Lean project (rule 13)")
+    c.add_argument("--library-record", type=Path, metavar="PATH",
+                   help="read the shared library's record of homes (its "
+                        "site/library/data.json) from PATH instead of the revision the lake "
+                        "manifest pins -- for a run against a library revision no article "
+                        f"pins yet (rule 15; also ${homes.ENV_RECORD})")
+    c.add_argument("--library-article", metavar="NAME",
+                   help="the name the library's record knows this article by, when it is "
+                        "not linkage.toml's `library_article` or `slug` (rule 15; also "
+                        f"${homes.ENV_ARTICLE})")
     c.add_argument("--require-render", action="store_true",
                    help="fail (exit 2) unless the pinned pandoc renders every label — for "
                         "CI, where a manifest without transclusion fields must never reach "

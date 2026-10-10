@@ -55,7 +55,7 @@ def normalize_statement(body: str) -> str:
     """The statement text of a node body, normalized for stable hashing.
 
     Strips LaTeX comments and the metadata commands (\\label/\\lean/\\uses/\\notes/\\ledger
-    with their arguments; the bare \\notready/\\leanok tokens; \\statusT/\\statusA together
+    and the home citations \\statedin/\\restates of rule 15, with their arguments; the bare \\notready/\\leanok tokens; \\statusT/\\statusA together
     with their trailing \\quad\\emph{...} status annotation — proof-status remarks, not
     statement content, so a status edit does not move the sha), then collapses all whitespace
     runs to single spaces. The mathematical prose and math are kept verbatim, so the text —
@@ -63,7 +63,7 @@ def normalize_statement(body: str) -> str:
     function of the body string, no environment input.
     """
     body = re.sub(r"(?<!\\)%[^\n]*", "", body)
-    body = re.sub(r"\\(?:label|lean|uses|notes|ledger)\{[^}]*\}", "", body)
+    body = re.sub(r"\\(?:label|lean|uses|notes|ledger|statedin|restates)\{[^}]*\}", "", body)
     # \statusT / \statusA plus the annotation that follows them: optional \quad / \qquad
     # spacing, then an optional \emph{...} group (balanced to two brace-nesting levels —
     # the annotations contain \texttt{...} / \ref{...}).
@@ -109,7 +109,7 @@ def normalize_for_render(body: str) -> str:
     output only.
     """
     body = re.sub(r"(?<!\\)%[^\n]*", "", body)
-    body = re.sub(r"\\(?:label|lean|uses|notes)\{[^}]*\}", "", body)
+    body = re.sub(r"\\(?:label|lean|uses|notes|statedin|restates)\{[^}]*\}", "", body)
     body = re.sub(
         r"\\status[TA]\b(?:\s|\\quad\b|\\qquad\b|\\ledger\{[^}]*\})*"
         r"(?:\\emph\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})?",
@@ -232,6 +232,15 @@ def proof_ref_labels(body: str) -> set[str]:
             if lab.strip()}
 
 
+def _refs(macro: str, body: str) -> list[str]:
+    r"""The arguments of every `\<macro>{a, b}` in a node body, comments ignored, de-duplicated
+    in first-mention order (the home citations of rule 15: `\statedin`, `\restates`)."""
+    body = re.sub(r"(?<!\\)%[^\n]*", "", body)
+    return list(dict.fromkeys(
+        r.strip() for m in re.finditer(r"\\" + macro + r"\{([^}]*)\}", body)
+        for r in m.group(1).split(",") if r.strip()))
+
+
 def blueprint_nodes(tex: str, cfg: Config) -> list[Node]:
     """One Node per statement environment (plus its trailing proof, if any)."""
     nodes: list[Node] = []
@@ -286,6 +295,8 @@ def blueprint_nodes(tex: str, cfg: Config) -> list[Node]:
                 # this list as the node's sources, where a repeat is noise.
                 ledger=list(dict.fromkeys(re.findall(r"\\ledger\{([^}]*)\}", body))),
                 status_ledger=status_ledger(body),
+                stated_in=_refs("statedin", body),
+                restates=_refs("restates", body),
                 statement=normalize_statement(body),
                 shared_statement=shared_statement(body),
                 proof=normalize_statement(pm.group(1)) if pm else None,

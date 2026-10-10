@@ -25,13 +25,14 @@ manifest.
 | blueprint → blueprint | `\uses{label}` | dependency graph (leanblueprint) |
 | blueprint → ledger `[A]` | `\ledger{A15}` | `[A]` node names its `AXIOMS.md` entry |
 | blueprint → wiki note | `\notes{slug}` | node names its Notes content note (the "what") |
+| blueprint → another article's blueprint | `\statedin{<article>:<label>}` / `\restates{<article>:<label>}` | node cites, or repeats, the home of a shared-library statement (rule 15) |
 | paper → blueprint | `% shared with blueprint <label>` + the paper statement's own `\label` | shared statements |
 | ledger → blueprint / Lean | `**Blueprint:**` / `**Lean:**` lines in each `AXIOMS.md` entry | reciprocal back-pointer |
 | wiki note → blueprint | `blueprint: [labels]` frontmatter *(incremental)* | reciprocal back-pointer |
 | blueprint → wiki *(projection)* | `linkage manifest` → `blueprint-manifest-<slug>.json` | the wiki reads proved-status to validate a note ("check") |
 | wiki → blueprint *(pull)* | `wiki demands --json` → `linkage demand` | the wiki's proof requests, incl. not-yet-existing nodes ("demand") |
 
-The first seven rows are **reference** edges — pointer syntax inside one artifact. The last two are the
+The first eight rows are **reference** edges — pointer syntax inside one artifact. The last two are the
 cross-repo **workflow** channel and are documented under [The cross-repo channel](#the-cross-repo-channel--manifest-out-demand-in) below.
 
 `\lean`, `\leanok`, `\uses`, `\notready` are the standard **leanblueprint** API (no-ops in the standalone
@@ -493,6 +494,10 @@ It enforces the **in-repo** edges and fails (exit 1) on:
   existing drift is cleared;
 - (advisory only) a paper statement environment with neither a `% shared with blueprint` marker nor a
   `% no blueprint node: <reason>` opt-out (rule 12);
+- (advisory only) a node tagging a shared-library declaration whose home is another node, with
+  neither a citation of the home (`\statedin`, or a `\uses` path inside one blueprint) nor a
+  `\restates` mark; a marked restatement that differs from its home or cannot be compared; a
+  citation the library's record does not resolve (rule 15; linkage/homes.py);
 - a marked trust-base subsection (`% trust base: begin` … `end`) that gives a statement a status the
   blueprint does not, names a ledger entry its statements do not read or leaves out one they do, or
   prints an unstamped or out-of-date `#print axioms` block (rule 13; silent without the marker);
@@ -806,6 +811,104 @@ naming them keeps the difference between "open" and "leaned on while open" visib
 
    Advisory, as rule 10: the graph under-reports a node's trust story rather than changing it — the
    ledger entry itself is still checked by rules 2 and 6.
+
+15. **A shared-library statement has one home, and a later article cites it** (2026-10-10, Q-0392).
+   The shared library has no blueprint of its own (hub ADR-0026, amended 2026-10-10): a statement's
+   prose lives in its **home**, the blueprint node of the article that first needed it, which
+   already states it and tags the library's declaration. A later article cites the home, as one
+   paper cites the paper that proved a lemma; it does not state the lemma again. Before this check
+   nothing read that: `ScaleSpace.CascadeFamily` was tagged from two blueprints, Paper V's
+   `def:cascade-family` and Paper VII's `lem:isotropic-marginal-family`, and no artifact said which
+   one states it.
+
+   **The record.** The library says where each module's home is in `site/library/data.json`
+   (`scale-space-lean`, Q-0391): per module a `home` of kind `home` (an `article` and its `labels`),
+   `none` (standard material that no blueprint needs to state) or `owed` (a home is expected and the
+   article has not written the node); per declaration its module. `linkage check` reads the file with
+   `git show` at the commit the article's `Formalization/lake-manifest.json` pins for the package,
+   in the checkout under its `packagesDir`: the same read as an `include` line of rule 5, and never
+   the working tree. A required package without the file is not a shared library for this check.
+   A file whose modules carry no `home` predates the record: the check says so in one line and
+   checks nothing, and when an article names shared packages (`paths.lean_packages`) and none has
+   the file, it says that too, so that silence is not read as "clean".
+
+   **The classes.** For each node, each `\lean{}` tag that names a declaration of the record is
+   looked up by its module's home; a node is classified once per home, however many declarations
+   with that home it tags.
+
+   | the module's home | the node | reported |
+   |---|---|---|
+   | this article, and the node's own label | is the **home** | counted |
+   | kind `none` | uses standard material | counted |
+   | another node, and the node cites it | a **citation** | counted |
+   | another node, and the node does not cite it | an **uncited use** | advisory |
+   | kind `owed` | the home does not exist yet | advisory, with what the record says is missing |
+
+   "This article" is the name the record knows it by: `library_article` at the top level of
+   `linkage.toml`, default `slug`. The two differ where the satellite id is not the constellation
+   slug (Paper V's `slug` is `shl`, and its homes are `line`'s). A home's article may name a module
+   (`line/cone:def:causal-admissible`); the part before the `/` is the member, one repository with
+   one blueprint, so `line/cone`'s homes are nodes of the article `line`.
+
+   **The citation** is one of three, all read from the node's statement environment:
+
+   ```latex
+   \begin{lemma}\label{lem:isotropic-marginal-family}\lean{ScaleSpace.CascadeFamily, ...}
+     ... is a cascade family \cite[Def.~3.2]{paperV}\statedin{line:def:cascade-family} ...
+   ```
+
+   - `\statedin{<article>:<label>}`: this node uses that statement, which is stated there. A no-op
+     in the PDF, as `\lean` and `\uses` are: the reader sees the citation the paper already prints,
+     written beside it, and the check resolves the macro. Kept close to `\ledger{<package>:<id>}`
+     (rule 2), with one difference: the qualifier is the record's article name, not a Lake package,
+     because the record names a home by article and a home may be in an article this one does not
+     require.
+   - `\restates{<article>:<label>}`: this node repeats the home's statement so that a reader can
+     follow. It counts as a citation and is compared with the home (below).
+   - inside one blueprint, a `\uses` path from the node to the home, direct or through other nodes
+     (read as rule 14 reads an interface node). The unqualified `\statedin{<label>}` is also read
+     as this article's.
+
+   A `\statedin` or `\restates` whose target the record does not know as a home does not resolve and
+   is an advisory. Both macros are stripped from the statement text, so adding a citation moves no
+   `statement_sha` and no paper marker's pin.
+
+   **Tagging is not always stating.** `lem:isotropic-marginal-family` tags `ScaleSpace.CascadeFamily`
+   because it *constructs* one. The check does not guess which a node does: the citation says it.
+   `\statedin` is a use, `\restates` is a repetition, and only the second is compared. The kinds are
+   read only to word the advisory for a node that carries neither: a definition node over a library
+   definition or structure, or a claim node (`statement_kinds`) over a library theorem, is reported
+   as stating the home again unmarked, and anything else (a lemma over a structure) as using it
+   uncited.
+
+   **A marked restatement is compared with the home** where the home's text is reachable, on the
+   same key as a paper's copy of a blueprint statement (`shared_statement`, rule 4), with the same
+   three outcomes: *verbatim*; *tracked*, when it renders the home editorially and pins the sha it
+   was written against, `\restates{line:def:cascade-family@<sha12>}`; and an advisory when it
+   differs unpinned (naming the first difference and the sha to pin) or the home has moved since the
+   pin. The text is reachable when the home is in this blueprint, or in a package the article
+   requires that ships a blueprint at its pinned revision (`blueprint/src/content.tex`, which an
+   export carries), read with `git show` there. The record names a home by article and the lake
+   manifest names a package, and an export carries no `linkage.toml` to map one to the other, so
+   the node is found by label among the required packages' blueprints and the finding names the
+   package it was read from. A home in an article this one does not require is not reachable
+   (`linkage check` fetches nothing): the restatement is reported as **uncompared**, and does not
+   fail.
+
+   **Advisory in every case**, with one summary line: `Library homes (<package> @ <tag> (<sha>);
+   this article is <name>): H home(s), C citation(s), U uncited use(s); …`. No released tag of the
+   library carries the record yet and no article has written a citation, so a fatal check would
+   fail on day one or, at the articles' current pins, read nothing. What should become fatal once
+   the articles are clean: a citation that does not resolve, and a marked restatement whose pinned
+   home has moved (the two cases where the author's own mark is wrong); an uncited use next; `owed`
+   stays advisory, since the debt is another article's.
+
+   **Reading a record no article pins yet.** `linkage check --library-record PATH` (or
+   `$LINKAGE_LIBRARY_RECORD`) reads the record from a file, standing for the package its
+   `source_dir` names, and `--library-article NAME` (or `$LINKAGE_LIBRARY_ARTICLE`) says which
+   article this is. The summary line then says the record was given by path, not read at the pin.
+   The claims of the record (which node tags which declaration) are a snapshot and are not read:
+   the article's own blueprint is the source for its tags.
 
 The **wiki edge** is cross-repo: pass `--wiki <path-to-Notes>` to also check that every `\notes{slug}`
 resolves to a `slug.md` under the wiki.

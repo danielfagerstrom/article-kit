@@ -217,6 +217,12 @@ class Config:
     Mathlib name satisfy check 1, and would read thousands of files on every run.
     """
 
+    library_article: str | None = None
+    """The name the shared library's record of homes knows this article by (top-level
+    `library_article`; default: `slug`). The record names a home by constellation slug
+    (`line:def:cascade-family`), which is not always the satellite id: Paper V's `slug` is
+    `shl` and its homes are `line`'s (LINKAGE.md rule 15)."""
+
     boundary: Boundary = field(default_factory=Boundary)
 
     statement_envs: tuple[str, ...] = DEFAULT_STATEMENT_ENVS
@@ -497,6 +503,7 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
         # names its Lean project something else.
         lean_uses=p("lean_uses", f"{paths.get('lean', 'Formalization')}/lean-uses.json"),
         lean_packages=tuple(paths.get("lean_packages", ())),
+        library_article=raw.get("library_article"),
         boundary=boundary(),
         statement_envs=tuple(bp.get("statement_envs", DEFAULT_STATEMENT_ENVS)),
         label_prefixes=tuple(bp.get("statement_label_prefixes", DEFAULT_LABEL_PREFIXES)),
