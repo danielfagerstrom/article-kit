@@ -224,6 +224,24 @@ The author on § 3 of the same paper (2026-10-10):
    `PUBLICATION-TEMPLATE.md` on a paper in a series (same order of axioms, definition, representation
    lemma, classification as its predecessors).
 
+The author on §§ 3.3, 3.4 and 4 of the same paper, having read it to the end (2026-10-10):
+
+10. **A results subsection says why its result is interesting before it proves it.** "Very technical
+    and I am not completely sure why the results are interesting": the two subsections stated correct,
+    formalized theorems, with the tools before the theorem, and the author of the programme could not
+    say what a reader gains. Two blind register reviews and a scope audit had passed them: no pass asks
+    "so what". Each subsection opens with the question in the reader's terms, what turns on the answer,
+    and the main result by number; the main theorem comes before the lemmas that are its tools; one
+    example the reader knows carries the result (here the Matérn kernel). Suggested: a question in the
+    drafting gate per results section ("what does the venue's reader do differently, or understand, for
+    knowing this"), answered in one sentence in the records before the section is written, and a
+    reviewer flag on a subsection whose first numbered statement is a tool.
+11. **The last section is a conclusion.** The paper ended on "Open problems", as the blueprint's last
+    chapter does. A paper ends by saying what it showed and what that means; open problems are a
+    subsection of it. Suggested: `PUBLICATION-TEMPLATE.md` names the section and what it holds, and
+    `linkage paper` gives an advisory when the last numbered section before the back matter is not a
+    conclusion or discussion.
+
 ---
 
 *No other open requests.*
