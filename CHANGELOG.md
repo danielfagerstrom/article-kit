@@ -7,6 +7,12 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`PROCESS.md` § 7 says what "page anchors printed before the `[A]` nodes" meant (Q-0413).** The
+  clause read as a per-node sentence on which cited facts the statement rests on, which
+  `WRITING.md` § 3 assigns to the trust-base subsection. It now reads: each cited fact is stated
+  once as a numbered theorem with its page anchor before its first use; which statement rests on
+  which fact is § 1.1's table. Wording only; no rule or tool changed.
+
 ## v0.3.0 — 2026-10-10 — the trust base read from Lean, and a home for every shared statement
 
 Everything since v0.2.0. Cut for Paper VII (`spatial-hemigroup-affine`), which waits on it for the

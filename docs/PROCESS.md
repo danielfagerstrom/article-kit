@@ -129,8 +129,11 @@ axiom guard, on source text alone, so it costs seconds and needs no toolchain.
 Before a section is written, the drafting gate: [`DRAFTING-GATE.md`](DRAFTING-GATE.md)
 (`wiki gate --slot … --worklist` from the hub). Then, per section: one `.tex` file; statements
 transcribed verbatim under `% shared with blueprint` markers (`linkage check` reports each
-`verbatim`); the proofs of record; the ledger's page anchors printed before the `[A]` nodes; the
-trust base in one subsection (§ 1.1) with the headline `#print axioms` block. The writing standard is
+`verbatim`); the proofs of record; each cited fact stated once, as a numbered
+theorem with its ledger page anchor, before its first use (`WRITING.md` § 3, "borrowed facts are
+stated, not folded in"); the trust base in one subsection (§ 1.1) with the headline `#print axioms`
+block and the table of which statement rests on which fact. That table is the only place the
+dependence is said: no sentence before an `[A]` node lists the facts it rests on (`WRITING.md` § 3). The writing standard is
 [`WRITING.md`](WRITING.md), the section contracts and the exposition rubric
 [`PUBLICATION-TEMPLATE.md`](PUBLICATION-TEMPLATE.md). A module that follows another restates what it
 uses of it. Changes the paper forces on shared text are made in the blueprint and re-transcribed
