@@ -247,16 +247,3 @@ The author on §§ 3.3, 3.4 and 4 of the same paper, having read it to the end (
 *No other open requests.*
 
 ---
-
-## process: PROCESS.md § 7's "page anchors printed before the `[A]` nodes" reads as a rule WRITING.md forbids
-
-`PROCESS.md` § 7 lists, per section of the article, "the ledger's page anchors printed before the `[A]`
-nodes". Both papers of spatial-hemigroup-affine took it as: before every statement graded `[A]`, a
-sentence saying which cited facts it rests on, clause by clause. `WRITING.md` § 3 assigns exactly that
-to the trust-base subsection ("provenance, axiom accounting and non-use are the trust-base subsection's
-business, said there once"). The sentences survived two blind register reviews and one round of the
-author's review because a session defended them as "the repository's rule", citing the phrase and a
-header comment that copies it (2026-10-06); the author asked "what rule?" on 2026-10-10, and there was
-none beyond that phrase. Wanted: § 7 says what it means (a cited fact is stated once as a numbered
-theorem with its page anchor, before its first use, which is `WRITING.md`'s "borrowed facts are stated,
-not folded in"), and says that which statement rests on which fact is § 1.1's table.
