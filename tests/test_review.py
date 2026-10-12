@@ -10,6 +10,7 @@ trial batch were all well-formed and none of it was actionable until it was pool
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from conftest import REPO, run_cli
@@ -179,6 +180,29 @@ def test_a_scope_audit_review_carries_its_mode_and_may_flag_quantity(tmp_path):
     assert doc["reviews"][0]["mode"] == "scope-audit"
     assert [d["tag"] for d in doc["defects"]] == ["QUANTITY"]
     assert review.LAYER_OF["QUANTITY"] == "structure"
+
+
+def test_every_tag_the_reviewer_contract_names_is_in_the_vocabulary():
+    # The contract's tag tables are the vocabulary's source; a tag defined there and missing
+    # from review.py makes `linkage review` reject honest flags as malformed (Q-0412).
+    text = (REPO / "docs" / "REVIEWER-CONTRACT.md").read_text(encoding="utf-8")
+    named = set(re.findall(r"^\| `([A-Z]+)` \|", text, flags=re.M))
+    assert {"SCOPE", "TRANSCLUSION", "PROVENANCE", "UNSOURCED"} <= named
+    missing = named - set(review.STRUCTURE_TAGS) - set(review.VOICE_TAGS)
+    assert not missing, f"tags in the contract but not in review.py: {sorted(missing)}"
+
+
+def test_provenance_and_unsourced_are_accepted_as_structure_tags(tmp_path):
+    lines = A.read_text(encoding="utf-8").splitlines()
+    rev, flag = json.loads(lines[0]), json.loads(lines[1])
+    for tag in ("PROVENANCE", "UNSOURCED"):
+        p = tmp_path / f"{tag}.jsonl"
+        flag["tag"] = tag
+        p.write_text(json.dumps(rev) + "\n" + json.dumps(flag) + "\n", encoding="utf-8")
+        doc, _, rc = review.aggregate([p], FIXTURES)
+        assert rc == 0, doc["malformed"]
+        assert [d["tag"] for d in doc["defects"]] == [tag]
+        assert review.LAYER_OF[tag] == "structure"
 
 
 def test_a_flag_with_no_review_record_before_it_is_rejected(tmp_path):
