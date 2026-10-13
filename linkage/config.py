@@ -149,7 +149,7 @@ class Module:
     supplement: str | None = None
     r"""The root name of a supplement built in the paper directory beside `main.tex`
     (`supplement` for `supplement.tex` and `supplement.pdf`). The export carries its PDF as
-    `paper/<supplement>.pdf` and as `<stem>-<tag>-<supplement>.pdf` at its root, the release
+    `paper/<supplement>.pdf` and as `<stem>-<tag>.<supplement>.pdf` at its root, the release
     gate reads its first page as it reads the paper's, and `linkage release zenodo upload` sends
     it as a further file after the paper's PDF, which stays the default preview."""
 

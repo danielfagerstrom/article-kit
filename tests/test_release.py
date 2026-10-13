@@ -885,11 +885,11 @@ def test_the_export_carries_the_supplement_beside_the_paper(tmp_path: Path, unbl
     assert (out_dir / "paper" / "supplement.tex").exists()
     assert (out_dir / "paper" / "supplement.pdf").read_bytes() == b"%PDF-1.4 supplement"
     assert (out_dir / "an-article-v0.1.pdf").read_bytes() == b"%PDF-1.4 paper"
-    assert (out_dir / "an-article-v0.1-supplement.pdf").read_bytes() == b"%PDF-1.4 supplement"
+    assert (out_dir / "an-article-v0.1.supplement.pdf").read_bytes() == b"%PDF-1.4 supplement"
     assert "with its supplement" in (out_dir / "README.md").read_text(encoding="utf-8")
     # The deposit takes the paper first: it names the source zip and is the default preview.
     assert [p.name for p in zenodo.release_pdfs(out_dir)] == [
-        "an-article-v0.1.pdf", "an-article-v0.1-supplement.pdf"]
+        "an-article-v0.1.pdf", "an-article-v0.1.supplement.pdf"]
 
 
 def test_the_papers_pdf_comes_before_a_pdf_named_after_it(tmp_path: Path) -> None:

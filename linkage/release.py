@@ -1355,11 +1355,13 @@ def export(cfg: Config, args) -> int:
             copy(paper / "main.pdf", out / "paper" / "main.pdf")
             copy(paper / "main.pdf", out / f"{stem}-{tag}.pdf")
         # A supplement is a second PDF of the same sources (its `.tex` files went out above):
-        # beside the paper's in paper/, and at the root under the paper's name with its own.
+        # beside the paper's in paper/, and at the root under the paper's name with its own after
+        # a dot (`<stem>-<tag>.supplement.pdf`), so that a listing by name has the paper first
+        # and the source zip last: after a hyphen the supplement would sort before the paper.
         sup = mod.supplement
         if sup and (paper / f"{sup}.pdf").exists():
             copy(paper / f"{sup}.pdf", out / "paper" / f"{sup}.pdf")
-            copy(paper / f"{sup}.pdf", out / f"{stem}-{tag}-{sup}.pdf")
+            copy(paper / f"{sup}.pdf", out / f"{stem}-{tag}.{sup}.pdf")
         figs = figure_files(paper)
         for f in figs:
             # A figure kept beside the sources stays beside them, so that the exported paper

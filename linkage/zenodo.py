@@ -222,12 +222,14 @@ def cmd_reserve(a) -> int:
 
 
 def release_pdfs(export: Path) -> list[Path]:
-    """The PDFs at the export's root, the paper's first. The export names a further PDF after
-    the paper's (`<stem>-<tag>-supplement.pdf` beside `<stem>-<tag>.pdf`), and sorted by name
-    alone the supplement came first, since `-` sorts before `.`: it would have named the source
-    zip and been the default preview. So a PDF whose name extends another's comes after it."""
+    """The PDFs at the export's root, the paper's first: the first one names the source zip and
+    is the default preview. The export names a supplement `<stem>-<tag>.supplement.pdf`, which
+    sorts after `<stem>-<tag>.pdf` by name alone. A PDF placed there by hand as
+    `<stem>-<tag>-supplement.pdf` would sort before it, since `-` sorts before `.`; so a PDF
+    whose name extends another's comes after it, whichever sign joins the two."""
     pdfs = sorted(export.glob("*.pdf"))
-    return sorted(pdfs, key=lambda p: (any(p.stem.startswith(q.stem + "-") for q in pdfs), p.name))
+    return sorted(pdfs, key=lambda p: (any(p.stem.startswith((q.stem + "-", q.stem + "."))
+                                           for q in pdfs), p.name))
 
 
 def zip_stem(pdf: Path, tag: str, export: Path) -> str:

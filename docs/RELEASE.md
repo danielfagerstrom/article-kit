@@ -198,7 +198,7 @@ lists the flags that override a parameter for one run (`--tag`, `--chapters`, `-
 
 **A paper with a supplement** names it in its module table: `supplement = "supplement"` for a
 `supplement.tex` built in the paper directory beside `main.tex`. The export then carries
-`paper/supplement.pdf` and, at its root, `<stem>-<tag>-supplement.pdf` beside the paper's
+`paper/supplement.pdf` and, at its root, `<stem>-<tag>.supplement.pdf` beside the paper's
 `<stem>-<tag>.pdf`; the release gate reads the supplement's first page as it reads the paper's (no
 draft line, the version, the DOI), so the supplement's `\date` line is frozen with the paper's;
 and `linkage release zenodo upload` sends it as a further file after the paper's PDF, which names

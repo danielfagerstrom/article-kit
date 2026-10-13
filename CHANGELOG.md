@@ -11,7 +11,7 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   isotropic paper is the first release with a supplement, the first whose witness file imports
   its library root, and the first with its abstract and its figures beside `main.tex`. Nothing
   here changes an export that has none of these. New module keys: `supplement` (the export
-  carries its PDF in `paper/` and as `<stem>-<tag>-supplement.pdf`, the release gate reads its
+  carries its PDF in `paper/` and as `<stem>-<tag>.supplement.pdf`, the release gate reads its
   first page, and `zenodo upload` sends it after the paper's PDF, which stays first for the zip's
   name and the default preview: `zenodo.release_pdfs`) and `extra_files` (files exported at their
   own path). Faults repaired, each with a test:
