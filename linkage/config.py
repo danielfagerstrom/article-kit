@@ -58,8 +58,11 @@ class Boundary:
     guard: Path | None = None
     """The Lean file CI elaborates, holding one `#guard_msgs`-pinned `#print axioms` per
     headline declaration."""
-    probes: Path | None = None
-    """Positive probes: cheap should-hold consequences of the headline results."""
+    probes: tuple[Path, ...] = ()
+    """Positive probes: cheap should-hold consequences of the headline results. One file, or
+    several where one repository holds the Lean of several papers and a paper's probes must
+    not import another's: a headline declaration needs a probe in one of them (`probes` in
+    `linkage.toml` is a path or a list of paths)."""
     adversarial: Path | None = None
     """Known-false, in-domain statements kept as isolated `sorry`s."""
     headline: tuple[str, ...] = ()
@@ -479,6 +482,19 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
                     f"{CONFIG_NAME}: `[boundary] {key}` must be a list of strings")
             return tuple(v)
 
+        def paths(key: str) -> tuple[Path, ...]:
+            """One path or a list of them; a path given twice is read once."""
+            v = bt.get(key)
+            if v is None:
+                return ()
+            if isinstance(v, str):
+                return (root / v,)
+            if not isinstance(v, list) or not v or not all(isinstance(s, str) for s in v):
+                raise ConfigError(
+                    f"{CONFIG_NAME}: `[boundary] {key}` must be a path or a non-empty list of "
+                    f"paths, not {v!r}")
+            return tuple(root / s for s in dict.fromkeys(v))
+
         shadows = bt.get("shadows", {})
         if not isinstance(shadows, dict):
             raise ConfigError(
@@ -487,7 +503,7 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
         return Boundary(
             configured=True,
             guard=f("guard"),
-            probes=f("probes"),
+            probes=paths("probes"),
             adversarial=f("adversarial"),
             headline=strs("headline"),
             shadows={k: str(v) for k, v in shadows.items()},

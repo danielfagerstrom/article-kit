@@ -277,13 +277,21 @@ def run(cfg: Config, *, strict_shadows: bool = False,
         return texts[kind]
 
     guard = source("guard", b.guard, required=True)
-    probes = source("probes", b.probes, required=bool(b.headline))
+    # One probe file or several (`[boundary] probes` is a path or a list of paths): a file
+    # that is missing is reported, and the others are still read.
+    probes: list[tuple[str, str]] = []
+    if not b.probes:
+        source("probes", None, required=bool(b.headline))
+    for path in b.probes:
+        text = source("probes", path, required=True)
+        if text is not None:
+            probes.append((path.relative_to(cfg.root).as_posix(), text))
     adversarial = source("adversarial", b.adversarial, required=False)
 
     declared = {n for p in lean_sources(cfg) for n in _names(p)}
 
     _check_pins(cfg, rep, guard, declared)
-    _check_probes(cfg, rep, probes)
+    _check_probes(cfg, rep, probes, complete=len(probes) == len(b.probes))
     _check_adversarial(cfg, rep, adversarial)
     _check_shadows(cfg, rep, strict=strict_shadows, with_mathlib=with_mathlib)
     return rep
@@ -367,40 +375,52 @@ def _check_pins(cfg: Config, rep: Report, guard: str | None,
         rep.stats["pins_unlisted"] = len(extra)
 
 
-def _check_probes(cfg: Config, rep: Report, probes: str | None) -> None:
-    """Check 2 — a cheap should-hold consequence per headline result, kept holding."""
+def _check_probes(cfg: Config, rep: Report, probes: list[tuple[str, str]], *,
+                  complete: bool = True) -> None:
+    """Check 2 — a cheap should-hold consequence per headline result, kept holding.
+
+    `probes` is the probe files that could be read, each as (path from the root, text). Every
+    file is held to the same rules, and a headline declaration needs a probe in one of them.
+    `complete` is False when a declared file is missing: that is reported where it is found,
+    and the headline results are not then reported as unprobed, since the probe may be in the
+    file that is missing."""
     b = cfg.boundary
-    if probes is None:
+    if not probes:
         return
-    rel = b.probes.relative_to(cfg.root).as_posix()
-    decls = [d for d in declarations(probes) if d.kind != "structure"]
-    rep.stats["probes"] = len(decls)
+    everything = []
+    for rel, text in probes:
+        decls = [d for d in declarations(text) if d.kind != "structure"]
+        everything += decls
 
-    if not decls:
-        rep.fatal.append(
-            f"[probe] {rel} declares no probes — an empty probe file passes every build "
-            f"and witnesses nothing")
+        if not decls:
+            rep.fatal.append(
+                f"[probe] {rel} declares no probes — an empty probe file passes every build "
+                f"and witnesses nothing")
 
-    for d in decls:
-        what = d.name or f"example at line {d.line}"
-        if d.kind == "axiom":
-            rep.fatal.append(
-                f"[probe] {rel}:{d.line}: `{what}` is an `axiom` — a probe must be proved "
-                f"from the development, not assumed alongside it")
-            continue
-        if d.is_sorry:
-            rep.fatal.append(
-                f"[probe] {rel}:{d.line}: `{what}` is a `sorry` — a probe that is not "
-                f"proved tests nothing")
-        if d.is_vacuous:
-            rep.fatal.append(
-                f"[probe] {rel}:{d.line}: `{what}` is stated as `True` — it holds "
-                f"whatever happened to the result it is supposed to probe")
+        for d in decls:
+            what = d.name or f"example at line {d.line}"
+            if d.kind == "axiom":
+                rep.fatal.append(
+                    f"[probe] {rel}:{d.line}: `{what}` is an `axiom` — a probe must be proved "
+                    f"from the development, not assumed alongside it")
+                continue
+            if d.is_sorry:
+                rep.fatal.append(
+                    f"[probe] {rel}:{d.line}: `{what}` is a `sorry` — a probe that is not "
+                    f"proved tests nothing")
+            if d.is_vacuous:
+                rep.fatal.append(
+                    f"[probe] {rel}:{d.line}: `{what}` is stated as `True` — it holds "
+                    f"whatever happened to the result it is supposed to probe")
+    rep.stats["probes"] = len(everything)
 
+    if not complete:
+        return
+    where = ", ".join(rel for rel, _ in probes)
     for h in b.headline:
-        if not any(_mentions(d.text, h) for d in decls):
+        if not any(_mentions(d.text, h) for d in everything):
             rep.fatal.append(
-                f"[probe] headline `{h}` has no positive probe in {rel} — nothing would "
+                f"[probe] headline `{h}` has no positive probe in {where} — nothing would "
                 f"catch it being weakened into a statement that still type-checks")
 
 

@@ -929,6 +929,24 @@ def test_a_lemma_in_a_namespace_is_not_a_declaration_of_the_namespace() -> None:
     assert release.find_modules("Lib.Datum", mods, ("Lib",)) == ["Lib.Defs"]
 
 
+def test_a_qualified_tag_is_not_found_in_another_namespace_of_the_same_short_name() -> None:
+    """`Lib.OriginDatum.exponentL` is declared in one module; a `def exponentL` under
+    `namespace RadialProfile` in another made that module a root of the closure."""
+    mods = {"Lib.Origin": "namespace Lib\nnamespace OriginDatum\ndef exponentL : Nat := 0\n"
+                          "end OriginDatum\nend Lib\n",
+            "Lib.Orbits": "namespace Lib\nnamespace RadialProfile\ndef exponentL : Nat := 1\n"
+                          "end RadialProfile\nend Lib\n",
+            "Lib.Flat": "theorem OriginDatum.bound : True := trivial\n",
+            "Lib.Other": "namespace Elsewhere\ntheorem bound : True := trivial\nend Elsewhere\n"}
+    assert release.find_modules("Lib.OriginDatum.exponentL", mods, ("Lib",)) == ["Lib.Origin"]
+    assert release.find_modules("Lib.RadialProfile.exponentL", mods, ("Lib",)) == ["Lib.Orbits"]
+    # a short name with one hit is found as before, whatever the namespace it stands in
+    assert release.find_modules("Lib.OriginDatum.bound", mods, ("Lib",)) == ["Lib.Other"]
+    # and when no hit can be told apart by its namespace, all of them stand
+    assert release.find_modules("Lib.Unknown.exponentL", mods, ("Lib",)) == ["Lib.Origin",
+                                                                             "Lib.Orbits"]
+
+
 def test_an_import_of_the_library_root_brings_what_the_root_imports() -> None:
     mods = {"Lib.A": "theorem a : True := trivial\n", "Lib.B": "import Lib.A\n",
             "Lib.Witnesses": "import Lib\ntheorem w : True := a\n",

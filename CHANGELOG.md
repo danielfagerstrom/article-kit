@@ -31,6 +31,21 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
     them as the headline's axioms; it reads the headline's own line;
   - local paths in an exported `.py` file were not replaced; `__pycache__` was exported.
 
+- **`[boundary] probes` may be a list, and a qualified tag is found in its own namespace (hub
+  Q-0452).** Both for a repository that holds the Lean of two papers of which one is released
+  first, so that the release's export holds none of the other's results.
+  - `[boundary] probes` is a path, as before, or a list of paths (`Boundary.probes` is a tuple).
+    Each file is held to the probe rules, and a headline declaration needs a probe in one of
+    them; a file that is missing is reported, and its headline results are not then listed as
+    unprobed. With one file per paper, a paper's probe file imports that paper's Lean alone.
+    **An article that sets a list needs a `linkage` with this change**: an older one refuses the
+    list ("must be a path"), in `linkage boundary` and in every other command, since all of
+    them read `linkage.toml`.
+  - `find_modules` narrows a tag with a namespace (`Lib.OriginDatum.exponentL`) to the modules
+    that declare the qualified name or open that namespace, when several modules declare the
+    short name; `def exponentL` under another namespace in another file had made that file a
+    root of the release's closure. If the narrowing leaves nothing, the hits stand as before.
+
 - **`PROCESS.md` § 7 says what "page anchors printed before the `[A]` nodes" meant (Q-0413).** The
   clause read as a per-node sentence on which cited facts the statement rests on, which
   `WRITING.md` § 3 assigns to the trust-base subsection. It now reads: each cited fact is stated

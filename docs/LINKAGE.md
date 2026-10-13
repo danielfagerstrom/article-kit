@@ -369,6 +369,9 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
       still type-checks, still reduces to Lean core, and still passes every other check here. Its probe
       stops building. The lint refuses a probe that is a `sorry` or an `axiom`, and one stated as
       `True`; that a probe *holds* is Lean's job, since the file is built with the library.
+      `probes` is a path or a list of paths: a repository that holds the Lean of two papers keeps
+      each paper's probes in a file of its own, so that one paper's probe file does not import the
+      other's Lean, and a headline result needs a probe in one of the files.
    3. **Adversarial goals** (`[boundary] adversarial`). Known-false, in-domain statements — normally the
       negations of the boundary conditions the article states in prose, the places where the paper says
       a hypothesis is needed — kept as isolated `sorry`s in a file nothing imports and the build never

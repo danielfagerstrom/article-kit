@@ -124,6 +124,14 @@ def find_modules(name: str, mods: dict[str, str], libraries: tuple[str, ...] = (
     A library prefix on the tag restricts the hits to that library (the interface axioms are
     declared in both the real library and the skeleton). A prefix naming a shared package's
     namespace (`paths.shared_namespaces`) names a declaration that is not in this tree at all.
+
+    A tag with a namespace between the library and the short name (`Lib.OriginDatum.exponentL`)
+    names one declaration, and several modules may declare that short name, each in a namespace
+    of its own (`def exponentL` under `namespace RadialProfile` in another file). When more
+    than one module has the short name, the hits are narrowed to those that declare the
+    qualified name or open the tag's innermost namespace, as `guard_file` narrows the guard's
+    lines; if that leaves none, the hits stand. Without this the other module was a root of
+    the release's closure for a name it does not declare (Paper VII's module iso, 2026-10-14).
     """
     for pkg in shared_namespaces:
         if name.startswith(pkg + "."):
@@ -131,6 +139,11 @@ def find_modules(name: str, mods: dict[str, str], libraries: tuple[str, ...] = (
     short = name.split(".")[-1]
     pat = decl_pattern(short)
     hits = [m for m, t in mods.items() if pat.search(t)]
+    inner = name.split(".")[1:-1]
+    if inner and len(hits) > 1:
+        qualified = decl_pattern(".".join(inner) + "." + short)
+        ns = re.compile(r"^namespace\s+(?:\S+\.)?" + re.escape(inner[-1]) + r"\s*$", re.M)
+        hits = [m for m in hits if qualified.search(mods[m]) or ns.search(mods[m])] or hits
     for lib in libraries:
         if name.startswith(lib + "."):
             narrowed = [m for m in hits if m.startswith(lib + ".")]

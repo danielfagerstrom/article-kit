@@ -221,6 +221,55 @@ def test_missing_probe_file_fails(article):
     assert any("does not exist" in m for m in tagged(report(article).fatal, "probes"))
 
 
+TWO = TABLE.replace('probes = "Formalization/Probes.lean"',
+                    'probes = ["Formalization/Probes.lean", "Formalization/ProbesB.lean"]'
+                    ).replace('["Art.main"]', '["Art.main", "Art.second"]')
+LIB_TWO = LIB + "theorem second : True := trivial\n"
+GUARD_TWO = GUARD + """
+/-- info: 'Art.second' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Art.second
+"""
+PROBES_B = "import Art\n\ntheorem probe_second : Art.second → 0 = 0 := fun _ => rfl\n"
+
+
+def test_two_probe_files_cover_the_headline_between_them(article):
+    """A repository of two papers: each headline result has its probe in one of the files,
+    and neither file need import the other paper's Lean."""
+    built(article, table=TWO, lib=LIB_TWO, guard=GUARD_TWO)
+    article.lean(PROBES_B, "ProbesB.lean")
+    rep = report(article)
+    assert tagged(rep.fatal, "probe") == [] and tagged(rep.fatal, "probes") == []
+    assert rep.stats["probes"] == 2
+    # the second file is held to the rules of the first
+    article.lean("import Art\n\ntheorem probe_second : Art.second 0 = 0 := sorry\n", "ProbesB.lean")
+    assert any("ProbesB.lean" in m and "is a `sorry`" in m
+               for m in tagged(report(article).fatal, "probe"))
+    # a headline probed in neither is named with both files
+    article.lean("import Art\n\ntheorem probe_other : 0 = 0 := rfl\n", "ProbesB.lean")
+    msgs = tagged(report(article).fatal, "probe")
+    assert any("`Art.second` has no positive probe in Formalization/Probes.lean, "
+               "Formalization/ProbesB.lean" in m for m in msgs)
+    assert not any("`Art.main`" in m for m in msgs)
+
+
+def test_a_missing_second_probe_file_is_reported_once(article):
+    """The missing file is the fault; its headline results are not also listed as unprobed."""
+    built(article, table=TWO, lib=LIB_TWO, guard=GUARD_TWO)
+    rep = report(article)
+    assert any("ProbesB.lean does not exist" in m for m in tagged(rep.fatal, "probes"))
+    assert not any("has no positive probe" in m for m in tagged(rep.fatal, "probe"))
+
+
+def test_probes_must_be_a_path_or_a_list_of_paths(article):
+    import pytest
+    from linkage.config import ConfigError, load
+
+    built(article, table=TABLE.replace('probes = "Formalization/Probes.lean"', "probes = 3"))
+    with pytest.raises(ConfigError, match="a path or a non-empty list of paths"):
+        load(article.root)
+
+
 # --- check 3: adversarial goals -----------------------------------------------
 
 def test_adversarial_goal_that_became_provable_fails(article):
