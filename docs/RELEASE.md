@@ -196,6 +196,23 @@ lists the flags that override a parameter for one run (`--tag`, `--chapters`, `-
 `spatial-hemigroup-scale-space`'s `records/cone/RELEASE-procedure.md` holds the command as run for
 `cone-v0.1`, in the older spelling. A repository with one module needs no `--module`.
 
+**A paper with a supplement** names it in its module table: `supplement = "supplement"` for a
+`supplement.tex` built in the paper directory beside `main.tex`. The export then carries
+`paper/supplement.pdf` and, at its root, `<stem>-<tag>-supplement.pdf` beside the paper's
+`<stem>-<tag>.pdf`; the release gate reads the supplement's first page as it reads the paper's (no
+draft line, the version, the DOI), so the supplement's `\date` line is frozen with the paper's;
+and `linkage release zenodo upload` sends it as a further file after the paper's PDF, which names
+the source zip and stays the default preview (the PDFs at the export's root are taken with the
+paper's first, whatever their names sort to). `extra_files` names files or directories that the
+paper or a Lean header cites by path (a script that draws a figure, a saved report): they are
+exported at the same relative path, where `extra_notes` go under `notes/`.
+
+**A root that imports its library whole brings the library.** A module named in `roots` that
+imports the library's root file (`import MyLib`, as a witness file or a generated guard often
+does), or a module that does, puts every module the root imports into the closure, since the
+export would not build otherwise. If that is more than the release should publish, give the
+module narrower imports first; the dry run prints the closure.
+
 **The deposit date** (`.zenodo.json`'s `publication_date`, `CITATION.cff`'s `date-released`) is
 read from the changelog entry's own `## <tag> — YYYY-MM-DD — ...` heading, not the day the export
 happens to run; `--date` overrides it, and today's date is the fallback where the changelog names

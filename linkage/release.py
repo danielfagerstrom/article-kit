@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import collections
 import datetime
+import html
 import io
 import json
 import re
@@ -110,7 +111,10 @@ def decl_pattern(short: str) -> re.Pattern[str]:
         # Not `\b`: a Lean name may end in a prime, and there is no word boundary between `'`
         # and the space after it, so `sonine_conservation'` was never found; and `\b` let
         # `foo` match a declaration of `foo'`.
-        + re.escape(short) + r"(?![\w'])", re.M)
+        # Nor a dot before a further name component: `theorem OriginDatum.exponentL_le ...` is
+        # not a declaration of `OriginDatum`, and counting it made every module with a lemma in
+        # that namespace a root of the closure (Paper VII's module iso, 2026-10-13).
+        + re.escape(short) + r"(?![\w'])(?!\.\w)", re.M)
 
 
 def find_modules(name: str, mods: dict[str, str], libraries: tuple[str, ...] = (),
@@ -134,7 +138,16 @@ def find_modules(name: str, mods: dict[str, str], libraries: tuple[str, ...] = (
     return hits
 
 
-def closure_of(roots: list[str], mods: dict[str, str]) -> tuple[set[str], dict[str, str | None]]:
+def closure_of(roots: list[str], mods: dict[str, str],
+               lib_roots: dict[str, list[str]] | None = None,
+               ) -> tuple[set[str], dict[str, str | None]]:
+    """The transitive import closure of `roots` within `mods`, and each module's first importer.
+
+    `lib_roots` maps the name of a library's root file (`X` for `X.lean`) to the modules that
+    file imports. The root file is not one of `mods`, so an `import X` was dropped, and a module
+    that imports its own library whole (a witness file, a generated guard) entered the closure
+    alone: the export then lacked what the module uses and did not build. Such an import is an
+    import of every module the root imports."""
     parent: dict[str, str | None] = dict.fromkeys(roots)
     seen: set[str] = set()
     queue = collections.deque(roots)
@@ -144,9 +157,10 @@ def closure_of(roots: list[str], mods: dict[str, str]) -> tuple[set[str], dict[s
             continue
         seen.add(m)
         for i in IMPORT_RE.findall(mods[m]):
-            if i in mods and i not in parent:
-                parent[i] = m
-                queue.append(i)
+            for j in (lib_roots or {}).get(i, (i,)):
+                if j in mods and j not in parent:
+                    parent[j] = m
+                    queue.append(j)
     return seen, parent
 
 
@@ -248,7 +262,8 @@ def deposit_sentence_faults(paper: Path, sentences: dict[str, str]) -> list[str]
 
 
 def release_gate(paper: Path, tag: str, root: Path, doi: str | None = None,
-                 deposit_sentences: dict[str, str] | None = None) -> list[str]:
+                 deposit_sentences: dict[str, str] | None = None,
+                 supplement: str | None = None) -> list[str]:
     r"""What keeps a build from being a release: the faults of the paper's date line and PDF.
 
     A release PDF prints its date and version (RELEASE.md rule 5) and, where the DOI was
@@ -264,6 +279,9 @@ def release_gate(paper: Path, tag: str, root: Path, doi: str | None = None,
 
     `deposit_sentences`, where the module sets one, gates the trust-base subsection's deposit
     sentence the same way (`deposit_sentence_faults`), whether or not the PDF exists yet.
+
+    `supplement`, where the module names one, is the root name of a second PDF built in the
+    paper directory; its first page is read as the paper's is (`pdf_faults`).
 
     An empty list means the build can be released.
     """
@@ -319,15 +337,28 @@ def release_gate(paper: Path, tag: str, root: Path, doi: str | None = None,
                     faults.append(f"the \"Version history\" section names no entry for {version}")
     if deposit_sentences:
         faults += deposit_sentence_faults(paper, deposit_sentences)
-    pdf = paper / "main.pdf"
+    faults += pdf_faults(paper, "main", version, doi)
+    if supplement:
+        faults += pdf_faults(paper, supplement, version, doi)
+    return faults
+
+
+def pdf_faults(paper: Path, root: str, version: str, doi: str | None) -> list[str]:
+    """The faults of one PDF built in the paper directory, `<root>.pdf`: it is absent, or older
+    than a source, or its first page says "working draft" or lacks the version or the DOI. Read
+    for the paper (`main`) and, where the module names one, for its supplement, which is
+    deposited beside the paper and so carries the same line."""
+    faults: list[str] = []
+    name = paper.name
+    pdf = paper / f"{root}.pdf"
     if not pdf.exists():
-        faults.append(f"{name}/main.pdf does not exist: build the paper into its own directory "
-                      f"(tectonic {name}/main.tex)")
+        faults.append(f"{name}/{root}.pdf does not exist: build the paper into its own directory "
+                      f"(tectonic {name}/{root}.tex)")
         return faults
     sources = [f for f in paper.iterdir() if f.suffix in {".tex", ".bib", ".sty", ".cls"}]
     newest = max(sources, key=lambda f: f.stat().st_mtime)
     if newest.stat().st_mtime > pdf.stat().st_mtime:
-        faults.append(f"{name}/main.pdf is older than {newest.name}: rebuild it")
+        faults.append(f"{name}/{root}.pdf is older than {newest.name}: rebuild it")
     try:
         first = subprocess.run(["pdftotext", "-l", "1", str(pdf), "-"], capture_output=True,
                                text=True, encoding="utf-8", errors="replace",
@@ -337,11 +368,11 @@ def release_gate(paper: Path, tag: str, root: Path, doi: str | None = None,
         return faults
     flat = " ".join(first.split()).lower()
     if any(k in flat for k in DRAFT_MARKS):
-        faults.append(f"the first page of {name}/main.pdf says it is a working draft")
+        faults.append(f"the first page of {name}/{root}.pdf says it is a working draft")
     elif version not in flat:
-        faults.append(f"the first page of {name}/main.pdf does not print the version {version}")
+        faults.append(f"the first page of {name}/{root}.pdf does not print the version {version}")
     if doi and doi.lower() not in flat:
-        faults.append(f"the first page of {name}/main.pdf does not print the DOI {doi}")
+        faults.append(f"the first page of {name}/{root}.pdf does not print the DOI {doi}")
     return faults
 
 
@@ -351,16 +382,23 @@ def plain_abstract(paper: Path, macros: dict[str, str] | None = None) -> str:
     """The paper's abstract as plain text, for the deposit's description. The article's own
     no-argument macros are expanded through `modules.abstract_macros`; one not named there is
     dropped, as `\\emph{}`-style wrappers are unwrapped."""
+    # main.tex first, then the other sources: a paper may keep its abstract in a file of its own
+    # (`\input{abstract}`), and read from main.tex alone its deposit had no description.
     main = paper / "main.tex"
-    if not main.exists():
-        return ""
-    m = re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}", main.read_text(encoding="utf-8"),
-                  re.S)
+    m = None
+    for f in [main, *sorted(p for p in paper.glob("*.tex") if p != main)]:
+        if f.exists():
+            m = re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}",
+                          f.read_text(encoding="utf-8"), re.S)
+            if m:
+                break
     if not m:
         return ""
     t = "\n".join(ln for ln in m.group(1).splitlines() if not ln.lstrip().startswith("%"))
+    # A macro is expanded as `\name{}` and as a bare `\name` (`\RR^d`, `\le`), so that an
+    # abstract with mathematics can be given its plain-text reading name by name.
     for name, text in (macros or {}).items():
-        t = re.sub(r"\\" + re.escape(name) + r"\{\}", text, t)
+        t = re.sub(r"\\" + re.escape(name) + r"(?:\{\}|(?![A-Za-z]))", lambda _, s=text: s, t)
     for a, b in (("~", " "), (r"\\emph\{([^}]*)\}", r"\1"), (r"\$([^$]*)\$", r"\1"),
                  (r"\\[a-zA-Z]+\{\}", ""), (r"\\,", " ")):
         t = re.sub(a, b, t)
@@ -473,22 +511,24 @@ def cited_doi(tag: str, root: Path) -> str | None:
 
 # ---- generated files ---------------------------------------------------------------------------
 
-def export_content_tex(files: list[str], tag: str) -> str:
+def export_content_tex(files: list[str], tag: str, extra: bool = True) -> str:
     r"""The export's blueprint/src/content.tex: the release's chapters, in order.
 
     The chapter counter is set before every part rather than once at the top as the
     development's content.tex does. The development inputs its chapters consecutively, so a
     single \setcounter suffices there; an export may carry a gap, and a gap would renumber
     every chapter after it. Numbering must not drift: the paper cites its statements by number,
-    and the README's table names blueprint nodes by chapter."""
+    and the README's table names blueprint nodes by chapter.
+
+    `extra` is whether the development has a `theorems-extra.tex` to input: an article without
+    one got an export whose blueprint stopped at the missing file."""
     lines = [
         "% GENERATED by `linkage release export` in the development repository. Do not edit.",
         "%",
         f"% The chapters of release {tag}, in reading order. The counter is set before each part",
         "% so the numbers match the development's blueprint exactly, whatever subset is exported.",
         "",
-        "\\input{theorems-extra.tex}",
-        "",
+        *(["\\input{theorems-extra.tex}", ""] if extra else []),
     ]
     for name in files:
         lines.append(f"\\setcounter{{chapter}}{{{int(name[:2]) - 1}}}")
@@ -518,8 +558,21 @@ def export_web_tex(source: Path, repo_url: str) -> str:
             "% repository URLs repointed at this export. Do not edit.\n" + text)
 
 
-def root_file(original: Path, exported: set[str], prefix: str) -> str:
-    """The library root: the original's import order, restricted to exported modules."""
+def root_file(original: Path, exported: set[str], prefix: str,
+              mods: dict[str, str] | None = None) -> str:
+    """The library root: the original's import order, restricted to exported modules, then the
+    exported modules it does not list. A module that imports the root, itself or through another
+    exported module, is not added (`mods` gives the sources to read that from): the root cannot
+    import what imports it, and the development's own root does not."""
+    above: set[str] = set()
+    grew = bool(mods)
+    while grew:
+        grew = False
+        for m in exported - above:
+            imports_of = IMPORT_RE.findall((mods or {}).get(m, ""))
+            if prefix in imports_of or above.intersection(imports_of):
+                above.add(m)
+                grew = True
     header, imports = [], []
     for line in original.read_text(encoding="utf-8").splitlines():
         m = IMPORT_RE.match(line)
@@ -530,7 +583,7 @@ def root_file(original: Path, exported: set[str], prefix: str) -> str:
             header.append(line)
     listed = {ln.split()[1] for ln in imports}
     for m in sorted(exported):
-        if m.startswith(prefix + ".") and m not in listed:
+        if m.startswith(prefix + ".") and m not in listed and m not in above:
             imports.append(f"import {m}")
     return "\n".join(header + imports) + "\n"
 
@@ -565,22 +618,26 @@ def write(dst: Path, text: str) -> None:
 # machine. The public copy replaces those paths and says so at its head; nothing else in a
 # report is touched.
 LOCAL_PATH_QUOTED_RE = re.compile(r"`[A-Za-z]:[\\/](?:Users|My Drive)[^`\n]*`")
-LOCAL_PATH_BARE_RE = re.compile(r"[A-Za-z]:[\\/](?:Users|My Drive)[^\s`,;)]*")
+LOCAL_PATH_BARE_RE = re.compile(r"[A-Za-z]:[\\/](?:Users|My Drive)[^\s`,;)\"']*")
 
 
 def redact_and_copy(src: Path, dst: Path) -> int:
-    """Copy `src` to `dst`, redacting local paths out of a `.md`/`.txt` file's text (everything
-    else, including a PDF or any other binary, copied byte for byte). Returns the number of
-    paths redacted."""
-    if src.suffix.lower() not in {".md", ".txt"}:
+    """Copy `src` to `dst`, redacting local paths out of the text of a `.md`, `.txt` or `.py`
+    file (everything else, including a PDF or any other binary, copied byte for byte). Returns
+    the number of paths redacted. A script is redacted too: a referee's or an archivist's script
+    names the directory it read on the author's machine, and it is exported as a record; the
+    path stops at a quote, so the string that held it stays a string."""
+    suffix = src.suffix.lower()
+    if suffix not in {".md", ".txt", ".py"}:
         copy(src, dst)
         return 0
     text = src.read_text(encoding="utf-8")
     text, n1 = LOCAL_PATH_QUOTED_RE.subn("`<local path>`", text)
     text, n2 = LOCAL_PATH_BARE_RE.subn("<local path>", text)
     if n1 + n2:
-        note = (f"<!-- Export note: {n1 + n2} file path(s) on the author's machine were "
-                "replaced by <local path> in this public copy; nothing else was changed. -->\n")
+        said = (f"Export note: {n1 + n2} file path(s) on the author's machine were "
+                "replaced by <local path> in this public copy; nothing else was changed.")
+        note = f"# {said}\n" if suffix == ".py" else f"<!-- {said} -->\n"
         write(dst, note + text)
     else:
         copy(src, dst)                 # byte for byte, line endings included
@@ -592,7 +649,7 @@ def copy_notes_tree(src_dir: Path, dst_dir: Path) -> int:
     at the same relative path under `dst_dir`. Returns the number of paths redacted."""
     n = 0
     for f in sorted(src_dir.rglob("*")):
-        if f.is_file() and f.suffix.lower() != ".pdf":
+        if f.is_file() and f.suffix.lower() != ".pdf" and "__pycache__" not in f.parts:
             n += redact_and_copy(f, dst_dir / f.relative_to(src_dir))
     return n
 
@@ -774,8 +831,17 @@ class Exporter:
                 root_mods.setdefault(h, []).append(d)
         for m in roots:
             root_mods.setdefault(m, [])
-        exported, parent = closure_of(list(root_mods), mods)
+        exported, parent = closure_of(list(root_mods), mods, self.library_roots())
         return tags, root_mods, missing, exported, parent
+
+    def library_roots(self) -> dict[str, list[str]]:
+        """library -> the modules its root file imports (`closure_of`, `lib_roots`)."""
+        out: dict[str, list[str]] = {}
+        for lib in self.libraries():
+            f = self.form / f"{lib}.lean"
+            if f.is_file():
+                out[lib] = IMPORT_RE.findall(f.read_text(encoding="utf-8"))
+        return out
 
     # -- a cited release's closure, as it stood at its tag ------------------------------------
 
@@ -854,7 +920,9 @@ class Exporter:
                 root_mods.setdefault(h, []).append(d)
         for m in roots:
             root_mods.setdefault(m, [])
-        exported, _ = closure_of(list(root_mods), mods)
+        lib_roots = {lib: IMPORT_RE.findall(tree[f"{lean_rel}/{lib}.lean"])
+                     for lib in libs if f"{lean_rel}/{lib}.lean" in tree}
+        exported, _ = closure_of(list(root_mods), mods, lib_roots)
         return exported, mods
 
     def cites_closure(self, tag: str) -> tuple[set[str], dict[str, str]]:
@@ -969,6 +1037,11 @@ class Exporter:
                 dropped += 1
         libs = [lib for lib in self.libraries()
                 if any(m.startswith(lib + ".") for m in exported)]
+        # The development's guard may import a module that its library root does not (the
+        # witnesses, which import the root): an exported one is imported here as well, or its
+        # lines would name constants the guard cannot see.
+        libs += [i for i in IMPORT_RE.findall(src_path.read_text(encoding="utf-8"))
+                 if i in exported and i not in libs]
         imports = "\n".join(f"import {lib}" for lib in libs) or ""
         head = (
             f"/-\nCopyright (c) {self.copyright_line()}. All rights reserved.\n"
@@ -1021,7 +1094,9 @@ class Exporter:
             "title": mod.title,
             "upload_type": rel.upload_type,
             "publication_type": rel.publication_type,
-            "description": "<p>" + plain_abstract(self.paper, mod.abstract_macros)
+            # Escaped: the description is HTML, and an abstract may hold `<`, `>` or `&`.
+            "description": "<p>" + html.escape(plain_abstract(self.paper, mod.abstract_macros),
+                                               quote=False)
                            + "</p><p>This deposit is the article's verification export: the PDF, "
                              "its LaTeX source, the Lean 4 modules its statements rest on, the "
                              "trust boundary with the ledger of cited facts, the blueprint "
@@ -1174,8 +1249,8 @@ def export(cfg: Config, args) -> int:
     n_rows, n_unfound, n_amb = ex.write_index(ex.form / "INDEX.md", mods, marked, first.name)
     print(f"index: {(ex.form / 'INDEX.md').relative_to(cfg.root).as_posix()} written "
           f"({n_rows} node-declaration rows, {n_unfound} not found, {n_amb} ambiguous)")
-    faults = (release_gate(paper, tag, cfg.root, ex.doi, mod.deposit_sentences)
-             if paper.is_dir() else [])
+    faults = (release_gate(paper, tag, cfg.root, ex.doi, mod.deposit_sentences, mod.supplement)
+              if paper.is_dir() else [])
     if faults:
         print("release gate: this build is NOT a release"
               + (" (--draft: exported all the same)" if ex.draft else ""))
@@ -1213,7 +1288,7 @@ def export(cfg: Config, args) -> int:
         if any(m.startswith(lib + ".") for m in exported) and (ex.form / f"{lib}.lean").exists():
             carried.add(lib)
             write(out / lean_name / f"{lib}.lean",
-                  root_file(ex.form / f"{lib}.lean", exported, lib))
+                  root_file(ex.form / f"{lib}.lean", exported, lib, mods))
     if (out / lean_name / "lakefile.toml").exists():
         lf = out / lean_name / "lakefile.toml"
         write(lf, trim_default_targets(lf.read_text(encoding="utf-8"), carried))
@@ -1252,9 +1327,11 @@ def export(cfg: Config, args) -> int:
         src = bp_dir / "src" / name
         if src.exists():
             copy(src, out / "blueprint" / "src" / name)
-        else:
+        elif name != "theorems-extra.tex":      # optional: content.tex inputs it only if present
             print(f"blueprint/src/{name} is absent — the export's blueprint may not build")
-    write(out / "blueprint" / "src" / "content.tex", export_content_tex(exported_chapters, tag))
+    write(out / "blueprint" / "src" / "content.tex",
+          export_content_tex(exported_chapters, tag,
+                             extra=(bp_dir / "src" / "theorems-extra.tex").exists()))
     write(out / "blueprint" / "src" / "web.tex",
           export_web_tex(bp_dir / "src" / "web.tex", mod.repo_url))
 
@@ -1277,9 +1354,19 @@ def export(cfg: Config, args) -> int:
         if (paper / "main.pdf").exists():
             copy(paper / "main.pdf", out / "paper" / "main.pdf")
             copy(paper / "main.pdf", out / f"{stem}-{tag}.pdf")
+        # A supplement is a second PDF of the same sources (its `.tex` files went out above):
+        # beside the paper's in paper/, and at the root under the paper's name with its own.
+        sup = mod.supplement
+        if sup and (paper / f"{sup}.pdf").exists():
+            copy(paper / f"{sup}.pdf", out / "paper" / f"{sup}.pdf")
+            copy(paper / f"{sup}.pdf", out / f"{stem}-{tag}-{sup}.pdf")
         figs = figure_files(paper)
         for f in figs:
-            copy(f, out / "figures" / f.name)
+            # A figure kept beside the sources stays beside them, so that the exported paper
+            # still finds it; one from a figures directory goes to figures/ as before.
+            inside = f.is_relative_to(paper.resolve())
+            copy(f, out / "paper" / f.relative_to(paper.resolve()) if inside
+                 else out / "figures" / f.name)
         stems = {f.stem for f in figs}
         for f in (cfg.root / "scripts").glob("make-fig-*.py"):
             if f.stem.removeprefix("make-") in stems or not stems:
@@ -1319,6 +1406,15 @@ def export(cfg: Config, args) -> int:
             n_extra += copy_notes_tree(src, out / "notes" / src.name)
         else:
             n_extra += redact_and_copy(src, out / "notes" / src.name)
+    # What the paper or a Lean header names by its path keeps that path (`extra_files`).
+    for rel in mod.extra_files:
+        src = cfg.root / rel
+        if not src.exists():
+            print(f"extra file {rel} does not exist; not exported")
+        elif src.is_dir():
+            n_extra += copy_notes_tree(src, out / rel)
+        else:
+            n_extra += redact_and_copy(src, out / rel)
     if n_extra:
         print(f"extra notes: {n_extra} local path(s) replaced in the exported copies")
     for f in (cfg.root / "LICENSES").glob("*"):
@@ -1353,14 +1449,16 @@ def readme(ex: Exporter, chapters: list[str], tags, exported: set[str], mods: di
     rows = "\n".join(f"| `{label}` | " + ", ".join(f"`{d}`" for d in ds) + " |"
                      for label, ds in by_node.items())
     headline = mod.headline or ""
-    block = paper_axiom_block(ex.paper, headline) if headline else ""
+    # The headline's own line, not the whole block: a block may print several declarations,
+    # and read whole it gave their names and the words between them as the headline's axioms.
+    block = paper_axiom_lines(ex.paper).get(headline, "") if headline else ""
     names = re.findall(r"[A-Za-z_][\w.]*", block.partition("[")[2]) if block else []
     ledger_names = [n for n in names if n not in LOGICAL_AXIOMS]
     section = mod.axioms_section
     if ledger_names:
         rest = (f"The last command prints, for `{headline}`, Lean's three logical axioms and\n"
                 + ", ".join(f"`{n}`" for n in ledger_names)
-                + f", and nothing else (the block printed in section {section}).")
+                + ", and nothing else (the block that the paper prints).")
         on = (f"The headline theorem, `{headline}`, rests on {len(ledger_names)} of them, and "
               f"section {section} of the paper says what the other results rest on.")
     elif headline:
@@ -1395,10 +1493,16 @@ def readme(ex: Exporter, chapters: list[str], tags, exported: set[str], mods: di
             lines.append("")
         cites_block = "\n".join(lines)
     lean_name = ex.form.name
+    # figures/ is named when a figure went there: one kept beside the sources is in paper/.
+    in_paper = ex.paper.resolve()
+    sources = "`paper/`" + (", `figures/`" if ex.paper.is_dir() and any(
+        not f.is_relative_to(in_paper) for f in figure_files(ex.paper)) else "")
+    extra_line = ("- " + ", ".join(f"`{p}`" for p in mod.extra_files) + " — the files that the "
+                  "article names by these paths.\n" if mod.extra_files else "")
     return f"""# {mod.title} — release {ex.tag}
 
 This repository is the verification artifact of the article of the same name (the PDF is at the
-root). It is an export of the development repository at revision `{ex.git_rev()}`, restricted to
+root{", with its supplement" if mod.supplement else ""}). It is an export of the development repository at revision `{ex.git_rev()}`, restricted to
 what the article's statements rest on; the development repository also holds the material of
 other modules of the same theory and stays private until they are released.
 
@@ -1416,9 +1520,9 @@ other modules of the same theory and stays private until they are released.
   blueprint's chapters of the same numbers), with the `\\lean{{}}` tag naming the declaration
   behind each statement; a chapter of another module is included where the article transcribes a
   statement from it.
-- `paper/`, `figures/` — the article's sources.
+- {sources} — the article's sources.
 - `notes/` — the process account, the external reviews verbatim, and the response plan.
-
+{extra_line}
 ## Verifying
 
     cd {lean_name}
