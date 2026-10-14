@@ -242,6 +242,49 @@ The author on §§ 3.3, 3.4 and 4 of the same paper, having read it to the end (
     `linkage paper` gives an advisory when the last numbered section before the back matter is not a
     conclusion or discussion.
 
+The author on the abstract, § 1 and § 1.1 of the same paper, after its rewrite (2026-10-12):
+
+12. **Where a paper passes from its field's vocabulary to another's, it says so in a sentence for
+    the field's reader.** "From 'So the kernels from scale zero are the dilations of one law.' and
+    forward the language change from scale space theory to probability theory. That is of course
+    necessary as the rest is based on results from there. But a sentence saying that would be helpful
+    for the scale space audience, so that they understand why everything that follows is stated in
+    terms of laws etc." The introduction had glossed each borrowed term at first use (rule 3) and
+    never said that the vocabulary changes, nor why. One or two sentences at the point of change: what
+    the object is in the other field, that the results the paper builds on are stated there, and the
+    dictionary in a clause (here kernel: law; transfer function: characteristic function; which words
+    stay). The same comment found a second letter for a frequency used before it was introduced: a
+    notation that differs between the two settings is said where the second form first matters.
+    Suggested: a line in `WRITING.md` § 0 beside "Teach", and a reviewer flag on the first paragraph
+    in which three or more terms of another field's vocabulary appear with no sentence announcing
+    the change.
+13. **A statement that rests on a published theorem is presented as resting on it, never as a
+    hypothesis or a condition.** "'which the cone paper leaves as a hypothesis and this paper does
+    too.', what does that mean? Is it a conjuncture? Or does we prove it in terms of some cited
+    theorem?" and, of the trust-base sentences on the same clause, "It gives the impression that we
+    have just invented an hypothesis out of thin air. When we in fact have cited a published result."
+    The clause was an implication in the blueprint because its Lean takes the premise as given, and
+    the paper had carried the blueprint's accounting ("conditional", "assumes", "keeps it as a
+    hypothesis") into the statement's title, its lead, the paragraph after it and § 1.1. The logical
+    form of a formalized statement may stay an implication; the prose says where the premise is in
+    print, once, and the trust-base subsection says that the formal statement takes it as given.
+    No citation goes inside the clause itself where the node is `\leanok` (it would be an assertion
+    no declaration states). Suggested: a `WRITING.md` § 3 line under "Borrowed facts are stated, not
+    folded in", and a reviewer flag on "hypothesis", "conditional", "assumes" or "leaves open" within
+    a sentence of a citation.
+14. **The trust-base subsection says what is, and carries no sentence whose content is what was not
+    done when another section owns that.** "'No human, the author included, has reviewed the formal
+    statements (see the statement on the use of AI at the end of the paper).', Remove, we focus on
+    what is not what isn't, and this is discussed in the AI statement." Rule 5 for the trust base
+    itself: who compared the formal statements with the printed ones is said positively (AI agents,
+    in a review the subsection describes), and who did not is the AI statement's. A boundary a reader
+    needs in order to know what is checked stays, in the positive where one exists ("proved in print",
+    "computed by scripts", "the formal statement takes the family as given"); the lists of what is
+    machine-checked and what is not are such boundaries. Suggested: a sentence in `WRITING.md` § 4
+    ("The trust base is owned by one subsection") and in § 6 rule 3, which already keeps the trust
+    boundary out of the AI statement and does not yet keep the AI statement's content out of the
+    trust base.
+
 ---
 
 ## The site workflow builds one TeX root per paper, so a paper with a supplement is served as its full document
