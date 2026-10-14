@@ -7,6 +7,8 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+## v0.4.0 — 2026-10-14 — a supplement in a release, two probe files, and what the first export of a two-paper repository found
+
 - **`linkage release`: a supplement, and what Paper VII's first export found (hub Q-0451).** The
   isotropic paper is the first release with a supplement, the first whose witness file imports
   its library root, and the first with its abstract and its figures beside `main.tex`. Nothing
