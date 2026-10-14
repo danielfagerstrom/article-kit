@@ -263,6 +263,7 @@ def test_a_missing_second_probe_file_is_reported_once(article):
 
 def test_probes_must_be_a_path_or_a_list_of_paths(article):
     import pytest
+
     from linkage.config import ConfigError, load
 
     built(article, table=TABLE.replace('probes = "Formalization/Probes.lean"', "probes = 3"))
