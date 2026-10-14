@@ -244,6 +244,129 @@ The author on §§ 3.3, 3.4 and 4 of the same paper, having read it to the end (
 
 ---
 
+## The site workflow builds one TeX root per paper, so a paper with a supplement is served as its full document
+
+**Wanted by** spatial-hemigroup-affine (Paper VII), after the release `iso-v0.1`, 2026-10-14
+(hub Q-0456, Q-0457).
+
+The reusable `docs.yml` builds each paper from one file (`paper_tex`, and the `tex` of each entry of
+`extra_papers`) with one Tectonic run. The isotropic paper is two roots, `main.tex` and
+`supplement.tex`, which refer to each other through `xr-hyper`, reading the other root's `.aux`;
+built alone, `main.tex` has every reference into the supplement unresolved. The export's `docs.yml`
+therefore builds `paper/full.tex`, the paper and the supplement as one document, and the site
+serves that, while the deposit holds the two PDFs. `research-site#12` gave the site page a
+`paper_label` and a list of `files`, so that the page says what it serves and links the two
+deposited PDFs: a work-around on the site's side. The repository's own draft site has the same
+fault (its `iso.pdf` is `paper-iso/main.tex` built alone). **Suggested shape:** either a paper's
+`tex` may be a list of roots, built in order and then once more so that each `.aux` exists when the
+other reads it, each published under its own name; or, for a frozen export (`push_artifacts:
+false`), the workflow publishes the committed released PDFs (`<stem>-<tag>.pdf`,
+`<stem>-<tag>.supplement.pdf`) instead of building, since the DOI names those bytes and a rebuild
+can only differ from them.
+
+---
+
+## `linkage_ref` as a full commit sha: allowed by `RELEASE.md` and `linkage pins`, refused by `lean.yml`
+
+**Wanted by** spatial-hemigroup-affine (Paper VII), 2026-10-14 (hub Q-0452).
+
+`RELEASE.md`, "Versioning the framework", rule 4, says that a module needing an unreleased change
+"pins the commit sha for that", and `linkage pins` accepts a `linkage_ref` that is a tag or a full
+sha. The reusable `lean.yml` installs `linkage` with `git clone --depth 1 --branch "<linkage_ref>"`,
+and `--branch` takes a branch or a tag only: with a sha the clone fails and the job stops at its
+first `linkage` step. Q-0452 pinned a sha of the branch that became `v0.4.0`, and CI failed until
+the tag existed. **Suggested shape:** `git init`, `git fetch --depth 1 origin <ref>` and `git
+checkout FETCH_HEAD`, which take a tag, a branch or a sha alike; or, if a sha is not to be
+supported, rule 4 and `linkage pins` say so.
+
+---
+
+## process: Zenodo lists the zip first, and a published record's files cannot be reordered
+
+**Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-14 (hub Q-0456).
+
+`linkage release zenodo upload` sends the paper's PDF, the supplement's PDF and the zip of the
+tagged tree, in that order (`RELEASE.md`, "A paper with a supplement": the paper's PDF "stays the
+default preview"), and the published record lists the zip first. A published record's files cannot
+be changed or reordered; only a new version can. So the page a reader lands on offers the source
+archive before the paper. **Suggested shape:** the sandbox rehearsal that `RELEASE.md` describes
+becomes a checklist step before a repository's first real deposit, and what it reads includes the
+file order and the default preview by name (`zenodo status` could print both from the draft, and
+`publish` could refuse when the first file listed is not the paper's PDF). The draft records of
+the current Zenodo carry a files `order` beside `default_preview`; whether the deposit API that
+`upload` uses can set it was not checked.
+
+---
+
+## process: run the export's dry run early when a repository holds two papers' Lean
+
+**Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-14 (hub Q-0451,
+Q-0452).
+
+The first export of a repository holding the Lean of two papers, one of them being released,
+exported 160 Lean files where the released paper's statements need 79. The closure came in through
+the files every release has besides its statements (the witness file, the probe file and the axiom
+guard each imported the library root) and through helper lemmas that lived in the other paper's
+files and were used by this paper's proofs. Separating the two (a library file naming the paper's
+own modules, one probe file per paper, the helpers moved) took a day, and it came after the paper's
+final read, when the release was otherwise ready. `RELEASE.md` says that a root importing the
+library whole brings the library and that the dry run prints the closure, but not when to look.
+**Suggested shape:** checklist item 1 ("before anything is frozen") gains `linkage release export
+--module <M> --dry-run`, its closure read against the statements the paper prints, for a
+repository whose Lean serves more than one paper, and early enough that a separation is not on the
+release's critical path; and `PROCESS.md` § 5 says that in such a repository a helper lemma goes in
+a file of the first paper that needs it, or in a shared file that imports neither paper's results.
+
+---
+
+## `linkage release export` does not remove a file it no longer writes
+
+**Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-14 (hub Q-0452;
+its `records/affine/RELEASE-procedure-iso.md`, §§ 2 and 7).
+
+An export written over an earlier one keeps the earlier one's files. After the closure shrank, the
+81 Lean files the second export no longer wrote would have been built with the library (its
+`globs` take every file of the directory) and committed at `git add -A`; and a supplement PDF
+renamed between two exports was left beside the new one. The directory was cleared by hand, which
+first needs `lake-store.py unlink` on the export, since a recursive delete can follow the package
+links into the store. **Suggested shape:** the export removes the files of its tree that it did
+not write this time, keeping `.lake/`, `.git/` and `.zenodo-deposition.json`; or it refuses to
+write into a directory holding files it would not write, and lists them.
+
+---
+
+## process: what a two-paper repository's first export found missing in the repository itself
+
+**Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-13 (hub Q-0451;
+`records/affine/RELEASE-procedure-iso.md`, § 6, "In this repository" and "Known and left"). Not in
+the `v0.4.0` changelog, which has the faults of `linkage` that the same run found.
+
+1. There was no `LICENSES/`, which every Lean header names and which the export copies; when it is
+   absent the export copies nothing and says nothing. Suggested: the scaffold creates `LICENSES/`
+   with the two texts, or the dry run reports its absence.
+2. The export renames a paper's directory to `paper/`. The scripts that draw the figures into the
+   paper's directory named it by its path in the repository (`paper-iso/`) and broke in the export;
+   each now takes whichever of the two exists. Scripts exported as the record of how a list or a
+   report was made read the repository's layout and do not run in the export at all. Suggested: a
+   line in `RELEASE.md` at `extra_files`: a script exported to be run finds the paper's directory
+   under either name.
+
+---
+
+## A statement's title is cut at the first `]`, even inside braces
+
+**Wanted by** spatial-hemigroup-affine (Paper VII), 2026-10-14 (hub Q-0457).
+
+`split_env_title` (`linkage/parse_latex.py`, `ENV_TITLE`) ends a statement's optional title at the
+first `]`. A title carrying a located citation inside braces, as LaTeX requires (a title
+`the classification, {\cite[Thm.~3.6]{key}}`), is cut inside the citation, and the rest of the
+title is compared as the start of the statement: `linkage check` reported all six such
+restatements as "drifted after 0 chars". The affine paper now writes the citation through a macro
+with no bracket (`\prog{Iso}{Thm.~3.6}`). **Suggested shape:** match the title with the brace depth
+counted, as LaTeX reads an optional argument.
+
+---
+
 *No other open requests.*
 
 ---
