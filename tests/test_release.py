@@ -847,3 +847,216 @@ def test_publish_refuses_a_draft_missing_what_a_deposit_carries() -> None:
     emptied = {"metadata": {"title": "T"}}
     assert zenodo.metadata_missing(emptied, "10.5281/zenodo.7") == [
         "creators", "resource type", "reserved DOI 10.5281/zenodo.7"]
+
+
+# ---- a supplement, and what Paper VII's first export found (Q-0451) ----------------------------
+
+def test_a_supplement_is_read_from_the_module_table(tmp_path: Path) -> None:
+    root = build_article(tmp_path / "art")
+    assert config.load(root).module("line").supplement is None
+    toml = (root / "linkage.toml").read_text(encoding="utf-8")
+    (root / "linkage.toml").write_text(
+        toml.replace('stem     = "an-article"', 'stem     = "an-article"\nsupplement = "supplement"'),
+        encoding="utf-8")
+    assert config.load(root).module("line").supplement == "supplement"
+
+
+def test_the_gate_reads_the_supplement_as_it_reads_the_paper(repo: Path) -> None:
+    paper = write_paper(repo, "\\date{September 30, 2026 (v0.1)}")
+    quiet = release.release_gate(paper, "v0.1", repo)
+    assert not faults_about(quiet, "supplement")              # no supplement named: not looked for
+    faults = release.release_gate(paper, "v0.1", repo, supplement="supplement")
+    assert faults_about(faults, "supplement.pdf does not exist")
+
+
+def test_the_export_carries_the_supplement_beside_the_paper(tmp_path: Path, unblocked) -> None:
+    root = build_article(tmp_path / "art")
+    toml = (root / "linkage.toml").read_text(encoding="utf-8")
+    (root / "linkage.toml").write_text(
+        toml.replace('stem     = "an-article"', 'stem     = "an-article"\nsupplement = "supplement"'),
+        encoding="utf-8")
+    (root / "paper" / "supplement.tex").write_text("\\documentclass{article}\n", encoding="utf-8")
+    (root / "paper" / "main.pdf").write_bytes(b"%PDF-1.4 paper")
+    (root / "paper" / "supplement.pdf").write_bytes(b"%PDF-1.4 supplement")
+    out_dir = tmp_path / "export"
+    rc, out, _ = run_cli("--root", str(root), "release", "export", "--module", "line", "--draft",
+                         "--out", str(out_dir))
+    assert rc == 0
+    assert (out_dir / "paper" / "supplement.tex").exists()
+    assert (out_dir / "paper" / "supplement.pdf").read_bytes() == b"%PDF-1.4 supplement"
+    assert (out_dir / "an-article-v0.1.pdf").read_bytes() == b"%PDF-1.4 paper"
+    assert (out_dir / "an-article-v0.1.supplement.pdf").read_bytes() == b"%PDF-1.4 supplement"
+    assert "with its supplement" in (out_dir / "README.md").read_text(encoding="utf-8")
+    # The deposit takes the paper first: it names the source zip and is the default preview.
+    assert [p.name for p in zenodo.release_pdfs(out_dir)] == [
+        "an-article-v0.1.pdf", "an-article-v0.1.supplement.pdf"]
+
+
+def test_the_papers_pdf_comes_before_a_pdf_named_after_it(tmp_path: Path) -> None:
+    for name in ("paper-iso-v0.1-supplement.pdf", "paper-iso-v0.1.pdf"):
+        (tmp_path / name).write_bytes(b"")
+    assert sorted(p.name for p in tmp_path.glob("*.pdf"))[0].endswith("supplement.pdf")
+    assert [p.name for p in zenodo.release_pdfs(tmp_path)] == [
+        "paper-iso-v0.1.pdf", "paper-iso-v0.1-supplement.pdf"]
+
+
+def test_the_abstract_is_found_in_a_file_of_its_own(tmp_path: Path) -> None:
+    paper = tmp_path / "paper"
+    paper.mkdir()
+    (paper / "main.tex").write_text("\\begin{document}\n\\input{abstract}\n\\end{document}\n",
+                                    encoding="utf-8")
+    (paper / "abstract.tex").write_text(
+        "\\begin{abstract}\nIn $\\RR^d$, when $c \\le \\infty$; see \\S\\ref{sec:trust}.\n"
+        "\\end{abstract}\n", encoding="utf-8")
+    macros = {"RR": "R", "le": "<=", "infty": "infinity", "S\\ref{sec:trust}": "section 1.1"}
+    assert release.plain_abstract(paper, macros) == "In R^d, when c <= infinity; see section 1.1."
+
+
+def test_the_description_is_escaped_as_html(article_repo: Path, unblocked, tmp_path) -> None:
+    main = article_repo / "paper" / "main.tex"
+    main.write_text(main.read_text(encoding="utf-8").replace("in $L^2$", "for $a < b$"),
+                    encoding="utf-8")
+    out_dir = tmp_path / "export"
+    run_cli("--root", str(article_repo), "release", "export", "--module", "line", "--draft",
+            "--out", str(out_dir))
+    zen = json.loads((out_dir / ".zenodo.json").read_text(encoding="utf-8"))
+    assert "for a &lt; b." in zen["description"]
+
+
+def test_a_lemma_in_a_namespace_is_not_a_declaration_of_the_namespace() -> None:
+    mods = {"Lib.Defs": "structure Datum where\n  a : Nat\n",
+            "Lib.Far": "theorem Datum.a_nonneg (D : Datum) : 0 <= D.a := Nat.zero_le _\n"}
+    assert release.find_modules("Lib.Datum", mods, ("Lib",)) == ["Lib.Defs"]
+
+
+def test_a_qualified_tag_is_not_found_in_another_namespace_of_the_same_short_name() -> None:
+    """`Lib.OriginDatum.exponentL` is declared in one module; a `def exponentL` under
+    `namespace RadialProfile` in another made that module a root of the closure."""
+    mods = {"Lib.Origin": "namespace Lib\nnamespace OriginDatum\ndef exponentL : Nat := 0\n"
+                          "end OriginDatum\nend Lib\n",
+            "Lib.Orbits": "namespace Lib\nnamespace RadialProfile\ndef exponentL : Nat := 1\n"
+                          "end RadialProfile\nend Lib\n",
+            "Lib.Flat": "theorem OriginDatum.bound : True := trivial\n",
+            "Lib.Other": "namespace Elsewhere\ntheorem bound : True := trivial\nend Elsewhere\n"}
+    assert release.find_modules("Lib.OriginDatum.exponentL", mods, ("Lib",)) == ["Lib.Origin"]
+    assert release.find_modules("Lib.RadialProfile.exponentL", mods, ("Lib",)) == ["Lib.Orbits"]
+    # a short name with one hit is found as before, whatever the namespace it stands in
+    assert release.find_modules("Lib.OriginDatum.bound", mods, ("Lib",)) == ["Lib.Other"]
+    # and when no hit can be told apart by its namespace, all of them stand
+    assert release.find_modules("Lib.Unknown.exponentL", mods, ("Lib",)) == ["Lib.Origin",
+                                                                             "Lib.Orbits"]
+
+
+def test_an_import_of_the_library_root_brings_what_the_root_imports() -> None:
+    mods = {"Lib.A": "theorem a : True := trivial\n", "Lib.B": "import Lib.A\n",
+            "Lib.Witnesses": "import Lib\ntheorem w : True := a\n",
+            "Lib.Probes": "import Lib.Witnesses\n", "Lib.Unused": ""}
+    alone, _ = release.closure_of(["Lib.Witnesses"], mods)
+    assert alone == {"Lib.Witnesses"}
+    whole, parent = release.closure_of(["Lib.Probes"], mods, {"Lib": ["Lib.A", "Lib.B"]})
+    assert whole == {"Lib.Probes", "Lib.Witnesses", "Lib.A", "Lib.B"}
+    assert parent["Lib.B"] == "Lib.Witnesses"
+
+
+def test_the_exported_root_does_not_import_what_imports_it(tmp_path: Path) -> None:
+    mods = {"Lib.A": "", "Lib.Extra": "import Lib.A\n", "Lib.Witnesses": "import Lib\n",
+            "Lib.Probes": "import Lib.Witnesses\n"}
+    original = tmp_path / "Lib.lean"
+    original.write_text("import Lib.A\n", encoding="utf-8")
+    text = release.root_file(original, set(mods), "Lib", mods)
+    assert text.splitlines() == ["import Lib.A", "import Lib.Extra"]
+    # Without the sources it is as before: every exported module of the library.
+    assert "import Lib.Witnesses" in release.root_file(original, set(mods), "Lib")
+
+
+def test_the_exported_guard_imports_what_the_guard_imports(tmp_path: Path, unblocked) -> None:
+    root = build_article(tmp_path / "art")
+    form = root / "Formalization"
+    (form / "Lib" / "Witnesses.lean").write_text(
+        "import Lib\ntheorem witness_main : True := main_theorem\n", encoding="utf-8")
+    (form / "CIAxiomGuard.lean").write_text(
+        "import Lib\nimport Lib.Witnesses\n#print axioms Lib.main_theorem\n"
+        "#print axioms Lib.witness_main\n", encoding="utf-8")
+    toml = (root / "linkage.toml").read_text(encoding="utf-8")
+    (root / "linkage.toml").write_text(
+        toml.replace('roots    = ["Lib.Interfaces"]\nheadline',
+                     'roots    = ["Lib.Witnesses"]\nheadline'), encoding="utf-8")
+    out_dir = tmp_path / "export"
+    rc, _, _ = run_cli("--root", str(root), "release", "export", "--module", "line", "--draft",
+                       "--out", str(out_dir))
+    assert rc == 0
+    # The witnesses import the root, so the whole of what the root imports is exported ...
+    assert (out_dir / "Formalization" / "Lib" / "Later.lean").exists()
+    # ... the root does not import them back, and the guard does.
+    root_lean = (out_dir / "Formalization" / "Lib.lean").read_text(encoding="utf-8")
+    assert "import Lib.Witnesses" not in root_lean and "import Lib.Later" in root_lean
+    guard = (out_dir / "Formalization" / "CIAxiomGuard.lean").read_text(encoding="utf-8")
+    assert "import Lib\nimport Lib.Witnesses\n" in guard
+    assert "#print axioms Lib.witness_main" in guard
+
+
+def test_a_figure_beside_the_sources_stays_beside_them(article_repo: Path, unblocked,
+                                                       tmp_path) -> None:
+    paper = article_repo / "paper"
+    (paper / "fig-one.png").write_bytes(b"png")
+    main = paper / "main.tex"
+    main.write_text(main.read_text(encoding="utf-8").replace(
+        "\\end{document}", "\\includegraphics[width=1cm]{fig-one.png}\n\\end{document}"),
+        encoding="utf-8")
+    out_dir = tmp_path / "export"
+    run_cli("--root", str(article_repo), "release", "export", "--module", "line", "--draft",
+            "--out", str(out_dir))
+    assert (out_dir / "paper" / "fig-one.png").read_bytes() == b"png"
+    assert not (out_dir / "figures" / "fig-one.png").exists()
+
+
+def test_the_readme_names_the_headlines_axioms_from_a_block_of_several(tmp_path: Path,
+                                                                        unblocked) -> None:
+    root = build_article(tmp_path / "art")
+    main = root / "paper" / "main.tex"
+    block = ("\\begin{verbatim}\n'Lib.main_theorem' depends on axioms: [propext,\n Lib.iface]\n"
+             "'Lib.other' depends on axioms: [propext, Lib.second]\n\\end{verbatim}\n")
+    main.write_text(main.read_text(encoding="utf-8").replace("\\end{document}",
+                                                             block + "\\end{document}"),
+                    encoding="utf-8")
+    out_dir = tmp_path / "export"
+    run_cli("--root", str(root), "release", "export", "--module", "line", "--draft",
+            "--out", str(out_dir))
+    readme = (out_dir / "README.md").read_text(encoding="utf-8")
+    assert "`Lib.iface`, and nothing else" in readme
+    assert "Lib.second" not in readme and "`depends`" not in readme
+
+
+def test_extra_files_keep_their_path(tmp_path: Path, unblocked) -> None:
+    root = build_article(tmp_path / "art")
+    (root / "records" / "line" / "fig-one.py").write_text(
+        "OUT = 'C:/Users/someone/dev/art/paper/fig-one.png'\n", encoding="utf-8")
+    (root / "records" / "line" / "runs" / "__pycache__").mkdir(parents=True)
+    (root / "records" / "line" / "runs" / "__pycache__" / "x.pyc").write_bytes(b"\0")
+    (root / "records" / "line" / "runs" / "out.txt").write_text("42\n", encoding="utf-8")
+    toml = (root / "linkage.toml").read_text(encoding="utf-8")
+    (root / "linkage.toml").write_text(
+        toml.replace('stem     = "an-article"', 'stem     = "an-article"\n'
+                     'extra_files = ["records/line/fig-one.py", "records/line/runs", "absent.py"]'),
+        encoding="utf-8")
+    assert config.load(root).module("line").extra_files == (
+        "records/line/fig-one.py", "records/line/runs", "absent.py")
+    out_dir = tmp_path / "export"
+    rc, out, _ = run_cli("--root", str(root), "release", "export", "--module", "line", "--draft",
+                         "--out", str(out_dir))
+    assert rc == 0
+    assert "extra file absent.py does not exist" in out
+    assert (out_dir / "records" / "line" / "runs" / "out.txt").read_text(encoding="utf-8") == "42\n"
+    assert not (out_dir / "records" / "line" / "runs" / "__pycache__").exists()
+    # A script is redacted as a record is, under a comment of its own language, and the string
+    # that held the path is still a string.
+    script = (out_dir / "records" / "line" / "fig-one.py").read_text(encoding="utf-8")
+    assert script.startswith("# Export note: 1 file path(s)")
+    assert script.endswith("OUT = '<local path>'\n")
+    assert "`records/line/fig-one.py`" in (out_dir / "README.md").read_text(encoding="utf-8")
+
+
+def test_content_tex_inputs_theorems_extra_only_where_the_article_has_one() -> None:
+    assert "\\input{theorems-extra.tex}" in release.export_content_tex(["02-first.tex"], "v0.1")
+    without = release.export_content_tex(["02-first.tex"], "v0.1", extra=False)
+    assert "theorems-extra" not in without and "\\input{parts/02-first.tex}" in without

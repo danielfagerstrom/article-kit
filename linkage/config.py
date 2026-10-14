@@ -58,8 +58,11 @@ class Boundary:
     guard: Path | None = None
     """The Lean file CI elaborates, holding one `#guard_msgs`-pinned `#print axioms` per
     headline declaration."""
-    probes: Path | None = None
-    """Positive probes: cheap should-hold consequences of the headline results."""
+    probes: tuple[Path, ...] = ()
+    """Positive probes: cheap should-hold consequences of the headline results. One file, or
+    several where one repository holds the Lean of several papers and a paper's probes must
+    not import another's: a headline declaration needs a probe in one of them (`probes` in
+    `linkage.toml` is a path or a list of paths)."""
     adversarial: Path | None = None
     """Known-false, in-domain statements kept as isolated `sorry`s."""
     headline: tuple[str, ...] = ()
@@ -124,6 +127,10 @@ class Module:
     notes/ with the same local-path redaction as `reviews` — records that are not a round's
     response plan (a triage note, a response to a separate presentation review). `--extra-notes`
     adds to this list for one run."""
+    extra_files: tuple[str, ...] = ()
+    """Files or directories, relative to the repository root, exported at the SAME relative
+    path, with the same redaction: what the paper or a Lean header names by its path (a script
+    that draws a figure, a saved report), so that the printed path is true of the export too."""
     shared_nodes: str = DEFAULT_SHARED_NODES
     keywords: tuple[str, ...] = ()
     related: tuple[str, ...] = ()
@@ -142,6 +149,12 @@ class Module:
     prospective and its asserted form (docs/WRITING.md § 4), gated by the release gate
     (`release.release_gate`) the same way the date line is. Empty — the default — leaves the
     module unchecked, as every module was before this field existed."""
+    supplement: str | None = None
+    r"""The root name of a supplement built in the paper directory beside `main.tex`
+    (`supplement` for `supplement.tex` and `supplement.pdf`). The export carries its PDF as
+    `paper/<supplement>.pdf` and as `<stem>-<tag>.<supplement>.pdf` at its root, the release
+    gate reads its first page as it reads the paper's, and `linkage release zenodo upload` sends
+    it as a further file after the paper's PDF, which stays the default preview."""
 
     def records_path(self, name: str) -> str | None:
         return f"{self.records}/{name}" if self.records else None
@@ -434,6 +447,7 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
                 response_plans=tuple(r.get("response_plans", ())),
                 reviews=r.get("reviews"),
                 extra_notes=tuple(str(p) for p in r.get("extra_notes", ())),
+                extra_files=tuple(str(p) for p in r.get("extra_files", ())),
                 shared_nodes=shared,
                 keywords=tuple(r.get("keywords", ())),
                 related=tuple(r.get("related", ())),
@@ -441,6 +455,7 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
                 axioms_section=str(r.get("axioms_section", DEFAULT_AXIOMS_SECTION)),
                 releases={str(k): dict(v) for k, v in releases.items()},
                 deposit_sentences={str(k): str(v) for k, v in deposit.items()},
+                supplement=r.get("supplement"),
             ))
         return tuple(out)
 
@@ -467,6 +482,19 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
                     f"{CONFIG_NAME}: `[boundary] {key}` must be a list of strings")
             return tuple(v)
 
+        def paths(key: str) -> tuple[Path, ...]:
+            """One path or a list of them; a path given twice is read once."""
+            v = bt.get(key)
+            if v is None:
+                return ()
+            if isinstance(v, str):
+                return (root / v,)
+            if not isinstance(v, list) or not v or not all(isinstance(s, str) for s in v):
+                raise ConfigError(
+                    f"{CONFIG_NAME}: `[boundary] {key}` must be a path or a non-empty list of "
+                    f"paths, not {v!r}")
+            return tuple(root / s for s in dict.fromkeys(v))
+
         shadows = bt.get("shadows", {})
         if not isinstance(shadows, dict):
             raise ConfigError(
@@ -475,7 +503,7 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
         return Boundary(
             configured=True,
             guard=f("guard"),
-            probes=f("probes"),
+            probes=paths("probes"),
             adversarial=f("adversarial"),
             headline=strs("headline"),
             shadows={k: str(v) for k, v in shadows.items()},

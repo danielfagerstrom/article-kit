@@ -221,6 +221,17 @@ def cmd_reserve(a) -> int:
     return 0
 
 
+def release_pdfs(export: Path) -> list[Path]:
+    """The PDFs at the export's root, the paper's first: the first one names the source zip and
+    is the default preview. The export names a supplement `<stem>-<tag>.supplement.pdf`, which
+    sorts after `<stem>-<tag>.pdf` by name alone. A PDF placed there by hand as
+    `<stem>-<tag>-supplement.pdf` would sort before it, since `-` sorts before `.`; so a PDF
+    whose name extends another's comes after it, whichever sign joins the two."""
+    pdfs = sorted(export.glob("*.pdf"))
+    return sorted(pdfs, key=lambda p: (any(p.stem.startswith((q.stem + "-", q.stem + "."))
+                                           for q in pdfs), p.name))
+
+
 def zip_stem(pdf: Path, tag: str, export: Path) -> str:
     """The source zip's name: the released PDF's own (`<stem>-<tag>`), or `<export>-<tag>` when
     the PDF is not named for the tag."""
@@ -233,7 +244,7 @@ def cmd_upload(a) -> int:
     tok = token(st["sandbox"])
     files = [Path(f) for f in (a.file or [])]
     if not files:
-        pdfs = sorted(export.glob("*.pdf"))
+        pdfs = release_pdfs(export)
         if not pdfs:
             raise ZenodoError("no PDF at the export's root and no --file given")
         files += pdfs
@@ -337,7 +348,7 @@ def cmd_metadata(a) -> int:
     tok = token(st["sandbox"])
     set_metadata(export, st, tok)
     restore_doi(export, st, tok)
-    pdfs = sorted(export.glob("*.pdf"))
+    pdfs = release_pdfs(export)
     if pdfs:
         _preview(st, tok, pdfs[0].name)
     print("check the draft at", draft_page(st))
@@ -347,7 +358,7 @@ def cmd_metadata(a) -> int:
 def cmd_preview(a) -> int:
     export = Path(a.export)
     st = load_state(export)
-    names = [Path(f).name for f in (a.file or [])] or [p.name for p in sorted(export.glob("*.pdf"))]
+    names = [Path(f).name for f in (a.file or [])] or [p.name for p in release_pdfs(export)]
     if not names:
         raise ZenodoError("no PDF at the export's root and no --file given")
     set_default_preview(st, token(st["sandbox"]), names[0])
@@ -380,7 +391,7 @@ def cmd_publish(a) -> int:
     export = Path(a.export)
     st = load_state(export)
     where = "the SANDBOX" if st["sandbox"] else "zenodo.org"
-    release_gate(export, st, sorted(export.glob("*.pdf")))
+    release_gate(export, st, release_pdfs(export))
     # A draft emptied by a bad write publishes empty, and a published record cannot be edited
     # back into shape everywhere it has been harvested; so it is checked here, not only by eye.
     dep = call("GET", f"{base(st['sandbox'])}/deposit/depositions/{st['id']}",

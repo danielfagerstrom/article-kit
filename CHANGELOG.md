@@ -7,6 +7,47 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+## v0.4.0 — 2026-10-14 — a supplement in a release, two probe files, and what the first export of a two-paper repository found
+
+- **`linkage release`: a supplement, and what Paper VII's first export found (hub Q-0451).** The
+  isotropic paper is the first release with a supplement, the first whose witness file imports
+  its library root, and the first with its abstract and its figures beside `main.tex`. Nothing
+  here changes an export that has none of these. New module keys: `supplement` (the export
+  carries its PDF in `paper/` and as `<stem>-<tag>.supplement.pdf`, the release gate reads its
+  first page, and `zenodo upload` sends it after the paper's PDF, which stays first for the zip's
+  name and the default preview: `zenodo.release_pdfs`) and `extra_files` (files exported at their
+  own path). Faults repaired, each with a test:
+  - a module that imports the library root entered the closure alone, and the generated root then
+    imported it back, a cycle: `closure_of` follows the root's imports, `root_file` leaves out
+    what imports the root, and the exported guard keeps the development guard's own imports;
+  - `theorem Datum.lemma` counted as a declaration of the tag `Datum`, which made every module
+    with a lemma in that namespace a root of the closure (`decl_pattern`);
+  - the deposit's description was empty when the abstract is in a file of its own
+    (`plain_abstract` reads the other sources after `main.tex`); `abstract_macros` now also
+    expands a bare `\name`, so that mathematics can be given a plain-text reading; the
+    description is HTML-escaped;
+  - a figure beside the sources was exported to `figures/`, where the exported paper does not
+    look for it; it stays in `paper/`;
+  - the generated `content.tex` input `theorems-extra.tex` in an article that has none;
+  - the README gave, for a block of several declarations, their names and the words between
+    them as the headline's axioms; it reads the headline's own line;
+  - local paths in an exported `.py` file were not replaced; `__pycache__` was exported.
+
+- **`[boundary] probes` may be a list, and a qualified tag is found in its own namespace (hub
+  Q-0452).** Both for a repository that holds the Lean of two papers of which one is released
+  first, so that the release's export holds none of the other's results.
+  - `[boundary] probes` is a path, as before, or a list of paths (`Boundary.probes` is a tuple).
+    Each file is held to the probe rules, and a headline declaration needs a probe in one of
+    them; a file that is missing is reported, and its headline results are not then listed as
+    unprobed. With one file per paper, a paper's probe file imports that paper's Lean alone.
+    **An article that sets a list needs a `linkage` with this change**: an older one refuses the
+    list ("must be a path"), in `linkage boundary` and in every other command, since all of
+    them read `linkage.toml`.
+  - `find_modules` narrows a tag with a namespace (`Lib.OriginDatum.exponentL`) to the modules
+    that declare the qualified name or open that namespace, when several modules declare the
+    short name; `def exponentL` under another namespace in another file had made that file a
+    root of the release's closure. If the narrowing leaves nothing, the hits stand as before.
+
 - **`PROCESS.md` § 7 says what "page anchors printed before the `[A]` nodes" meant (Q-0413).** The
   clause read as a per-node sentence on which cited facts the statement rests on, which
   `WRITING.md` § 3 assigns to the trust-base subsection. It now reads: each cited fact is stated
