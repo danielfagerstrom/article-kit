@@ -151,6 +151,31 @@ def test_shared_statement_is_not_what_the_hub_publishes(article):
     assert n.statement == r"It is smooth. \emph{A free-standing note.}"
 
 
+def test_split_env_title_braced_bracket():
+    t = r"[the classification, {\cite[Thm.~3.6]{key}}] Body"
+    assert P.split_env_title(t) == (r"the classification, {\cite[Thm.~3.6]{key}}", " Body")
+
+
+def test_split_env_title_nested_braces():
+    assert P.split_env_title("[a {b {c]} d]} e] Body") == ("a {b {c]} d]} e", " Body")
+
+
+def test_split_env_title_escaped_braces():
+    assert P.split_env_title(r"[a \{ b] Body") == (r"a \{ b", " Body")
+    assert P.split_env_title(r"[{a \} ] b] Body") == (None, r"[{a \} ] b] Body")
+    assert P.split_env_title(r"[a \} ] b] Body") == (r"a \}", " b] Body")
+
+
+def test_split_env_title_unclosed_bracket():
+    assert P.split_env_title("[no end {x]") == (None, "[no end {x]")
+    assert P.split_env_title("[open Body") == (None, "[open Body")
+
+
+def test_split_env_title_plain_and_absent():
+    assert P.split_env_title("  [Name]Body") == ("Name", "Body")
+    assert P.split_env_title("Body [x]") == (None, "Body [x]")
+
+
 def test_split_env_title_leaves_a_bracketless_body_alone():
     assert P.split_env_title("[Name] Body") == ("Name", " Body")
     assert P.split_env_title("Body") == (None, "Body")

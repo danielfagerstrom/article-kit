@@ -396,20 +396,6 @@ the `v0.4.0` changelog, which has the faults of `linkage` that the same run foun
 
 ---
 
-## A statement's title is cut at the first `]`, even inside braces
-
-**Wanted by** spatial-hemigroup-affine (Paper VII), 2026-10-14 (hub Q-0457).
-
-`split_env_title` (`linkage/parse_latex.py`, `ENV_TITLE`) ends a statement's optional title at the
-first `]`. A title carrying a located citation inside braces, as LaTeX requires (a title
-`the classification, {\cite[Thm.~3.6]{key}}`), is cut inside the citation, and the rest of the
-title is compared as the start of the statement: `linkage check` reported all six such
-restatements as "drifted after 0 chars". The affine paper now writes the citation through a macro
-with no bracket (`\prog{Iso}{Thm.~3.6}`). **Suggested shape:** match the title with the brace depth
-counted, as LaTeX reads an optional argument.
-
----
-
 ## process: the swallowed-prose gate is in the scaffold, but `linkage init` never copies it
 
 **Wanted by** spatial-hemigroup-affine (Paper VII), writing-rules pass, 2026-10-14
