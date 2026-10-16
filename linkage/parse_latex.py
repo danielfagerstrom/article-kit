@@ -174,13 +174,32 @@ REF_PREFIX = re.compile(
     r"\b(?:Theorems|Propositions|Lemmas|Corollaries|Definitions|Examples|Remarks|"
     r"Sections|Appendices|Theorem|Proposition|Lemma|Corollary|Definition|Example|"
     r"Remark|Appendix|Section)~?\s*(?=\\ref\{)")
-ENV_TITLE = re.compile(r"\s*\[([^\]]*)\]")
+ENV_TITLE = re.compile(r"\s*\[")
 
 
 def split_env_title(body: str) -> tuple[str | None, str]:
-    """`[human title]` off the front of an environment body, if there is one."""
+    """`[human title]` off the front of an environment body, if there is one.
+
+    The title ends at the first `]` at brace depth zero, as LaTeX reads an optional argument;
+    a backslash escapes the next character (`\\{`, `\\}`, `\\]`). A `[` never closed leaves the
+    body whole.
+    """
     m = ENV_TITLE.match(body)
-    return (m.group(1).strip(), body[m.end():]) if m else (None, body)
+    if not m:
+        return None, body
+    depth, i = 0, m.end()
+    while i < len(body):
+        c = body[i]
+        if c == "\\":
+            i += 1
+        elif c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+        elif c == "]" and depth <= 0:
+            return body[m.end():i].strip(), body[i + 1:]
+        i += 1
+    return None, body
 
 
 def shared_statement(body: str) -> str:
