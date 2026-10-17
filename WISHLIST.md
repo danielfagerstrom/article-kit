@@ -397,9 +397,7 @@ the `v0.4.0` changelog, which has the faults of `linkage` that the same run foun
 ---
 
 ## process: the swallowed-prose gate is in the scaffold, but `linkage init` never copies it
-
-**Wanted by** spatial-hemigroup-affine (Paper VII), writing-rules pass, 2026-10-14
-(`records/affine/PASS-writing-rules-affine.md`, PR #138).
+## `linkage check` pairs a proof with the statement above it before reading its `% proof of` marker
 
 Appendix C of the affine paper printed a broken sentence ("…where they name them.of the Fourier
 transform…"). A `% CHANGED` marker in the middle of a line had made the rest of that line a comment,
@@ -420,6 +418,32 @@ revision, so the natural place is a pull request: one of the reusable workflows 
 (`manifest.yml` or `lean.yml`) runs `python scripts/check-swallowed-prose.py <the PR's base sha>` and fails on a hit. Or
 `linkage check` runs it against the default branch's merge base, and reports it as advisory when
 that base cannot be reached.
+
+**Wanted by** spatial-hemigroup-affine (Paper VII), writing-rules pass, 2026-10-14
+(`records/affine/PASS-writing-rules-affine.md`, PR #138).
+
+Writing rule 10 puts the main theorem first, so § 3.4 of the affine paper states
+`thm:affine-rigidity` and `thm:rank-deficient-step` before the three lemmas that prove them. The
+two theorem proofs follow the lemmas, each under a `% proof of <label>` marker. Where nothing
+separated the last shared lemma from the first of those proofs, `linkage check` compared the
+theorem's proof with the lemma's proof of record. The error went away only when a printed sentence
+came between them ("With the three lemmas the two theorems are proved, the single step first.",
+`paper/04-classical.tex:536`). The cause is in the code: `paper_markers` (`linkage/artifacts.py`)
+first tries `PROOF_AHEAD` (`linkage/parse_latex.py:221`), and that pattern skips whitespace and
+*any* comment line before `\begin{proof}`, including a `% proof of` line that names a different
+label. It looks at the marker (`floating_proofs`) only when it finds no adjacent proof. So the
+proof is filed twice: under the theorem, through its marker, and under the lemma, as the lemma's
+adjacent proof. The lemma's report is then wrong (it shows drift against the wrong proof), and
+`--pin-shared` would pin the lemma to that wrong text. LINKAGE.md rule 4 calls the marker "explicit"
+and says a moved proof is "matched by label", but nothing in it says what happens when the marker
+and adjacency disagree. **Suggested shape:** an explicit marker takes precedence over adjacency. If
+the nearest non-blank line above an adjacent `\begin{proof}` is a `% proof of <label>` marker
+naming a label that is not among this statement's labels, that proof is not adjacent to this
+statement. The statement then falls through to the lookup by label, to `% proof omitted`, or to the
+"neither adjacent nor matched" finding, exactly as if the proof were elsewhere. A
+`[Proof of …\ref{x}]` heading naming another label could be given the same precedence. Add a
+sentence to rule 4 ("a `% proof of` marker overrides position") and a test with the main-theorem-
+first layout.
 
 ---
 
