@@ -154,3 +154,50 @@ def test_pin_shared_pins_a_matched_proof(article):
     f = article.check()
     assert tagged(f.advisory, "proof") == []
     assert f.stats["proof_tracked"] == 1
+
+
+# --- a marker naming another label overrides adjacency ------------------------------
+
+def _shared(env: str, label: str, body: str) -> str:
+    return (f"% shared with blueprint {label}\n\\begin{{{env}}}\n  \\label{{{label}}}\n"
+            f"  {body}\n\\end{{{env}}}\n")
+
+
+def test_a_proof_marker_naming_another_label_overrides_adjacency(article):
+    """Main theorem first: two theorems, then the lemmas, then both theorem proofs under
+    markers with no sentence between. The first of them follows the last lemma but belongs
+    to a theorem, so it must not be filed as that lemma's proof."""
+    article.blueprint(
+        statement(body="Lemma one.", label="lem:one", env="lemma", proof="By hand.")
+        + statement(body="Lemma two.", label="lem:two", env="lemma", proof="Also by hand.")
+        + statement(body="The first theorem.", label="thm:a", proof="Via the lemmas, first.")
+        + statement(body="The second theorem.", label="thm:b", proof="Via the lemmas, second."))
+    article.paper(
+        _shared("theorem", "thm:a", "The first theorem.")
+        + _shared("theorem", "thm:b", "The second theorem.")
+        + _shared("lemma", "lem:one", "Lemma one.")
+        + "\\begin{proof}\nBy hand.\n\\end{proof}\n"
+        + _shared("lemma", "lem:two", "Lemma two.")
+        + "\\begin{proof}\nAlso by hand.\n\\end{proof}\n"
+        + "% proof of thm:a\n\\begin{proof}\nVia the lemmas, first.\n\\end{proof}\n"
+        + "% proof of thm:b\n\\begin{proof}\nVia the lemmas, second.\n\\end{proof}\n",
+        name="05-results.tex")
+    f = article.check()
+    assert tagged(f.advisory, "proof") == []
+    assert f.stats["proof_verbatim"] == 4
+    assert f.stats["proof_unmatched"] == 0
+
+
+def test_a_marker_naming_another_label_leaves_the_statement_unmatched(article):
+    article.blueprint(
+        statement(body="Lemma one.", label="lem:one", env="lemma", proof="By hand.")
+        + statement(body="The theorem.", label="thm:a", proof="Via the lemma."))
+    article.paper(
+        _shared("lemma", "lem:one", "Lemma one.")
+        + "% proof of thm:a\n\\begin{proof}\nVia the lemma.\n\\end{proof}\n"
+        + _shared("theorem", "thm:a", "The theorem."),
+        name="05-results.tex")
+    f = article.check()
+    (msg,) = tagged(f.advisory, "proof")
+    assert "neither adjacent" in msg
+    assert f.stats["proof_unmatched"] == 1

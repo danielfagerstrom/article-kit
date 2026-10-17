@@ -273,6 +273,13 @@ def paper_markers(cfg: Config) -> list[PaperMarker]:
                     pinned[label] = sha
                 if psha:
                     proof_pinned[label] = psha
+            if proof is not None:
+                # An explicit `% proof of <other>` marker overrides position: that proof
+                # belongs to the label it names, not to the statement it happens to follow.
+                om = PROOF_OF_RE.match(
+                    _nearest_line(t, t.index(r"\begin{proof}", em.end())).strip())
+                if om and om.group(1) not in labels + [lm.group(1) if lm else None]:
+                    proof = None
             proof_omitted = bool(PROOF_OMITTED_RE.search(t[m.end():nxt]))
             # No adjacent proof: a statement moved to an appendix (Paper VII, PR #45)
             # still has one, just not here -- look it up by label before giving up.
