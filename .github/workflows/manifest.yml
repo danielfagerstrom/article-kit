@@ -117,7 +117,11 @@ jobs:
           else
             auth="https://github.com/danielfagerstrom/article-kit"
           fi
-          if ! git clone --depth 1 --branch "${{ inputs.linkage_ref }}" "$auth" "$kit" 2>/dev/null; then
+          # init + fetch + checkout, not `clone --branch`: that takes a branch or a tag only,
+          # `fetch` takes a tag, a branch or a full commit sha alike.
+          if ! ( git init -q "$kit" \
+                 && git -C "$kit" fetch -q --depth 1 "$auth" "${{ inputs.linkage_ref }}" \
+                 && git -C "$kit" checkout -q FETCH_HEAD ) 2>/dev/null; then
             echo "::error::could not clone danielfagerstrom/article-kit@${{ inputs.linkage_ref }}. If it is private, add a fine-grained PAT with Contents:read on article-kit as the ARTICLE_KIT_TOKEN secret on this repo and pass it through in the caller workflow."
             exit 1
           fi

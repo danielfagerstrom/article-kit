@@ -7,6 +7,12 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`lean.yml` and `manifest.yml` install `linkage` from a tag, a branch or a full commit sha
+  (hub Q-0483).** `docs/RELEASE.md` rule 4 and `linkage pins` allow a `linkage_ref` that is a sha,
+  but `git clone --branch` takes a branch or a tag only, so the first `linkage` step failed. Both
+  workflows now `git init`, `git fetch --depth 1 <url> <ref>` and `git checkout FETCH_HEAD`; the
+  token handling and the error message are unchanged.
+
 ## v0.4.0 — 2026-10-14 — a supplement in a release, two probe files, and what the first export of a two-paper repository found
 
 - **`linkage release`: a supplement, and what Paper VII's first export found (hub Q-0451).** The
