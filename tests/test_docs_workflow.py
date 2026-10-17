@@ -23,9 +23,9 @@ def _keys_under(header: str, indent: int) -> list[str]:
         if not inside:
             inside = line.rstrip() == header
             continue
-        if line.strip() and not line.startswith(" " * indent):
-            if not line.lstrip().startswith("#") or not line.startswith(" "):
-                break
+        if (line.strip() and not line.startswith(" " * indent)
+                and (not line.lstrip().startswith("#") or not line.startswith(" "))):
+            break
         m = re.fullmatch(" " * indent + r"([A-Za-z0-9_]+):\s*", line)
         if m:
             keys.append(m.group(1))
