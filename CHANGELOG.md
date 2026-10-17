@@ -7,6 +7,25 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`docs.yml` builds in one job (hub Q-0496).** GitHub bills each job rounded up to a whole
+  minute, and the six jobs (`paper`, `extra_paper`, `blueprint`, `web`, `publish`, `deploy`) each
+  took 15–60 seconds, so a docs run that did about a minute of work billed five or six. In
+  affine (private, billed), 1–17 October, 311 runs did 733 minutes of work and billed 1,856. The
+  pieces are now steps of one job `docs`, in the same order and under the same conditions: the
+  extra papers are a loop over `extra_papers` in place of the matrix, and Tectonic is installed and
+  its package cache restored once. **What a caller gains:** a docs run bills about the minutes it
+  works, rounded once, not once per piece; a public caller is not billed and notices only that a run
+  is a little shorter. **What a caller changes: nothing.** Every input, secret and default of
+  `workflow_call` is as it was, so no `with:` changes. A caller gains this only by moving its pin
+  to the release that carries it; callers pinned to an earlier tag keep the six jobs.
+  Behaviour kept: a failed build still fails the run and still does not push or deploy; a failed
+  PDF build does not hide the other builds' errors; a failed web build still blocks the deploy
+  but not the artifacts push; `build_blueprint: false` still deploys nothing. Differences a
+  caller can see: the job is one (`docs / docs` in the checks list); the job holds
+  `contents: write` (the push token reaches only the push step; checkout no longer persists it);
+  the extra papers' per-run artifacts are one `extra-papers-pdf`, not one `<name>-pdf` each.
+  `tests/test_docs_workflow.py` pins the single job and the interface.
+
 - **`lean.yml` and `manifest.yml` install `linkage` from a tag, a branch or a full commit sha
   (hub Q-0483).** `docs/RELEASE.md` rule 4 and `linkage pins` allow a `linkage_ref` that is a sha,
   but `git clone --branch` takes a branch or a tag only, so the first `linkage` step failed. Both
