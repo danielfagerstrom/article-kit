@@ -309,21 +309,6 @@ can only differ from them.
 
 ---
 
-## `linkage_ref` as a full commit sha: allowed by `RELEASE.md` and `linkage pins`, refused by `lean.yml`
-
-**Wanted by** spatial-hemigroup-affine (Paper VII), 2026-10-14 (hub Q-0452).
-
-`RELEASE.md`, "Versioning the framework", rule 4, says that a module needing an unreleased change
-"pins the commit sha for that", and `linkage pins` accepts a `linkage_ref` that is a tag or a full
-sha. The reusable `lean.yml` installs `linkage` with `git clone --depth 1 --branch "<linkage_ref>"`,
-and `--branch` takes a branch or a tag only: with a sha the clone fails and the job stops at its
-first `linkage` step. Q-0452 pinned a sha of the branch that became `v0.4.0`, and CI failed until
-the tag existed. **Suggested shape:** `git init`, `git fetch --depth 1 origin <ref>` and `git
-checkout FETCH_HEAD`, which take a tag, a branch or a sha alike; or, if a sha is not to be
-supported, rule 4 and `linkage pins` say so.
-
----
-
 ## process: Zenodo lists the zip first, and a published record's files cannot be reordered
 
 **Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-14 (hub Q-0456).
