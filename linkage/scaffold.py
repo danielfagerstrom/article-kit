@@ -35,6 +35,8 @@ FRAMEWORK_OWNED = {
     "blueprint/linkage-macros.tex": "blueprint/src/linkage-macros.tex",
     "blueprint/latexmkrc": "blueprint/src/latexmkrc",
     "scripts/build-blueprint.sh": "scripts/build-blueprint.sh",
+    "scripts/check-swallowed-prose.py": "scripts/check-swallowed-prose.py",
+    "scripts/check-control-chars.py": "scripts/check-control-chars.py",
     "claude/rules/core.md": ".claude/rules/article-kit/core.md",
     "claude/rules/writing.md": ".claude/rules/article-kit/writing.md",
     "claude/rules/blueprint.md": ".claude/rules/article-kit/blueprint.md",

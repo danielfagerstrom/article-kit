@@ -34,6 +34,14 @@ def test_init_writes_the_framework_owned_files_and_the_templates(fresh):
         assert (fresh / rel).is_file(), rel
 
 
+def test_the_swallowed_prose_gate_and_control_char_check_are_delivered(fresh):
+    """Both scripts are framework-owned, so `init` writes them, `--sync` refreshes them and
+    `linkage check` reports an edited copy (the gate once existed only in the scaffold)."""
+    for name in ("check-swallowed-prose.py", "check-control-chars.py"):
+        assert scaffold.FRAMEWORK_OWNED[f"scripts/{name}"] == f"scripts/{name}"
+        assert (fresh / "scripts" / name).is_file(), name
+
+
 def test_the_templates_are_substituted(fresh):
     toml = (fresh / "linkage.toml").read_text(encoding="utf-8")
     assert 'slug = "fresh"' in toml
@@ -119,7 +127,9 @@ def test_sync_works_in_a_paper_only_repository(tmp_path):
     for skipped in ("blueprint.md", "ledger.md", "lean.md"):
         assert not (stale.parent / skipped).exists()
     assert not (root / "blueprint").exists()
-    assert not (root / "scripts").exists()
+    # the two source checks read the paper directories, so a paper-only repository gets them
+    assert sorted(p.name for p in (root / "scripts").iterdir()) == [
+        "check-control-chars.py", "check-swallowed-prose.py"]
     assert scaffold.drift(root) == []
 
 

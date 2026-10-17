@@ -106,7 +106,7 @@ in the safe direction (narrowing, splitting, restating an interface at its sourc
 `% CHANGED` marker and a ledger row; a widening waits for the author. The marker goes on its own
 line, before the changed text, never after it — appended after a replacement
 that stopped mid-line, it turns the rest of that line into comment, which the scaffolded
-`scripts/check-swallowed-prose.py` gates.
+`scripts/check-swallowed-prose.py` gates (the manifest workflow runs it on every pull request).
 
 ### 6. The fidelity review
 

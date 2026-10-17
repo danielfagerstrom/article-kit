@@ -396,33 +396,6 @@ the `v0.4.0` changelog, which has the faults of `linkage` that the same run foun
 
 ---
 
-## process: the swallowed-prose gate is in the scaffold, but `linkage init` never copies it
-
-**Wanted by** spatial-hemigroup-affine (Paper VII), writing-rules pass, 2026-10-14
-(`records/affine/PASS-writing-rules-affine.md`, PR #138).
-
-Appendix C of the affine paper printed a broken sentence ("…where they name them.of the Fourier
-transform…"). A `% CHANGED` marker in the middle of a line had made the rest of that line a comment,
-and passes 1–3 and two blind reviews missed it. PROCESS.md § 5 and the `lean.md` session rule both
-say "the scaffolded `scripts/check-swallowed-prose.py`" gates this. The affine repository has no
-such script. The scaffold does hold it (`scaffold/scripts/check-swallowed-prose.py`, added in
-f79c6fa, Q-0238). But `linkage/scaffold.py` lists it in neither `FRAMEWORK_OWNED` nor `SEEDED`, so
-neither `linkage init` nor `linkage init --sync` ever writes it into an article. Its sibling
-`scaffold/scripts/check-control-chars.py` is in the same position: articles have it only as hand
-copies. The test (`tests/test_check_swallowed_prose.py`) copies the script into its fixture with
-`shutil.copy`, which is why nothing caught the missing entry. And nothing runs it: no workflow in
-`.github/workflows/` calls either script, and `linkage check` does not include it. So the gate
-works only in spatial-hemigroup-scale-space, the repository it was ported from, which has its own
-copy. **Suggested shape:** (1) add both scripts to `FRAMEWORK_OWNED`. Then `--sync` delivers them,
-`linkage check` reports an edited copy, and a test can scaffold an article and check that both are
-there. (2) Run the gate without anyone having to remember it. The script compares against a base
-revision, so the natural place is a pull request: one of the reusable workflows articles already call
-(`manifest.yml` or `lean.yml`) runs `python scripts/check-swallowed-prose.py <the PR's base sha>` and fails on a hit. Or
-`linkage check` runs it against the default branch's merge base, and reports it as advisory when
-that base cannot be reached.
-
----
-
 ## `linkage check` pairs a proof with the statement above it before reading its `% proof of` marker
 
 **Wanted by** spatial-hemigroup-affine (Paper VII), writing-rules pass, 2026-10-14
