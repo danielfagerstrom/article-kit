@@ -161,6 +161,24 @@ jobs:
             ${{ inputs.strict_shared && '--strict-shared' || '' }} \
             --emit-manifest "$RUNNER_TEMP/$MANIFEST_NAME"
 
+      # The swallowed-prose gate (scripts/check-swallowed-prose.py, delivered by `linkage init
+      # --sync`) compares the changed .tex files with a base revision, so it only means
+      # something on a pull request: the PR's base sha, fetched on its own because the default
+      # checkout is shallow. A hit fails the job. An article that has not yet synced the script
+      # gets a notice instead of a failure. It writes nothing, so the workspace stays clean for
+      # the hub steps below.
+      - name: Swallowed-prose gate (pull requests)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ ! -f scripts/check-swallowed-prose.py ]; then
+            echo "::notice::scripts/check-swallowed-prose.py is missing; run 'linkage init --sync' to deliver the swallowed-prose gate."
+            exit 0
+          fi
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          python3 scripts/check-swallowed-prose.py "$BASE_SHA"
+
       # ---- dry-run half: prove the guard's semantics, touch nothing ----
       - name: "Dry run: self-test the diff-guard semantics"
         if: inputs.dry_run
