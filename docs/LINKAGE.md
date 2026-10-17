@@ -202,6 +202,13 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    the subject would be worse than staying silent. A matched proof is compared exactly as the
    adjacent case (verbatim / tracked / stale, `--pin-shared` included).
 
+   A `% proof of` marker overrides position: if the nearest non-blank line above an adjacent
+   `\begin{proof}` is a `% proof of <label>` marker naming a label that is not this statement's
+   (its own `\label` or one in its `% shared with blueprint` marker), that proof is not adjacent
+   to this statement. The statement falls through to the lookup by label, to `% proof omitted`,
+   or to the "neither adjacent nor matched" finding. This is what lets a paper state the main
+   theorems first and put their proofs, each under its marker, after the lemmas.
+
    **A shared statement whose node has a proof of record but whose paper proof is neither
    adjacent nor matched** is now itself a finding — the silent loss of coverage made visible —
    reported as `[proof]  file:line label: ... neither adjacent ... nor matched ...` (advisory,
