@@ -7,6 +7,16 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage release export` removes the files it no longer writes (hub Q-0484).** An export over
+  an earlier one kept the earlier one's files: in affine's `iso-v0.1`, 81 Lean files the second
+  export no longer wrote would have been built and committed, and a renamed supplement PDF stayed
+  beside the new one. The export now records what it writes and removes the rest of its tree and
+  the directories that leaves empty, keeping `.git/`, `.zenodo-deposition.json` and any `.lake/`.
+  A symlink or junction is never followed or removed: it is named and left, and the run exits 1
+  without building. It refuses, listing the files, when `--out` is or holds the repository or
+  held no earlier export (no `README.md`). `--dry-run --out DIR` lists what would be removed.
+  `tests/test_release.py`; the WISHLIST entry is removed.
+
 - **`docs.yml` builds in one job (hub Q-0496).** GitHub bills each job rounded up to a whole
   minute, and the six jobs (`paper`, `extra_paper`, `blueprint`, `web`, `publish`, `deploy`) each
   took 15–60 seconds, so a docs run that did about a minute of work billed five or six. In

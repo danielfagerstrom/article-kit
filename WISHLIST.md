@@ -347,22 +347,6 @@ a file of the first paper that needs it, or in a shared file that imports neithe
 
 ---
 
-## `linkage release export` does not remove a file it no longer writes
-
-**Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-14 (hub Q-0452;
-its `records/affine/RELEASE-procedure-iso.md`, §§ 2 and 7).
-
-An export written over an earlier one keeps the earlier one's files. After the closure shrank, the
-81 Lean files the second export no longer wrote would have been built with the library (its
-`globs` take every file of the directory) and committed at `git add -A`; and a supplement PDF
-renamed between two exports was left beside the new one. The directory was cleared by hand, which
-first needs `lake-store.py unlink` on the export, since a recursive delete can follow the package
-links into the store. **Suggested shape:** the export removes the files of its tree that it did
-not write this time, keeping `.lake/`, `.git/` and `.zenodo-deposition.json`; or it refuses to
-write into a directory holding files it would not write, and lists them.
-
----
-
 ## process: what a two-paper repository's first export found missing in the repository itself
 
 **Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-13 (hub Q-0451;

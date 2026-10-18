@@ -724,7 +724,8 @@ def build_parser() -> argparse.ArgumentParser:
     rx.add_argument("--build", action="store_true",
                     help="lake-store link, lake build, run the guard, check the paper's block")
     rx.add_argument("--dry-run", action="store_true",
-                    help="print the closure, regenerate the Lean tree's INDEX.md, and stop")
+                    help="print the closure, regenerate the Lean tree's INDEX.md, and stop; "
+                         "with --out, also list the files of DIR the export would remove")
     rx.set_defaults(func=cmd_release_export)
 
     rz = rsub.add_parser("zenodo", help="deposit an export on Zenodo (author-only steps)",
