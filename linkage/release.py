@@ -33,15 +33,19 @@ the release's chapters leaves the export at the next run. Every run also regener
 """
 from __future__ import annotations
 
+import argparse
 import collections
+import contextlib
 import datetime
 import html
 import io
 import json
+import os
 import re
 import shutil
 import subprocess
 import tarfile
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -617,14 +621,114 @@ def trim_default_targets(lakefile: str, libraries: set[str]) -> str:
     return DEFAULT_TARGETS_RE.sub(keep, lakefile)
 
 
+# Every file `copy` and `write` put down while a recording is open. The export opens one around its
+# tree so that, afterwards, it knows which files of the directory it did not write this time.
+_recorded: set[str] | None = None
+
+
+def _key(p: Path) -> str:
+    return os.path.normcase(os.path.abspath(p))
+
+
 def copy(src: Path, dst: Path) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
+    if _recorded is not None:
+        _recorded.add(_key(dst))
 
 
 def write(dst: Path, text: str) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(text, encoding="utf-8", newline="\n")
+    if _recorded is not None:
+        _recorded.add(_key(dst))
+
+
+# What an export never removes: `.git/` and the deposition state at the root (`reserve` writes the
+# state; the tag lives in `.git`), and a `.lake/` wherever it is (the Lake build, whose packages
+# are links into the shared store).
+KEEP_AT_ROOT = frozenset({".git", ".zenodo-deposition.json"})
+KEEP_ANYWHERE = frozenset({".lake"})
+
+
+def is_link(p: Path) -> bool:
+    """A symbolic link or, on Windows, a junction: anything a recursive delete could follow."""
+    if p.is_symlink():
+        return True
+    isjunction = getattr(os.path, "isjunction", None)         # Python 3.12+
+    if isjunction is not None and isjunction(p):
+        return True
+    try:                                                        # Windows, Python 3.11
+        return bool(os.lstat(p).st_file_attributes & 0x400)     # FILE_ATTRIBUTE_REPARSE_POINT
+    except (OSError, AttributeError):
+        return False
+
+
+def stale_entries(out: Path, written: set[str]) -> tuple[list[Path], list[Path], list[Path]]:
+    """What is under `out` that the export did not write: its files, the links met (never
+    entered, so nothing beyond `out` is listed), and the directories walked. `.git/`, `.lake/`
+    and the deposition state are neither listed nor entered."""
+    stale: list[Path] = []
+    links: list[Path] = []
+    walked: list[Path] = []
+    for here, dirs, files in os.walk(out, followlinks=False):
+        at_root = Path(here) == out
+        walked.append(Path(here))
+        keep = []
+        for d in sorted(dirs):
+            if d in KEEP_ANYWHERE or (at_root and d in KEEP_AT_ROOT):
+                continue
+            if is_link(Path(here) / d):
+                links.append(Path(here) / d)
+            else:
+                keep.append(d)
+        dirs[:] = keep
+        for f in sorted(files):
+            p = Path(here) / f
+            if at_root and f in KEEP_AT_ROOT:
+                continue
+            if is_link(p):
+                links.append(p)
+            elif _key(p) not in written:
+                stale.append(p)
+    return stale, links, walked
+
+
+def prune_export(out: Path, written: set[str], root: Path, had_export: bool,
+                 dry_run: bool = False) -> bool:
+    """Remove from `out` the files this export did not write, and the directories that leaves
+    empty. False when something stale is left: it refuses (removing nothing, naming the files)
+    when `out` is the repository or holds it, or holds files and no earlier export's
+    `README.md`; a link or junction is never followed or removed, it is named and left."""
+    stale, links, walked = stale_entries(out, written)
+    rel = lambda p: p.relative_to(out).as_posix()             # noqa: E731
+    reason = None
+    ro, rr = out.resolve(), root.resolve()
+    if ro == rr or ro in rr.parents:
+        reason = "the export directory is, or holds, the repository"
+    elif stale and not had_export:
+        reason = "the directory held no earlier export (no README.md) before this one"
+    if reason:
+        print(f"export directory not cleaned: {reason}. Files this export does not write "
+              f"({len(stale)}); remove them by hand if they are not wanted:")
+        for p in stale:
+            print("  -", rel(p))
+    elif stale:
+        verb = "would remove" if dry_run else "removed"
+        for p in stale:
+            if not dry_run:
+                p.unlink()
+            print(f"  {verb}: {rel(p)}")
+        print(f"{verb} {len(stale)} file(s) of the directory that this export does not write")
+        if not dry_run:
+            for d in sorted(walked, key=lambda p: len(p.parts), reverse=True):
+                if d != out:
+                    with contextlib.suppress(OSError):
+                        d.rmdir()                           # only an empty one goes
+    for p in links:
+        print(f"  LINK left in place, not followed: {rel(p)}  (a package link: "
+              f"`lake-store.py unlink` the export, then remove it by hand)")
+    return not reason and not links
 
 
 # Reports (reviews, triage notes, response plans) name files by their path on the author's
@@ -1169,8 +1273,40 @@ def _tagged(text: str, only: set[str] | None):
 
 # ---- the run ------------------------------------------------------------------------------------
 
+# The files the last `_export` wrote, for `--dry-run --out`, which runs one into a scratch directory.
+_last_written: set[str] = set()
+
+
 def export(cfg: Config, args) -> int:
-    """`linkage release export`: the whole run, reports included. Returns the exit code."""
+    """`linkage release export`: the whole run, reports included. Returns the exit code.
+
+    The files of `--out` that the run does not write are removed (`prune_export`). `--dry-run`
+    with `--out` says which: the tree is written once into a scratch directory, and what that
+    wrote is compared with `--out`."""
+    rc = _export(cfg, args)
+    if not (args.dry_run and args.out):
+        return rc
+    out = Path(args.out).resolve()
+    if not out.is_dir():
+        return rc
+    scratch = Path(tempfile.mkdtemp(prefix="linkage-export-")).resolve()
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc2 = _export(cfg, argparse.Namespace(**{**vars(args), "out": str(scratch),
+                                                     "dry_run": False, "build": False}))
+        if rc2 != 0:
+            print("export directory: not compared, since the export itself would not be "
+                  "written (above)")
+            return rc
+        written = {_key(out / Path(k).relative_to(_key(scratch))) for k in _last_written}
+        prune_export(out, written, cfg.root, (out / "README.md").is_file(), dry_run=True)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+    return rc
+
+
+def _export(cfg: Config, args) -> int:
+    global _recorded, _last_written
     mod = cfg.module(args.module)
     tag = args.tag or mod.tag
     if not tag:
@@ -1283,6 +1419,8 @@ def export(cfg: Config, args) -> int:
         return 1
     if out is None:
         raise ReleaseError("--out is required unless --dry-run")
+    had_export = (out / "README.md").is_file()
+    _recorded = set()
     if faults:
         write(out / "DRAFT", "This export was written with --draft and is not a release:\n"
               + "".join(f"- {f}\n" for f in faults))
@@ -1446,6 +1584,12 @@ def export(cfg: Config, args) -> int:
     # ---- README.md
     write(out / "README.md", readme(ex, chapters, tags, exported, mods, cited_by_tag))
     print(f"exported to {out}")
+    written, _recorded = _recorded, None
+    _last_written = written
+    if not prune_export(out, written, cfg.root, had_export):
+        print("the export directory still holds what this export does not write (above); "
+              "nothing built")
+        return 1
 
     if not args.build:
         return 0

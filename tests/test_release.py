@@ -1060,3 +1060,97 @@ def test_content_tex_inputs_theorems_extra_only_where_the_article_has_one() -> N
     assert "\\input{theorems-extra.tex}" in release.export_content_tex(["02-first.tex"], "v0.1")
     without = release.export_content_tex(["02-first.tex"], "v0.1", extra=False)
     assert "theorems-extra" not in without and "\\input{parts/02-first.tex}" in without
+
+
+# ---- the export removes the files it no longer writes --------------------------------------------
+
+def _export_to(repo: Path, out_dir: Path, *extra: str):
+    return run_cli("--root", str(repo), "release", "export", "--module", "line", "--draft",
+                   "--out", str(out_dir), *extra)
+
+
+def test_a_re_export_removes_the_files_the_shrunk_closure_no_longer_writes(
+        article_repo: Path, unblocked, tmp_path) -> None:
+    out_dir = tmp_path / "export"
+    rc, _, _ = _export_to(article_repo, out_dir, "--roots", "Lib.Interfaces,Lib.Later")
+    assert rc == 0
+    later = out_dir / "Formalization" / "Lib" / "Later.lean"
+    assert later.exists()
+    # What the directory holds besides the export: kept whatever it is.
+    (out_dir / ".git").mkdir()
+    (out_dir / ".git" / "HEAD").write_text("ref\n", encoding="utf-8")
+    (out_dir / ".zenodo-deposition.json").write_text("{}\n", encoding="utf-8")
+    (out_dir / "Formalization" / ".lake" / "build").mkdir(parents=True)
+    (out_dir / "Formalization" / ".lake" / "build" / "x.olean").write_text("o", encoding="utf-8")
+    (out_dir / "old-name.supplement.pdf").write_text("pdf", encoding="utf-8")
+    (out_dir / "gone" / "deeper").mkdir(parents=True)
+    (out_dir / "gone" / "deeper" / "f.txt").write_text("f", encoding="utf-8")
+    kept = out_dir / "Formalization" / "Lib" / "Main.lean"
+    before = kept.read_bytes()
+
+    rc, out, _ = _export_to(article_repo, out_dir)
+    assert rc == 0
+    assert not later.exists()
+    assert not (out_dir / "old-name.supplement.pdf").exists()
+    assert not (out_dir / "gone").exists()                  # and the directories left empty
+    assert "removed: Formalization/Lib/Later.lean" in out
+    assert kept.read_bytes() == before
+    assert (out_dir / "README.md").exists() and (out_dir / "CHANGELOG.md").exists()
+    assert (out_dir / ".git" / "HEAD").exists()
+    assert (out_dir / ".zenodo-deposition.json").exists()
+    assert (out_dir / "Formalization" / ".lake" / "build" / "x.olean").exists()
+
+
+def test_dry_run_with_out_lists_what_would_go_and_removes_nothing(
+        article_repo: Path, unblocked, tmp_path) -> None:
+    out_dir = tmp_path / "export"
+    assert _export_to(article_repo, out_dir, "--roots", "Lib.Interfaces,Lib.Later")[0] == 0
+    (out_dir / "stray.pdf").write_text("pdf", encoding="utf-8")
+    rc, out, _ = run_cli("--root", str(article_repo), "release", "export", "--module", "line",
+                         "--draft", "--dry-run", "--out", str(out_dir))
+    assert rc == 0
+    assert "would remove: stray.pdf" in out
+    assert "would remove: Formalization/Lib/Later.lean" in out
+    assert (out_dir / "stray.pdf").exists()
+    assert (out_dir / "Formalization" / "Lib" / "Later.lean").exists()
+
+
+def test_a_link_in_the_export_is_not_followed_and_not_removed(
+        article_repo: Path, unblocked, tmp_path) -> None:
+    out_dir = tmp_path / "export"
+    assert _export_to(article_repo, out_dir)[0] == 0
+    store = tmp_path / "store"
+    store.mkdir()
+    (store / "precious.txt").write_text("keep me", encoding="utf-8")
+    try:
+        (out_dir / "linked").symlink_to(store, target_is_directory=True)
+        (out_dir / "linked-file").symlink_to(store / "precious.txt")
+    except OSError:
+        pytest.skip("symbolic links are not available here")
+    (out_dir / "stale.txt").write_text("x", encoding="utf-8")
+
+    rc, out, _ = _export_to(article_repo, out_dir)
+    assert rc == 1                                          # stale content is left: not clean
+    assert "LINK left in place, not followed: linked" in out
+    assert "linked-file" in out
+    assert (store / "precious.txt").read_text(encoding="utf-8") == "keep me"
+    assert (out_dir / "linked").is_symlink() and (out_dir / "linked-file").is_symlink()
+    assert not (out_dir / "stale.txt").exists()             # the regular stale file still goes
+
+
+def test_a_directory_that_held_no_export_is_listed_not_cleaned(
+        article_repo: Path, unblocked, tmp_path) -> None:
+    out_dir = tmp_path / "export"
+    out_dir.mkdir()
+    (out_dir / "mine.txt").write_text("not an export's", encoding="utf-8")
+    rc, out, _ = _export_to(article_repo, out_dir)
+    assert rc == 1
+    assert "not cleaned" in out and "mine.txt" in out
+    assert (out_dir / "mine.txt").exists()
+
+
+def test_the_repository_itself_is_never_cleaned(article_repo: Path) -> None:
+    written: set[str] = set()
+    ok = release.prune_export(article_repo, written, article_repo, had_export=True)
+    assert not ok
+    assert (article_repo / "linkage.toml").exists()

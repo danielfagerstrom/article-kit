@@ -171,6 +171,9 @@ linkage release zenodo reserve --export <export>             # author; prints th
 #   date line and DOI into main.tex; build into the paper's directory; read page 1; commit
 linkage release export --module <M> --doi 10.5281/zenodo.N --build --out <export>
 #   tag here; commit and tag the export; create the public repository (author's word); push
+#   (an export over an earlier one removes the files it no longer writes, keeping .git/, .lake/
+#   and .zenodo-deposition.json, and never follows or removes a link; `--dry-run --out <export>`
+#   lists what it would remove)
 linkage release zenodo upload  --export <export> --tag v0.1
 linkage release zenodo status  --export <export>
 linkage release zenodo publish --export <export>             # author; cannot be undone
