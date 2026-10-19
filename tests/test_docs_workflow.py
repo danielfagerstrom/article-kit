@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from fixtures.shell import find_bash
+
 DOCS = Path(__file__).resolve().parent.parent / ".github" / "workflows" / "docs.yml"
 
 INPUTS = {
@@ -64,8 +66,18 @@ def test_a_failed_build_still_fails_the_run_and_blocks_the_deploy():
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "supplement"
 
-needs_shell = pytest.mark.skipif(shutil.which("jq") is None or shutil.which("bash") is None,
+# On Windows (where CI runs) this is Git's bash, not WSL's launcher; every script handed to it
+# is written with LF endings and every path in POSIX form (`C:/…`), which Git's bash reads.
+BASH = find_bash()
+JQ = shutil.which("jq")
+
+needs_shell = pytest.mark.skipif(JQ is None or BASH is None,
                                  reason="needs bash and jq, as the runner has")
+
+
+def _script(path: Path, text: str) -> Path:
+    path.write_text(text, encoding="utf-8", newline="\n")
+    return path
 
 
 def _helper(tmp_path: Path) -> Path:
@@ -73,19 +85,31 @@ def _helper(tmp_path: Path) -> Path:
     m = re.search(r"""cat > "\$RUNNER_TEMP/papers.sh" <<'EOF'\n(.*?)\n\s*EOF\n""",
                   DOCS.read_text(encoding="utf-8"), re.S)
     assert m, "docs.yml no longer writes $RUNNER_TEMP/papers.sh"
-    path = tmp_path / "papers.sh"
-    path.write_text(textwrap.dedent(m.group(1)) + "\n", encoding="utf-8")
-    return path
+    return _script(tmp_path / "papers.sh", textwrap.dedent(m.group(1)) + "\n")
+
+
+def _jq_shim(tmp_path: Path) -> Path:
+    """A `jq` that drops the CR a native Windows jq.exe writes before each LF, as the
+    runner's jq does not write one."""
+    shimdir = tmp_path / "jq-shim"
+    shimdir.mkdir()
+    tool = _script(shimdir / "jq", f'#!/usr/bin/env bash\nset -o pipefail\n'
+                                   f'"{Path(JQ).as_posix()}" "$@" | tr -d \'\\r\'\n')
+    tool.chmod(0o755)
+    return shimdir
 
 
 def _run(run, tmp_path: Path, script: str, paper_tex: str, extra: str = "[]",
          bindir: Path | None = None, **env: str) -> subprocess.CompletedProcess[str]:
     """Source the helper and run `script` in tmp_path, as a step of the workflow would."""
     env = {**os.environ, "PAPER_TEX": paper_tex, "EXTRA_PAPERS": extra, **env}
-    if bindir is not None:
-        env["PATH"] = f"{bindir}{os.pathsep}{env['PATH']}"
+    dirs = [bindir] if bindir is not None else []
+    if os.name == "nt":
+        dirs.append(_jq_shim(tmp_path))
+    if dirs:
+        env["PATH"] = os.pathsep.join([*map(str, dirs), env["PATH"]])
     return run(
-        ["bash", "-c", f'set -eo pipefail; . "{_helper(tmp_path)}"; {script}'],
+        [BASH, "-c", f'set -eo pipefail; . "{_helper(tmp_path).as_posix()}"; {script}'],
         cwd=tmp_path, env=env, capture_output=True, text=True, check=False)
 
 
@@ -94,17 +118,14 @@ def _step(tmp_path: Path, name: str) -> Path:
     m = re.search(rf"\n      - name: {re.escape(name)}\n(?:        .*\n)*?        run: \|\n"
                   r"((?:          .*\n|\s*\n)+)", DOCS.read_text(encoding="utf-8"))
     assert m, f"docs.yml has no step {name!r}"
-    path = tmp_path / "step.sh"
-    path.write_text(re.sub(r"\$\{\{.*?\}\}", "X", textwrap.dedent(m.group(1))), encoding="utf-8")
-    return path
+    return _script(tmp_path / "step.sh", re.sub(r"\$\{\{.*?\}\}", "X", textwrap.dedent(m.group(1))))
 
 
 def _bin(tmp_path: Path, body: str) -> Path:
     """A directory holding a `tectonic` script with `body`, to put first on PATH."""
     bindir = tmp_path / "bin"
     bindir.mkdir()
-    tool = bindir / "tectonic"
-    tool.write_text("#!/usr/bin/env bash\n" + body, encoding="utf-8")
+    tool = _script(bindir / "tectonic", "#!/usr/bin/env bash\n" + body)
     tool.chmod(0o755)
     return bindir
 
@@ -154,7 +175,7 @@ def test_one_root_builds_as_it_always_did(tmp_path, real_run):
     _sources(tmp_path, "main.tex")
     calls = tmp_path / "calls"
     out = _run(real_run, tmp_path, "build_paper paper paper-pdf", "paper/main.tex",
-               bindir=_bin(tmp_path, FAKE), CALLS=str(calls))
+               bindir=_bin(tmp_path, FAKE), CALLS=calls.as_posix())
     assert out.returncode == 0, out.stderr
     assert calls.read_text(encoding="utf-8").splitlines() == ["paper/main.tex | aux: "]
     assert sorted(p.name for p in (tmp_path / "paper-pdf").iterdir()) == ["paper.pdf"]
@@ -165,7 +186,7 @@ def test_two_roots_build_twice_in_order_and_publish_both(tmp_path, real_run):
     _sources(tmp_path, "main.tex", "supplement.tex")
     calls = tmp_path / "calls"
     out = _run(real_run, tmp_path, "build_paper paper paper-pdf", "paper/main.tex paper/supplement.tex",
-               bindir=_bin(tmp_path, FAKE), CALLS=str(calls))
+               bindir=_bin(tmp_path, FAKE), CALLS=calls.as_posix())
     assert out.returncode == 0, out.stderr
     # the second pass of each root finds the other's .aux
     assert calls.read_text(encoding="utf-8").splitlines() == [
@@ -184,7 +205,7 @@ def test_a_failed_root_fails_the_build(tmp_path, real_run):
     _sources(tmp_path, "main.tex", "supplement.tex")
     out = _run(real_run, tmp_path, "build_paper paper paper-pdf", "paper/main.tex paper/supplement.tex",
                bindir=_bin(tmp_path, '[ "${@: -1}" != paper/supplement.tex ] || exit 1\n' + FAKE),
-               CALLS=str(tmp_path / "calls"))
+               CALLS=(tmp_path / "calls").as_posix())
     assert out.returncode != 0
     assert not (tmp_path / "paper-pdf").exists()
 
@@ -192,7 +213,7 @@ def test_a_failed_root_fails_the_build(tmp_path, real_run):
 @needs_shell
 def test_two_roots_of_one_stem_are_refused(tmp_path, real_run):
     out = _run(real_run, tmp_path, "build_paper paper paper-pdf", "a/main.tex a/x.tex b/x.tex",
-               bindir=_bin(tmp_path, FAKE), CALLS=str(tmp_path / "calls"))
+               bindir=_bin(tmp_path, FAKE), CALLS=(tmp_path / "calls").as_posix())
     assert out.returncode != 0
     assert "paper.x.pdf" in out.stdout
     assert not (tmp_path / "calls").exists()
@@ -206,13 +227,13 @@ def test_two_cross_referencing_roots_resolve_with_tectonic(tmp_path, real_run):
     cannot resolve its reference into the supplement, and the last build of each root resolves
     every reference. A wrapper keeps each run's log, which the helper does not."""
     shutil.copytree(FIXTURE, tmp_path / "paper")
-    wrapper = (f'tex="${{@: -1}}"\n"{shutil.which("tectonic")}" --keep-logs "$@" || exit $?\n'
+    wrapper = (f'tex="${{@: -1}}"\n"{Path(shutil.which("tectonic")).as_posix()}" --keep-logs "$@" || exit $?\n'
                'n=$(ls "$LOGS" | wc -l)\n'
                'cp "${tex%.tex}.log" "$LOGS/$n-$(basename "${tex%.tex}").log"\n')
     logs = tmp_path / "logs"
     logs.mkdir()
     out = _run(real_run, tmp_path, "build_paper paper paper-pdf", "paper/main.tex paper/supplement.tex",
-               bindir=_bin(tmp_path, wrapper), LOGS=str(logs))
+               bindir=_bin(tmp_path, wrapper), LOGS=logs.as_posix())
     assert out.returncode == 0, out.stdout + out.stderr
     runs = sorted(logs.iterdir())
     assert [p.name for p in runs] == ["0-main.log", "1-supplement.log", "2-main.log",
@@ -235,12 +256,12 @@ def test_the_site_lists_and_validates_every_root(tmp_path, real_run):
         (tmp_path / name).write_text("%PDF-1.5\n", encoding="utf-8")
     extra = json.dumps([{"name": "iso", "tex": ["paper-iso/main.tex", "paper-iso/supplement.tex"],
                          "title": "The isotropic paper"}])
-    github = {"RUNNER_TEMP": str(tmp_path), "BUILD_WEB": "false", "CHANNEL_INPUT": "",
+    github = {"RUNNER_TEMP": tmp_path.as_posix(), "BUILD_WEB": "false", "CHANNEL_INPUT": "",
               "GITHUB_REF": "refs/heads/main", "GITHUB_REF_NAME": "main",
               "GITHUB_SHA": "abc1234", "GITHUB_REPOSITORY": "o/r"}
 
     def step(name: str) -> subprocess.CompletedProcess[str]:
-        return _run(real_run, tmp_path, f'bash -eo pipefail "{_step(tmp_path, name)}"',
+        return _run(real_run, tmp_path, f'"$BASH" -eo pipefail "{_step(tmp_path, name).as_posix()}"',
                     "paper/main.tex paper/supplement.tex", extra, **github)
 
     out = step("Assemble dist/ (PDFs + web blueprint + index.html)")
