@@ -231,6 +231,16 @@ a sandbox DOI is told apart by its record existing only at sandbox.zenodo.org, n
 and `release_gate` reads it that way (a sandbox deposit goes on past a "working draft" fault that
 zenodo.org refuses).
 
+**Rehearsal checklist, before a repository's first real deposit.** Run reserve, upload and
+`status` on the sandbox, and read two lines of `status`: `file order`, whose first name must be
+the paper's PDF (a published record's files cannot be reordered, only a new version can: affine's
+`iso-v0.1` listed the zip first), and `default preview`, which must name the paper's PDF too.
+`upload` sets both through the records API's draft (`files.order`, `files.default_preview`);
+`publish` reads the order back and refuses when the first file is not the paper's PDF
+(`--allow-file-order` overrides). The write of `files.order` was built from the records API's
+shape and not run against Zenodo, so the rehearsal is where it is first seen to work; if `status`
+shows another order, reorder the files on the draft page before publishing.
+
 What the first runs taught, now built into the scripts: the release date line may span two lines
 (the gate reads the whole braced `\date{...}`); guard lines are matched to exported modules by
 qualified name; exported review records have local paths replaced by `<local path>`; after a

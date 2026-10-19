@@ -1154,3 +1154,75 @@ def test_the_repository_itself_is_never_cleaned(article_repo: Path) -> None:
     ok = release.prune_export(article_repo, written, article_repo, had_export=True)
     assert not ok
     assert (article_repo / "linkage.toml").exists()
+
+
+# ---- zenodo: the file order and the default preview, read from the draft -------------------------
+
+def _order_draft(monkeypatch, tmp_path: Path, order: list[str], published: list) -> None:
+    zenodo.save_state(tmp_path, {"sandbox": True, "id": 7, "doi": "10.5281/zenodo.7",
+                                 "bucket": "b"})
+    (tmp_path / "p-v1.pdf").write_bytes(b"%PDF")
+    (tmp_path / "p-v1.supplement.pdf").write_bytes(b"%PDF")
+    monkeypatch.setenv("ZENODO_SANDBOX_TOKEN", "tok")
+    monkeypatch.setattr(zenodo, "release_gate", lambda *a: None)
+
+    def fake(method, url, tok, **kw):
+        if method == "POST":
+            published.append(url)
+            return {"links": {}}
+        if "/records/" in url:
+            return {"files": {"order": order, "default_preview": "p-v1.pdf",
+                              "entries": {n: {} for n in order}}}
+        return {"id": 7, "state": "unsubmitted", "files": [],
+                "metadata": {"title": "t", "creators": [{"name": "A"}],
+                             "upload_type": "publication",
+                             "prereserve_doi": {"doi": "10.5281/zenodo.7"}}}
+    monkeypatch.setattr(zenodo, "call", fake)
+
+
+def test_status_prints_the_file_order_and_default_preview_by_name(monkeypatch, tmp_path) -> None:
+    _order_draft(monkeypatch, tmp_path, ["p-v1.pdf", "p-v1.supplement.pdf", "p-v1.zip"], [])
+    rc, out, _ = run_cli("release", "zenodo", "status", "--export", str(tmp_path))
+    assert rc == 0
+    assert "file order: p-v1.pdf > p-v1.supplement.pdf > p-v1.zip" in out
+    assert "default preview: p-v1.pdf" in out
+
+
+def test_publish_refuses_when_the_first_file_is_not_the_papers_pdf(monkeypatch, tmp_path) -> None:
+    published: list = []
+    _order_draft(monkeypatch, tmp_path, ["p-v1.zip", "p-v1.pdf"], published)
+    rc, _, err = run_cli("release", "zenodo", "publish", "--export", str(tmp_path))
+    assert rc == 2 and "p-v1.zip, not the paper's PDF p-v1.pdf" in err
+    assert published == []
+
+
+def test_publish_goes_on_with_the_papers_pdf_first(monkeypatch, tmp_path) -> None:
+    published: list = []
+    _order_draft(monkeypatch, tmp_path, ["p-v1.pdf", "p-v1.zip"], published)
+    monkeypatch.setattr("builtins.input", lambda: "publish")
+    rc, _, _ = run_cli("release", "zenodo", "publish", "--export", str(tmp_path))
+    assert rc == 0 and len(published) == 1
+
+
+def test_publish_override_flag_goes_on_past_the_file_order(monkeypatch, tmp_path) -> None:
+    published: list = []
+    _order_draft(monkeypatch, tmp_path, ["p-v1.zip", "p-v1.pdf"], published)
+    monkeypatch.setattr("builtins.input", lambda: "publish")
+    rc, _, _ = run_cli("release", "zenodo", "publish", "--export", str(tmp_path),
+                       "--allow-file-order")
+    assert rc == 0 and len(published) == 1
+
+
+def test_the_draft_write_carries_the_file_order(monkeypatch) -> None:
+    sent: list = []
+    draft = {"metadata": {"creators": [{}], "resource_type": {"id": "publication"}},
+             "pids": {"doi": {"identifier": "10.5281/zenodo.7"}}}
+
+    def fake(method, url, tok, data=None, **kw):
+        if method == "PUT":
+            sent.append(data)
+        return draft
+    monkeypatch.setattr(zenodo, "call", fake)
+    zenodo.set_default_preview({"sandbox": True, "id": 7}, "tok", "p.pdf", ["p.pdf", "p.zip"])
+    assert sent[0]["files"] == {"enabled": True, "default_preview": "p.pdf",
+                                "order": ["p.pdf", "p.zip"]}

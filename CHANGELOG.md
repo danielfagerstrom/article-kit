@@ -7,6 +7,15 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`zenodo status` prints the file order and default preview; `publish` checks them (hub Q-0486).**
+  In affine's `iso-v0.1` the published record listed the zip first, and a published record's files
+  cannot be reordered. `upload` now writes `files.order` (paper PDF, supplement, zip) beside
+  `default_preview` through the records API draft; `status` reads both back by name; `publish`
+  refuses when the first file is not the paper's PDF (`--allow-file-order` overrides).
+  `docs/RELEASE.md` lists the two lines as a sandbox-rehearsal step. The `order` write follows the
+  records API's shape and has not been run against live Zenodo. `tests/test_release.py`; the
+  WISHLIST entry is removed.
+
 - **`linkage release export` removes the files it no longer writes (hub Q-0484).** An export over
   an earlier one kept the earlier one's files: in affine's `iso-v0.1`, 81 Lean files the second
   export no longer wrote would have been built and committed, and a renamed supplement PDF stayed
