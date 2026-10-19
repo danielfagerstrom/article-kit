@@ -92,7 +92,7 @@ def _jq_shim(tmp_path: Path) -> Path:
     """A `jq` that drops the CR a native Windows jq.exe writes before each LF, as the
     runner's jq does not write one."""
     shimdir = tmp_path / "jq-shim"
-    shimdir.mkdir()
+    shimdir.mkdir(exist_ok=True)   # _run makes it once per step, and a test may run several
     tool = _script(shimdir / "jq", f'#!/usr/bin/env bash\nset -o pipefail\n'
                                    f'"{Path(JQ).as_posix()}" "$@" | tr -d \'\\r\'\n')
     tool.chmod(0o755)
@@ -124,7 +124,7 @@ def _step(tmp_path: Path, name: str) -> Path:
 def _bin(tmp_path: Path, body: str) -> Path:
     """A directory holding a `tectonic` script with `body`, to put first on PATH."""
     bindir = tmp_path / "bin"
-    bindir.mkdir()
+    bindir.mkdir(exist_ok=True)
     tool = _script(bindir / "tectonic", "#!/usr/bin/env bash\n" + body)
     tool.chmod(0o755)
     return bindir
