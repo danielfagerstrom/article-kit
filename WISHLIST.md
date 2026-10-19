@@ -287,23 +287,6 @@ The author on the abstract, § 1 and § 1.1 of the same paper, after its rewrite
 
 ---
 
-## process: Zenodo lists the zip first, and a published record's files cannot be reordered
-
-**Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-14 (hub Q-0456).
-
-`linkage release zenodo upload` sends the paper's PDF, the supplement's PDF and the zip of the
-tagged tree, in that order (`RELEASE.md`, "A paper with a supplement": the paper's PDF "stays the
-default preview"), and the published record lists the zip first. A published record's files cannot
-be changed or reordered; only a new version can. So the page a reader lands on offers the source
-archive before the paper. **Suggested shape:** the sandbox rehearsal that `RELEASE.md` describes
-becomes a checklist step before a repository's first real deposit, and what it reads includes the
-file order and the default preview by name (`zenodo status` could print both from the draft, and
-`publish` could refuse when the first file listed is not the paper's PDF). The draft records of
-the current Zenodo carry a files `order` beside `default_preview`; whether the deposit API that
-`upload` uses can set it was not checked.
-
----
-
 ## process: run the export's dry run early when a repository holds two papers' Lean
 
 **Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-14 (hub Q-0451,
