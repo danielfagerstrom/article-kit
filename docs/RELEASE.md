@@ -130,9 +130,11 @@ In order; a release is not done until the last item.
      `.github/workflows/docs.yml` calling article-kit's reusable workflow with the module's
      `slug`, `channel: <version>`, `push_artifacts: false` (a frozen export's released PDF is
      already committed; a CI-built copy beside it invites a mistake), and the three R2 secrets
-     (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_ACCOUNT_ID`). Dispatch it. The
-     channel is **write-once**: a second successful run is refused, because a DOI names those
-     bytes.
+     (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_ACCOUNT_ID`). A paper with a
+     supplement passes both roots, `paper_tex: paper/main.tex paper/supplement.tex`, and the
+     channel serves `paper.pdf` and `paper.supplement.pdf` (see "A paper with a supplement"
+     below). Dispatch it. The channel is **write-once**: a second successful run is refused,
+     because a DOI names those bytes.
    - **The hub's `constellation.json` names it.** A whole repository's paper gets a `site`
      entry; a module of a multi-module repository gets one naming `module: <its slug>`, which
      takes the title, version, export and DOI from that module's record in `modules` rather
@@ -206,9 +208,15 @@ lists the flags that override a parameter for one run (`--tag`, `--chapters`, `-
 draft line, the version, the DOI), so the supplement's `\date` line is frozen with the paper's;
 and `linkage release zenodo upload` sends it as a further file after the paper's PDF, which names
 the source zip and stays the default preview (the PDFs at the export's root are taken with the
-paper's first, whatever their names sort to). `extra_files` names files or directories that the
-paper or a Lean header cites by path (a script that draws a figure, a saved report): they are
-exported at the same relative path, where `extra_notes` go under `notes/`.
+paper's first, whatever their names sort to). The site's `docs.yml` serves the two as two PDFs:
+its `paper_tex` (or an extra paper's `tex`, as a JSON list) names both roots, main first. The
+roots are built in order and then once more, so that each finds the other's `.aux` when
+`xr-hyper` reads it, and the first is published as `paper.pdf` (`<name>.pdf`), each further root
+as `paper.supplement.pdf` (`<name>.<stem>.pdf`). One root builds as before; a `full.tex` that
+holds the paper and the supplement as one document is not needed for the site. `extra_files`
+names files or directories that the paper or a Lean header cites by path (a script that draws a
+figure, a saved report): they are exported at the same relative path, where `extra_notes` go
+under `notes/`.
 
 **A root that imports its library whole brings the library.** A module named in `roots` that
 imports the library's root file (`import MyLib`, as a witness file or a generated guard often

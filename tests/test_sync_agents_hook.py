@@ -9,24 +9,15 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 from pathlib import Path
 
 import pytest
 
+from fixtures.shell import find_bash
 from linkage import scaffold
 
 HOOK = scaffold.scaffold_dir() / "claude" / "sync-agents-hook.sh"
 STUB = '#!/usr/bin/env bash\nprintf "%s" "$CLAUDE_PROJECT_DIR" > "$HOME/ran"\n'
-
-
-def find_bash() -> str | None:
-    """A bash that reads `C:/…` paths: on Windows `bash` on PATH may be WSL's, so prefer Git's."""
-    git_bash = Path(os.environ.get("PROGRAMFILES", "C:/Program Files")) / "Git" / "bin" / "bash.exe"
-    if git_bash.is_file():
-        return str(git_bash)
-    return shutil.which("bash")
-
 
 BASH = find_bash()
 pytestmark = pytest.mark.skipif(BASH is None, reason="no bash")

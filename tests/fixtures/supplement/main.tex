@@ -1,0 +1,11 @@
+% A paper with a supplement, as Paper VII's iso paper is: two TeX roots that refer to each
+% other through xr-hyper, each reading the other's .aux. tests/test_docs_workflow.py builds
+% the pair with docs.yml's helper.
+\documentclass{article}
+\usepackage{xr-hyper}
+\usepackage{hyperref}
+\externaldocument[S-]{supplement}
+\begin{document}
+\section{The paper}\label{sec:paper}
+The proof is in Section~\ref{S-sec:proof} of the supplement.
+\end{document}
