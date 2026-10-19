@@ -7,6 +7,31 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`docs.yml` builds a paper of several TeX roots, so a paper with a supplement is served as
+  its two PDFs (hub Q-0485).** Paper VII's isotropic paper is `main.tex` and `supplement.tex`,
+  which refer to each other through `xr-hyper`; built alone, `main.tex` leaves every reference
+  into the supplement unresolved, so the export's `docs.yml` built a `paper/full.tex` and the
+  site served that, while the deposit holds two PDFs. Now `paper_tex` may name several roots
+  separated by spaces (`paper/main.tex paper/supplement.tex`), and an extra paper's `tex` may
+  be a JSON list. The roots are built in order with their `.aux` kept, then all once more, so
+  that each finds the other's `.aux`; the first is published as `paper.pdf` (`<name>.pdf`), each
+  further root as `paper.<stem>.pdf` (`paper.supplement.pdf`), and the artifacts README, the
+  landing page and the validation of `dist/` list every one. **Why this shape and not the
+  other the request offered** (a frozen export publishing its committed `<stem>-<tag>.pdf` and
+  `<stem>-<tag>.supplement.pdf` instead of building): it fits the inputs a caller already
+  passes, serves a development repository's draft site too (whose `iso.pdf` had the same
+  fault), and keeps one path for every PDF the site serves. Publishing the committed bytes of a
+  frozen export can still be added after; nothing here precludes it. **What a caller changes:
+  nothing** unless it wants this: one root builds exactly as before (one Tectonic run, no kept
+  intermediates), every input keeps its type and default, and the per-run artifact `paper-pdf`
+  holds `paper.pdf` as it did (and the further roots beside it). New refusal: two roots that
+  would be published under one name (`paper.x.pdf` from `a/x.tex` and `b/x.tex`). A caller
+  gains this by moving its pin to the release that carries it; the export of `iso-v0.1` can
+  then drop `paper/full.tex` from its `docs.yml`, and `research-site` the `paper_label` and
+  `files` work-around of `research-site#12`. `tests/test_docs_workflow.py` runs the workflow's
+  helper and its two site steps, and builds `tests/fixtures/supplement/` with Tectonic where it
+  is installed; the WISHLIST entry is removed.
+
 - **`linkage release export` removes the files it no longer writes (hub Q-0484).** An export over
   an earlier one kept the earlier one's files: in affine's `iso-v0.1`, 81 Lean files the second
   export no longer wrote would have been built and committed, and a renamed supplement PDF stayed

@@ -112,7 +112,11 @@ on:
         default: true
         type: boolean
       paper_tex:
-        description: "Entry point of the paper."
+        description: >-
+          Entry point of the paper, or its TeX roots separated by spaces when it has several
+          that read each other's .aux through xr-hyper (a paper with a supplement:
+          'paper/main.tex paper/supplement.tex'). The first is published as paper.pdf, each
+          further root as paper.<stem>.pdf (paper.supplement.pdf).
         required: false
         default: paper/main.tex
         type: string
@@ -127,7 +131,9 @@ on:
           {"name": ..., "tex": ..., "title": ...}: each is built like the paper, published to the
           artifacts branch and listed on the site as <name>.pdf. For an article whose repository
           holds several modules (Paper V's ADR-0004/0006: a released line paper in paper/ and
-          modules B and C in paper-b/, paper-c/). Empty list: nothing extra.
+          modules B and C in paper-b/, paper-c/). Empty list: nothing extra. A `tex` may be a
+          list of roots, as `paper_tex` may: ["paper-iso/main.tex", "paper-iso/supplement.tex"]
+          publishes <name>.pdf and <name>.supplement.pdf.
         required: false
         default: "[]"
         type: string
@@ -253,22 +259,103 @@ jobs:
           tar -xzf tectonic.tar.gz tectonic
           sudo mv tectonic /usr/local/bin/
 
+      # A paper is one TeX root or several. `paper_tex` is a space-separated list of roots, and
+      # an extra paper's `tex` a string or a JSON list; one root is the usual case, and builds
+      # exactly as it always did. Several roots are one paper whose files refer to each other
+      # through xr-hyper, each reading the other's .aux (Paper VII's main.tex and
+      # supplement.tex): Tectonic reruns one document to a fixed point but knows nothing of the
+      # other, so the roots are built in order with their .aux kept, then all once more, when
+      # every .aux exists. The first root is published as <name>.pdf, as before; each further
+      # root as <name>.<stem>.pdf (paper.supplement.pdf), beside it.
+      #
+      # The helper is written once and sourced by every step that names the PDFs, so the build,
+      # the artifacts README, the landing page and the validation cannot disagree about them.
+      # tests/test_docs_workflow.py runs it.
+      - name: Write the paper build helper
+        run: |
+          cat > "$RUNNER_TEMP/papers.sh" <<'EOF'
+          # roots: one line per PDF the paper inputs name, <paper> TAB <pdf> TAB <tex>, where
+          # <paper> is `paper` or an extra paper's name.
+          roots() {
+            local first=1 tex
+            for tex in $PAPER_TEX; do
+              if [ "$first" = 1 ]; then
+                printf 'paper\tpaper.pdf\t%s\n' "$tex"
+                first=0
+              else
+                printf 'paper\tpaper.%s.pdf\t%s\n' "$(basename "${tex%.tex}")" "$tex"
+              fi
+            done
+            echo "$EXTRA_PAPERS" | jq -r '.[] | .name as $n
+              | (.tex | if type == "array" then . else [.] end) | to_entries[]
+              | [$n,
+                 (if .key == 0 then "\($n).pdf"
+                  else "\($n).\(.value | sub(".*/"; "") | sub("\\.tex$"; "")).pdf" end),
+                 .value] | @tsv'
+          }
+
+          # first_root NAME: the paper NAME's first root. awk reads to the end rather than
+          # exiting at the match, which would kill `roots` with SIGPIPE under pipefail.
+          first_root() {
+            roots | awk -F'\t' -v n="$1" '$1 == n && !found { print $3; found = 1 }'
+          }
+
+          # further_roots: the lines of `roots` for a root after a paper's first.
+          further_roots() {
+            roots | awk -F'\t' '$2 != $1 ".pdf"'
+          }
+
+          # build_paper NAME OUTDIR: build the roots of the paper NAME and copy each PDF into
+          # OUTDIR under its published name.
+          build_paper() {
+            local name="$1" out="$2" dup pass tex pdf
+            local -a texs=() pdfs=()
+            dup="$(roots | cut -f2 | sort | uniq -d)"
+            if [ -n "$dup" ]; then
+              echo "::error::two roots would be published under the same name: $dup"
+              return 1
+            fi
+            while IFS=$'\t' read -r _ pdf tex; do
+              texs+=("$tex")
+              pdfs+=("$pdf")
+            done < <(roots | awk -F'\t' -v n="$name" '$1 == n')
+            if [ "${#texs[@]}" -eq 0 ]; then
+              echo "::error::the paper '$name' names no TeX root"
+              return 1
+            fi
+            if [ "${#texs[@]}" -eq 1 ]; then
+              tectonic "${texs[0]}" || return 1
+            else
+              for pass in 1 2; do
+                for tex in "${texs[@]}"; do
+                  echo "pass $pass of 2: $tex"
+                  tectonic --keep-intermediates "$tex" || return 1
+                done
+              done
+            fi
+            mkdir -p "$out"
+            for i in "${!texs[@]}"; do
+              cp "${texs[$i]%.tex}.pdf" "$out/${pdfs[$i]}" || return 1
+            done
+          }
+          EOF
+
       # Tectonic reruns TeX/bibtex to a fixed point on its own — no latexmk needed.
-      # Output lands next to the input; rename to the canonical name here so the later steps
-      # never have to know the article's entry-point filenames.
+      # Output lands next to the input; it is copied under the canonical name into paper-pdf/
+      # here, so the later steps never have to know the article's entry-point filenames.
       - name: Build the paper
         id: paper
         continue-on-error: true
         run: |
-          tectonic "$PAPER_TEX"
-          cp "${PAPER_TEX%.tex}.pdf" paper.pdf
+          . "$RUNNER_TEMP/papers.sh"
+          build_paper paper paper-pdf
 
       - name: Upload paper.pdf (per-run artifact)
         if: steps.paper.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: paper-pdf
-          path: paper.pdf
+          path: paper-pdf
           if-no-files-found: error
 
       # The further papers of a multi-module repository: the same build as the paper in a
@@ -279,18 +366,19 @@ jobs:
         if: inputs.extra_papers != '[]'
         continue-on-error: true
         run: |
+          . "$RUNNER_TEMP/papers.sh"
           mkdir -p extra-papers
           failed=0
           while IFS=$'\t' read -r name tex; do
             echo "::group::Build $name ($tex)"
-            if tectonic "$tex" && cp "${tex%.tex}.pdf" "extra-papers/${name}.pdf"; then
+            if build_paper "$name" extra-papers; then
               echo "built $name"
             else
               echo "::error::the extra paper '$name' ($tex) did not build"
               failed=1
             fi
             echo "::endgroup::"
-          done < <(echo "$EXTRA_PAPERS" | jq -r '.[] | [.name, .tex] | @tsv')
+          done < <(echo "$EXTRA_PAPERS" | jq -r '.[] | [.name, (.tex | if type == "array" then join(" ") else . end)] | @tsv')
           exit $failed
 
       - name: Upload the extra papers (per-run artifact)
@@ -438,20 +526,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          . "$RUNNER_TEMP/papers.sh"
           mkdir publish
-          cp paper.pdf blueprint.pdf publish/
+          cp paper-pdf/*.pdf blueprint.pdf publish/
           [ ! -d extra-papers ] || cp extra-papers/*.pdf publish/
           cd publish
+          PAPER_MAIN="$(first_root paper)"
           # one markdown list item per extra paper, from the JSON input (jq is on the runner)
-          EXTRA_LINES="$(echo "$EXTRA_PAPERS" | jq -r '.[] | "- [\(.name).pdf](./\(.name).pdf) — \(.title) (built from `\(.tex)`)"')"
+          EXTRA_LINES="$(echo "$EXTRA_PAPERS" | jq -r '.[] | "- [\(.name).pdf](./\(.name).pdf) — \(.title) (built from `\(.tex | if type == "array" then .[0] else . end)`)"')"
+          # one per further root of a paper (a supplement), after the papers
+          FURTHER_LINES="$(further_roots | awk -F'\t' '{ printf "- [%s](./%s) — with %s.pdf, of which it is a further root (built from `%s`)\n", $2, $2, $1, $3 }')"
           cat > README.md <<EOF
           # CI-built PDFs
 
           Built from \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA} on $(date -u +%F) by the shared
           \`linkage\` docs workflow.
 
-          - [paper.pdf](./paper.pdf) — built from \`${{ inputs.paper_tex }}\`
+          - [paper.pdf](./paper.pdf) — built from \`${PAPER_MAIN}\`
           ${EXTRA_LINES}
+          ${FURTHER_LINES}
           - [blueprint.pdf](./blueprint.pdf) — built from \`${{ inputs.blueprint_tex }}\`
 
           This orphan branch is recreated (single commit, no history) on every docs
@@ -488,8 +581,9 @@ jobs:
           BUILD_WEB: ${{ inputs.build_web }}
           CHANNEL_INPUT: ${{ inputs.channel }}
         run: |
+          . "$RUNNER_TEMP/papers.sh"
           mkdir dist
-          cp paper.pdf blueprint.pdf dist/
+          cp paper-pdf/*.pdf blueprint.pdf dist/
           [ ! -d extra-papers ] || cp extra-papers/*.pdf dist/
           # The web build is a tree with its own index.html, which flat in dist/ would collide
           # with the one assembled below; it goes under blueprint/.
@@ -516,7 +610,10 @@ jobs:
             WEB_LINKS='<li><a href="blueprint/">blueprint (web)</a> — the same blueprint as hypertext, with the <a href="blueprint/dep_graph_document.html">dependency graph</a>: which statement rests on which, and whether each is a proved target [T] or a cited analytic interface [A].</li>'
           fi
           # one list item per extra paper (a multi-module repository), from the JSON input
-          EXTRA_LINKS="$(echo "$EXTRA_PAPERS" | jq -r '.[] | "<li><a href=\"\(.name).pdf\">\(.name).pdf</a> — \(.title) (<code>\(.tex)</code>)</li>"')"
+          EXTRA_LINKS="$(echo "$EXTRA_PAPERS" | jq -r '.[] | "<li><a href=\"\(.name).pdf\">\(.name).pdf</a> — \(.title) (<code>\(.tex | if type == "array" then .[0] else . end)</code>)</li>"')"
+          # one list item per further root of a paper (a supplement), after the papers
+          FURTHER_LINKS="$(further_roots | awk -F'\t' '{ printf "<li><a href=\"%s\">%s</a> — with %s.pdf, of which it is a further root (<code>%s</code>)</li>\n", $2, $2, $1, $3 }')"
+          PAPER_MAIN="$(first_root paper)"
           cat > index.html <<EOF
           <!doctype html>
           <html lang="en">
@@ -531,8 +628,9 @@ jobs:
           <h1>${GITHUB_REPOSITORY##*/}</h1>
           <p>CI-built PDFs, latest <code>${GITHUB_REF_NAME}</code>:</p>
           <ul>
-          <li><a href="paper.pdf">paper.pdf</a> — the article (<code>${{ inputs.paper_tex }}</code>)</li>
+          <li><a href="paper.pdf">paper.pdf</a> — the article (<code>${PAPER_MAIN}</code>)</li>
           ${EXTRA_LINKS}
+          ${FURTHER_LINKS}
           <li><a href="blueprint.pdf">blueprint.pdf</a> — the blueprint (<code>${{ inputs.blueprint_tex }}</code>)</li>
           ${WEB_LINKS}
           </ul>
@@ -560,6 +658,13 @@ jobs:
             head -c 5 "dist/$n.pdf" | grep -q "%PDF-" || { echo "::error::dist/$n.pdf does not start with %PDF-"; exit 1; }
             grep -q "href=\"$n.pdf\"" dist/index.html || { echo "::error::index.html lacks the $n.pdf link"; exit 1; }
           done
+          # and every further root of a paper (a supplement)
+          . "$RUNNER_TEMP/papers.sh"
+          while IFS=$'\t' read -r _ pdf _; do
+            [ -s "dist/$pdf" ] || { echo "::error::dist/$pdf is missing or empty — a further root did not reach dist/"; exit 1; }
+            head -c 5 "dist/$pdf" | grep -q "%PDF-" || { echo "::error::dist/$pdf does not start with %PDF-"; exit 1; }
+            grep -q "href=\"$pdf\"" dist/index.html || { echo "::error::index.html lacks the $pdf link"; exit 1; }
+          done < <(further_roots)
           grep -q "$GITHUB_SHA" dist/index.html || { echo "::error::index.html lacks the build provenance sha"; exit 1; }
           # Every link the landing page offers must resolve, or the site ships a 404 that
           # nobody notices until a reader clicks it.

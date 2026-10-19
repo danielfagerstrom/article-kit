@@ -287,28 +287,6 @@ The author on the abstract, § 1 and § 1.1 of the same paper, after its rewrite
 
 ---
 
-## The site workflow builds one TeX root per paper, so a paper with a supplement is served as its full document
-
-**Wanted by** spatial-hemigroup-affine (Paper VII), after the release `iso-v0.1`, 2026-10-14
-(hub Q-0456, Q-0457).
-
-The reusable `docs.yml` builds each paper from one file (`paper_tex`, and the `tex` of each entry of
-`extra_papers`) with one Tectonic run. The isotropic paper is two roots, `main.tex` and
-`supplement.tex`, which refer to each other through `xr-hyper`, reading the other root's `.aux`;
-built alone, `main.tex` has every reference into the supplement unresolved. The export's `docs.yml`
-therefore builds `paper/full.tex`, the paper and the supplement as one document, and the site
-serves that, while the deposit holds the two PDFs. `research-site#12` gave the site page a
-`paper_label` and a list of `files`, so that the page says what it serves and links the two
-deposited PDFs: a work-around on the site's side. The repository's own draft site has the same
-fault (its `iso.pdf` is `paper-iso/main.tex` built alone). **Suggested shape:** either a paper's
-`tex` may be a list of roots, built in order and then once more so that each `.aux` exists when the
-other reads it, each published under its own name; or, for a frozen export (`push_artifacts:
-false`), the workflow publishes the committed released PDFs (`<stem>-<tag>.pdf`,
-`<stem>-<tag>.supplement.pdf`) instead of building, since the DOI names those bytes and a rebuild
-can only differ from them.
-
----
-
 ## process: Zenodo lists the zip first, and a published record's files cannot be reordered
 
 **Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-14 (hub Q-0456).
