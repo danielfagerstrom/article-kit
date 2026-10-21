@@ -66,7 +66,7 @@ def test_a_failed_build_still_fails_the_run_and_blocks_the_deploy():
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "supplement"
 
-# On Windows (where CI runs) this is Git's bash, not WSL's launcher; every script handed to it
+# On Windows (CI runs there on push to `main`) this is Git's bash, not WSL's launcher; every script handed to it
 # is written with LF endings and every path in POSIX form (`C:/…`), which Git's bash reads.
 BASH = find_bash()
 JQ = shutil.which("jq")

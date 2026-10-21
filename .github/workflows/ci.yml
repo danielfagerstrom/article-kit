@@ -32,10 +32,28 @@ jobs:
     # for review runs this, which is why `ready_for_review` is in the trigger's types — it is
     # not one of the defaults.
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    # Windows: every consumer of this framework is a Windows checkout, and the paths, the
-    # cp1252 console default `cli.main` works around with `reconfigure`, and the uv-tool
-    # trampoline are all Windows facts. Testing elsewhere would prove less than it appears.
-    runs-on: windows-latest
+    # Linux for every pull request; Windows only on push to `main` (and a manual dispatch).
+    #
+    # This used to be Windows throughout, on the ground that every consumer was a Windows
+    # checkout. Since ADR-0028 the queue's VM runs these tools on Linux in every dispatched
+    # article session, so Linux is a platform the framework really runs on, and a Linux runner
+    # costs half a Windows one per minute (the author, 2026-10-19).
+    #
+    # What Windows still adds is the paths, the cp1252 console default `cli.main` works around
+    # with `reconfigure`, and the uv-tool trampoline. No test exercises those: conftest redirects
+    # stdout into StringIO (which keeps `reconfigure` out of play), every test builds its article
+    # under tmp_path, and none installs a uv tool. So there is no small set of Windows-only tests
+    # to carve out, and the full suite runs on Windows after merge instead. A Windows-only break
+    # therefore shows up on `main` rather than on the pull request; a test that does pin one of
+    # those facts should get a marker and move into a per-pull-request Windows job.
+    #
+    # The job's `name` keeps the Linux job called `check`, whatever a branch rule names.
+    name: ${{ matrix.os == 'ubuntu-latest' && 'check' || 'check (windows)' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["ubuntu-latest", "windows-latest"]') }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
 
     steps:

@@ -7,6 +7,10 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **CI runs on `ubuntu-latest` for pull requests (hub Q-0511).** The `check` job was
+  `windows-latest`; Linux is now a platform the queue's VM runs (ADR-0028) and costs half as much.
+  No test exercises the Windows-only facts (cp1252 console, uv-tool trampoline), so the full suite
+  runs on Windows only on push to `main`; the workflow's comment says why.
 - **`docs.yml` builds a paper of several TeX roots, so a paper with a supplement is served as
   its two PDFs (hub Q-0485).** Paper VII's isotropic paper is `main.tex` and `supplement.tex`,
   which refer to each other through `xr-hyper`; built alone, `main.tex` leaves every reference
