@@ -13,6 +13,13 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   and that the witness, probe and axiom-guard files name the paper's own modules, not the library
   root. The scaffold's rules text holds neither passage, so no `scaffold/claude/` change is needed.
   The WISHLIST entry is removed.
+- **`linkage init` writes `LICENSES/`; the export's dry run warns when it is absent (hub Q-0488).**
+  Every Lean header names `LICENSES/Apache-2.0.txt`, and the export copies `LICENSES/` — and
+  copied nothing, silently, from a repository without it (found by the affine repository's first
+  export). `init` now writes both texts (`Apache-2.0.txt`, `CC-BY-4.0.txt`) when absent; `--sync`
+  does not, so existing repositories are untouched. `release export` prints a warning naming a
+  missing text, under `--dry-run` too. `RELEASE.md` at `extra_files` says that a script exported
+  to be run finds the paper's directory under either name (`paper-iso/` or `paper/`).
 - **CI runs on `ubuntu-latest` for pull requests (hub Q-0511).** The `check` job was
   `windows-latest`; Linux is now a platform the queue's VM runs (ADR-0028) and costs half as much.
   No test exercises the Windows-only facts (cp1252 console, uv-tool trampoline), so the full suite

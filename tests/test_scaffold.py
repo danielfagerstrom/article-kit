@@ -137,3 +137,16 @@ def test_the_build_script_is_delivered_with_the_utf8_fix_and_lf_endings(fresh):
     data = (fresh / "scripts" / "build-blueprint.sh").read_bytes()
     assert b"\r" not in data
     assert b"PYTHONUTF8=1 plastex" in data
+
+
+def test_init_writes_the_two_licence_texts_and_sync_does_not(fresh, tmp_path):
+    for name in ("Apache-2.0.txt", "CC-BY-4.0.txt"):
+        assert (fresh / "LICENSES" / name).stat().st_size > 1000, name
+    # An existing text is left alone; `--sync` does not add a LICENSES/ to a repository without.
+    (fresh / "LICENSES" / "Apache-2.0.txt").write_text("mine", encoding="utf-8")
+    scaffold.init(fresh, slug="fresh")
+    assert (fresh / "LICENSES" / "Apache-2.0.txt").read_text(encoding="utf-8") == "mine"
+    old = tmp_path / "old"
+    old.mkdir()
+    scaffold.init(old, slug="old", sync=True)
+    assert not (old / "LICENSES").exists()

@@ -59,6 +59,13 @@ SEEDED = {
     "repo/records-README.md": "records/README.md",
 }
 
+# the licence texts the Lean headers and the README name; written by `init` only, never by
+# `--sync`, and never over a file that exists
+LICENSES = {
+    "licenses/Apache-2.0.txt": "LICENSES/Apache-2.0.txt",
+    "licenses/CC-BY-4.0.txt": "LICENSES/CC-BY-4.0.txt",
+}
+
 # template -> destination; rendered with @@NAME@@ substitution, never overwritten
 TEMPLATES = {
     "blueprint/web.tex.in": "blueprint/src/web.tex",
@@ -155,6 +162,14 @@ def init(root: Path, slug: str, subs: dict[str, str] | None = None,
         wrote.append(dest_rel)
 
     if not sync:
+        for rel, dest_rel in LICENSES.items():
+            dest = root / dest_rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            if dest.exists():
+                kept.append(dest_rel)
+                continue
+            dest.write_bytes((src / rel).read_bytes())
+            wrote.append(dest_rel)
         for rel, dest_rel in TEMPLATES.items():
             dest = root / dest_rel
             dest.parent.mkdir(parents=True, exist_ok=True)

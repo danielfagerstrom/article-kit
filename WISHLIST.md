@@ -287,24 +287,6 @@ The author on the abstract, § 1 and § 1.1 of the same paper, after its rewrite
 
 ---
 
-## process: what a two-paper repository's first export found missing in the repository itself
-
-**Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-13 (hub Q-0451;
-`records/affine/RELEASE-procedure-iso.md`, § 6, "In this repository" and "Known and left"). Not in
-the `v0.4.0` changelog, which has the faults of `linkage` that the same run found.
-
-1. There was no `LICENSES/`, which every Lean header names and which the export copies; when it is
-   absent the export copies nothing and says nothing. Suggested: the scaffold creates `LICENSES/`
-   with the two texts, or the dry run reports its absence.
-2. The export renames a paper's directory to `paper/`. The scripts that draw the figures into the
-   paper's directory named it by its path in the repository (`paper-iso/`) and broke in the export;
-   each now takes whichever of the two exists. Scripts exported as the record of how a list or a
-   report was made read the repository's layout and do not run in the export at all. Suggested: a
-   line in `RELEASE.md` at `extra_files`: a script exported to be run finds the paper's directory
-   under either name.
-
----
-
 ## process: the swallowed-prose gate is in the scaffold, but `linkage init` never copies it
 ## `linkage check` pairs a proof with the statement above it before reading its `% proof of` marker
 
