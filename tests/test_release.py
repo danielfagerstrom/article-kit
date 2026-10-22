@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -1226,3 +1227,18 @@ def test_the_draft_write_carries_the_file_order(monkeypatch) -> None:
     zenodo.set_default_preview({"sandbox": True, "id": 7}, "tok", "p.pdf", ["p.pdf", "p.zip"])
     assert sent[0]["files"] == {"enabled": True, "default_preview": "p.pdf",
                                 "order": ["p.pdf", "p.zip"]}
+
+
+def test_dry_run_warns_when_licenses_is_absent(article_repo: Path, unblocked) -> None:
+    lic = article_repo / "LICENSES"
+    shutil.rmtree(lic, ignore_errors=True)
+    rc, out, _ = run_cli("--root", str(article_repo), "release", "export",
+                         "--module", "line", "--dry-run")
+    assert rc == 0
+    assert "warning: LICENSES/ lacks Apache-2.0.txt, CC-BY-4.0.txt" in out
+    lic.mkdir()
+    for name in ("Apache-2.0.txt", "CC-BY-4.0.txt"):
+        (lic / name).write_text("text", encoding="utf-8")
+    _, out, _ = run_cli("--root", str(article_repo), "release", "export",
+                        "--module", "line", "--dry-run")
+    assert "warning: LICENSES/" not in out
