@@ -7,6 +7,12 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **Release checklist: run the export's dry run early where the Lean serves two papers (hub
+  Q-0487).** `docs/RELEASE.md` checklist item 1 gains `linkage release export --dry-run`, its
+  closure read against the printed statements; `docs/PROCESS.md` § 5 says where a helper lemma goes
+  and that the witness, probe and axiom-guard files name the paper's own modules, not the library
+  root. The scaffold's rules text holds neither passage, so no `scaffold/claude/` change is needed.
+  The WISHLIST entry is removed.
 - **`linkage init` writes `LICENSES/`; the export's dry run warns when it is absent (hub Q-0488).**
   Every Lean header names `LICENSES/Apache-2.0.txt`, and the export copies `LICENSES/` — and
   copied nothing, silently, from a repository without it (found by the affine repository's first

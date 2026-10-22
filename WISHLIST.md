@@ -287,27 +287,6 @@ The author on the abstract, § 1 and § 1.1 of the same paper, after its rewrite
 
 ---
 
-## process: run the export's dry run early when a repository holds two papers' Lean
-
-**Wanted by** spatial-hemigroup-affine (Paper VII), release `iso-v0.1`, 2026-10-14 (hub Q-0451,
-Q-0452).
-
-The first export of a repository holding the Lean of two papers, one of them being released,
-exported 160 Lean files where the released paper's statements need 79. The closure came in through
-the files every release has besides its statements (the witness file, the probe file and the axiom
-guard each imported the library root) and through helper lemmas that lived in the other paper's
-files and were used by this paper's proofs. Separating the two (a library file naming the paper's
-own modules, one probe file per paper, the helpers moved) took a day, and it came after the paper's
-final read, when the release was otherwise ready. `RELEASE.md` says that a root importing the
-library whole brings the library and that the dry run prints the closure, but not when to look.
-**Suggested shape:** checklist item 1 ("before anything is frozen") gains `linkage release export
---module <M> --dry-run`, its closure read against the statements the paper prints, for a
-repository whose Lean serves more than one paper, and early enough that a separation is not on the
-release's critical path; and `PROCESS.md` § 5 says that in such a repository a helper lemma goes in
-a file of the first paper that needs it, or in a shared file that imports neither paper's results.
-
----
-
 ## process: the swallowed-prose gate is in the scaffold, but `linkage init` never copies it
 ## `linkage check` pairs a proof with the statement above it before reading its `% proof of` marker
 

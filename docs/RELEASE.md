@@ -85,7 +85,12 @@ In order; a release is not done until the last item.
    citation clause and figures updated; the gates clean: `linkage check`, `linkage axioms --check`,
    the axiom guard with its exit code, the control-character check, the register counts. Every
    open item either closed or marked open in the text. Every interface admitted since the fidelity
-   review has had its card.
+   review has had its card. In a repository whose Lean serves more than one paper, also run
+   `linkage release export --module <M> --dry-run` and read its closure against the statements the
+   paper prints; do it early, before the paper's final read, so that separating the papers' Lean
+   (the witness, probe and axiom-guard files, helper lemmas that live in the other paper's files)
+   is not on the release's critical path. The affine repository's first export took 160 Lean files
+   where the paper's statements needed 79, and the separation took a day after the final read.
 2. **The changelog entry** headed `## <tag> — <date> — <title>`; the version chosen (`v0.x` while a
    preprint, `v1.0` at journal submission of *that module*). A multi-module repository prefixes its
    tags with the module (`cone-v0.1`), and the export carries the plain `vX.Y`.

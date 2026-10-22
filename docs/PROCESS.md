@@ -108,6 +108,13 @@ line, before the changed text, never after it — appended after a replacement
 that stopped mid-line, it turns the rest of that line into comment, which the scaffolded
 `scripts/check-swallowed-prose.py` gates (the manifest workflow runs it on every pull request).
 
+In a repository whose Lean serves more than one paper, a helper lemma goes in a file of the first
+paper that needs it, or in a shared file that imports neither paper's results; never in a file of
+a paper that does not need it, since the other paper's export would then carry that file and what
+it imports. The witness, probe and axiom-guard files name the paper's own modules, not the library
+root, for the same reason (`import MyLib` brings the whole library into an export's closure). Run
+the export's dry run early ([`RELEASE.md`](RELEASE.md), checklist item 1) to see the closure.
+
 ### 6. The fidelity review
 
 Does the Lean prove what the article states, or something weaker, vacuous or junk-valued? The
