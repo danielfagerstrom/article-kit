@@ -96,6 +96,8 @@ def build(root: Path, slug: str = "smoke") -> Path:
     """Scaffold into `root`, then write the article's own half. Returns `root`."""
     root.mkdir(parents=True, exist_ok=True)
     scaffold.init(root, slug=slug, subs={"TITLE": "Smoke Article"})
+    assert (root / "LICENSES" / "Apache-2.0.txt").is_file()
+    assert (root / "LICENSES" / "CC-BY-4.0.txt").is_file()
     (root / "blueprint" / "src" / "content.tex").write_text(BLUEPRINT, encoding="utf-8")
     (root / "blueprint" / "AXIOMS.md").write_text(AXIOMS, encoding="utf-8")
     (root / "blueprint" / "trust-boundary.txt").write_text(

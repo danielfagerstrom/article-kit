@@ -216,7 +216,12 @@ as `paper.supplement.pdf` (`<name>.<stem>.pdf`). One root builds as before; a `f
 holds the paper and the supplement as one document is not needed for the site. `extra_files`
 names files or directories that the paper or a Lean header cites by path (a script that draws a
 figure, a saved report): they are exported at the same relative path, where `extra_notes` go
-under `notes/`.
+under `notes/`. The export renames a paper's directory to `paper/`, so a script exported to be
+run finds the paper's directory under either name (`paper-iso/` in the repository, `paper/` in
+the export) and takes whichever exists; a script that reads the repository's layout does not run
+in the export. The scaffold ships no figure scripts. The scaffold writes `LICENSES/` with
+`Apache-2.0.txt` and `CC-BY-4.0.txt`, which the Lean headers name, and the dry run warns when
+either is absent.
 
 **A root that imports its library whole brings the library.** A module named in `roots` that
 imports the library's root file (`import MyLib`, as a witness file or a generated guard often

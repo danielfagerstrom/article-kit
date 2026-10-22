@@ -1408,6 +1408,12 @@ def _export(cfg: Config, args) -> int:
     else:
         print("release gate: the date line and the PDF's first page carry the version"
               + (" and the DOI" if ex.doi else "; no --doi given, so no DOI was checked"))
+    lic = cfg.root / "LICENSES"
+    missing = [n for n in ("Apache-2.0.txt", "CC-BY-4.0.txt") if not (lic / n).is_file()]
+    if missing:
+        print(f"warning: LICENSES/ lacks {', '.join(missing)}, which the Lean headers and the "
+              "README name; the export copies only what is there "
+              "(`linkage init` writes both into a repository that has no LICENSES/)")
     if args.dry_run:
         return 1 if cite_failures else 0
     if cite_failures:
