@@ -7,6 +7,12 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **Release checklist: run the export's dry run early where the Lean serves two papers (hub
+  Q-0487).** `docs/RELEASE.md` checklist item 1 gains `linkage release export --dry-run`, its
+  closure read against the printed statements; `docs/PROCESS.md` § 5 says where a helper lemma goes
+  and that the witness, probe and axiom-guard files name the paper's own modules, not the library
+  root. The scaffold's rules text holds neither passage, so no `scaffold/claude/` change is needed.
+  The WISHLIST entry is removed.
 - **CI runs on `ubuntu-latest` for pull requests (hub Q-0511).** The `check` job was
   `windows-latest`; Linux is now a platform the queue's VM runs (ADR-0028) and costs half as much.
   No test exercises the Windows-only facts (cp1252 console, uv-tool trampoline), so the full suite
