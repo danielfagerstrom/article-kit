@@ -7,6 +7,30 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The close ritual stops moving the pin and writing `wiki/log.md`; an instruction budget, checked
+  by `linkage shape` (hub Q-0542, from the engineer office's E-0019).** `core.md` § "Close a
+  session" and `PROCESS.md` § "Opening and closing a session" step 7 told every article session to
+  move the pin in `constellation.json` and write one `wiki/log.md` line, both of which the hub
+  forbids ("Session closes do not move it", hub `RELEASES.md`; "a branch never touches `log.md`",
+  hub ADR-0031). Both now say a `wiki/log.d/` fragment and a pin moved only at a release, and
+  `PROCESS.md` § 1 step 6 says the same for the log line. `PROCESS.md` § "Where each kind of text
+  lives" gains the instruction budget, stated from how Claude Code loads files and citing its
+  documentation:
+  - the resident layer, `CLAUDE.md` plus every unscoped rule, at most 200 lines and 2,000 words
+    summed;
+  - a path-scoped rule at most 900 words;
+  - a file a rule says to read "before" or "in full" at most 5,000 tokens, or made a skill;
+  - no inline dated rationale in a resident file;
+  - the handoff at most 1,500 words.
+
+  `linkage shape` gains three advisories: the resident sum, a read-first pointer whose target is
+  over 5,000 tokens, and inline dated accounts in a resident file. A dated bold opener stays the
+  record-block check's, three tolerated as before. `linkage check` prints the resident sum on every
+  run. Measured on affine (`6c9fe54`): 2,182 resident words in 208 lines; seven lines of inline
+  dated account in `CLAUDE.md`; `writing.md`'s pointer to `WRITING.md` at about 6,100 tokens. A test
+  holds the scaffold's own read-first pointers to that one known case, which the skills entry (hub
+  Q-0544) removes. Articles get the fixed `core.md` with `linkage init --sync`, which is the
+  author's (hub Q-0545).
 - **Release checklist: run the export's dry run early where the Lean serves two papers (hub
   Q-0487).** `docs/RELEASE.md` checklist item 1 gains `linkage release export --dry-run`, its
   closure read against the printed statements; `docs/PROCESS.md` § 5 says where a helper lemma goes

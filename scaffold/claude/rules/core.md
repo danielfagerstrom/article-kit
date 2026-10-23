@@ -36,7 +36,9 @@ one of them buries the instructions under it; the account goes to the changelog.
 
 In order: `CHANGELOG.md` under Unreleased; an `adr/` file for a decision taken; `README.md`'s state
 if it changed; `notes/HANDOFF.md` rewritten; a general lesson to the wishlist; the hub ritual (pull,
-the pin in `constellation.json`, one `wiki/log.md` line, `wiki lint`, commit, push).
+one log line as a fragment `wiki/log.d/<YYYYMMDD-HHMM>.md`, `wiki lint`, commit, push). "A branch
+never touches `log.md`" (hub ADR-0031), and the pin in `constellation.json` is not touched: "Session
+closes do not move it" (hub `RELEASES.md`, "What a pin means"); it moves only at a release.
 
 ## Standing authorizations
 

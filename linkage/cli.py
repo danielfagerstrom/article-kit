@@ -122,6 +122,9 @@ def cmd_check(args) -> int:
           f"{s['ledger_refs']} ledger refs, {s['paper_shared']} paper shared-statements "
           f"({verb} verbatim, {trk} tracked by sha, {drift} needing attention"
           + (f", {noenv} on prose" if noenv else "") + ").")
+    # The instruction budget's one number, printed under budget too: a dispatched session
+    # runs `linkage check`, not `linkage shape` (PROCESS.md, 'Where each kind of text lives').
+    print(shape.resident_summary(cfg.root))
     unmatched = s.get("proof_unmatched", 0)
     if (pv := s.get("proof_verbatim", 0) + s.get("proof_tracked", 0)
             + s.get("proof_drift", 0)) or unmatched:
@@ -500,7 +503,8 @@ def cmd_shape(args) -> int:
     found = shape.check(root)
     for a in found:
         print("  advisory " + a)
-    print(f"\nshape: {len(found)} advisory(ies) under {root}")
+    print("\n" + shape.resident_summary(root))
+    print(f"shape: {len(found)} advisory(ies) under {root}")
     return 0
 
 

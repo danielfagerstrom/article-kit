@@ -19,6 +19,15 @@ def test_a_clean_article_exits_zero_and_says_so(article):
     assert "LINKAGE CHECK OK" in out
 
 
+def test_check_prints_the_resident_sum_under_budget_too(article):
+    """A dispatched session runs `linkage check`, not `linkage shape` (hub Q-0542)."""
+    article.blueprint(statement(label="thm:x"))
+    (article.root / "CLAUDE.md").write_text("# x\n\nOne rule.\n", encoding="utf-8")
+    rc, out, _ = run_cli("--root", str(article.root), "check")
+    assert rc == 0
+    assert "Resident instructions: 4 words, 3 lines" in out
+
+
 def test_a_fatal_finding_exits_one_and_is_printed(article):
     article.blueprint(statement(label="thm:x", status=None))
     rc, out, _ = run_cli("--root", str(article.root), "check")
