@@ -17,12 +17,17 @@ no `linkage.toml` (`linkage shape DIR`).
 Claude Code loads files ("What survives compaction", code.claude.com/docs/en/context-window;
 code.claude.com/docs/en/memory). `CLAUDE.md` and every rule without `paths:` are *resident*:
 loaded at launch and re-injected after a compaction, so they are paid on every turn and are the
-only text certain to be in force late in a long session. A file a session merely read is
-summarised away at a compaction, and one over 5,000 tokens comes back as a path without its
-content. Three advisories follow from that: the resident sum against its budget, a "read …
-before / in full" pointer whose target is over 5,000 tokens, and inline dated accounts in a
-resident file. Tokens are estimated as characters / 4, which is what the measurement behind the
-budget used; these files run about 1.7 tokens per word.
+only text certain to be in force late in a long session. A file a session read is not: after a
+compaction Claude Code re-reads at most five of the files it read or edited, the most recently
+modified first, and "a file over 5,000 tokens comes back as a path reference without its
+content". Three advisories follow from that: the resident sum against its budget, a "read …
+before / in full / first" pointer whose target is over 5,000 tokens, and inline dated accounts
+in a resident file. Tokens are estimated as characters / 4, which is what the measurement behind
+the budget used; these files run about 1.7 tokens per word.
+
+The resident count is an approximation of what Claude Code loads, close enough for a budget:
+it counts frontmatter and HTML comments, which Claude Code strips, and follows `@` imports from
+rules as well as from `CLAUDE.md`.
 """
 from __future__ import annotations
 
@@ -45,7 +50,7 @@ RESIDENT_FILES = ("CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md")
 RESIDENT_WORDS = 2000  # summed over the resident files, framework rules included
 RESIDENT_LINES = 200   # the memory docs' "target under 200 lines per CLAUDE.md file", summed
 POINTER_TOKENS = 5000  # a read file over this comes back after a compaction as a path only
-IMPORT_DEPTH = 5       # `@path` imports followed this many hops, as Claude Code does
+IMPORT_DEPTH = 4       # `@path` imports: "a maximum depth of four hops" (memory docs)
 
 _DATED_BOLD_RE = re.compile(r"^\s*(?:>\s*)*(?:[-*+]\s+)?\*\*[^*\n]*\b\d{4}-\d{2}-\d{2}\b[^*\n]*\*\*")
 _HEADING_RE = re.compile(r"^#{1,6}\s+(.*?)\s*#*\s*$")
@@ -56,7 +61,8 @@ _FENCE_RE = re.compile(r"^\s*(```|~~~)")
 _PATHS_FM_RE = re.compile(r"\A---\s*\n(?:.*\n)*?paths\s*:", re.M)
 _FM_END_RE = re.compile(r"\A---\s*\n(?:.*\n)*?---\s*(?:\n|\Z)")
 _CODE_SPAN_RE = re.compile(r"`[^`\n]*`")
-_IMPORT_RE = re.compile(r"(?:^|(?<=\s))@([^\s`)\]]+)")
+# `\ ` is an escaped space inside a path (`@Design\ Docs/api.md`, the memory docs' example).
+_IMPORT_RE = re.compile(r"(?:^|(?<=\s))@((?:\\ |[^\s`)\]])+)")
 _ISO_DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 _DECISION_OF_RE = re.compile(r"\bthe author['’]s decision of\b", re.I)
 # A sentence that tells the session to read something before it acts, or to read all of it.
@@ -118,8 +124,10 @@ def _imports(path: Path, text: str) -> list[Path]:
     out = []
     for ln in _prose_lines(text):
         for m in _IMPORT_RE.finditer(_CODE_SPAN_RE.sub("", ln)):
+            # A sentence may end on the path ("see @README.md."), and `\ ` is a space.
+            raw = m.group(1).replace("\\ ", " ").rstrip(".,;:")
             try:   # `~nobody` raises, an over-long token is an OSError: neither is an import
-                target = Path(m.group(1)).expanduser()
+                target = Path(raw).expanduser()
                 target = target if target.is_absolute() else path.parent / target
                 if target.is_file():
                     out.append(target.resolve())
@@ -189,26 +197,43 @@ def check_resident(root: Path) -> list[str]:
 
 
 def _paragraphs(text: str):
-    """(first line number, paragraph text) for the prose outside fences and frontmatter."""
+    """(line_of, paragraph text) for the prose outside fences and frontmatter, a paragraph being
+    a run of non-blank lines joined by spaces; `line_of(i)` is the file line of character `i`."""
     m = _FM_END_RE.match(text)
     offset = m.group(0).count("\n") if m else 0
-    lines = text.splitlines()[offset:]
-    para, start, fenced = [], 0, False
-    for i, ln in enumerate(lines, start=offset + 1):
+    para: list[tuple[int, str]] = []
+    fenced = False
+
+    def emit():
+        starts, joined, pos = [], [], 0
+        for lineno, ln in para:
+            starts.append((pos, lineno))
+            joined.append(ln)
+            pos += len(ln) + 1
+        return (lambda i: max(n for p, n in starts if p <= i)), " ".join(joined)
+
+    for i, ln in enumerate(text.splitlines()[offset:], start=offset + 1):
         if _FENCE_RE.match(ln):
             fenced = not fenced
             continue
         if fenced:
             continue
         if ln.strip():
-            if not para:
-                start = i
-            para.append(ln.strip())
+            para.append((i, ln.strip()))
         elif para:
-            yield start, " ".join(para)
+            yield emit()
             para = []
     if para:
-        yield start, " ".join(para)
+        yield emit()
+
+
+def _sentences(para: str):
+    """(start offset, sentence) for each sentence of a paragraph."""
+    pos = 0
+    for m in _SENTENCE_END_RE.finditer(para):
+        yield pos, para[pos:m.start()]
+        pos = m.end()
+    yield pos, para[pos:]
 
 
 def _resolve(root: Path, path: Path, target: str) -> Path | None:
@@ -221,8 +246,10 @@ def _resolve(root: Path, path: Path, target: str) -> Path | None:
 
 def check_pointers(root: Path) -> list[str]:
     """Each "read … before / in full / first" pointer, in a resident file or a rule, whose
-    target is over POINTER_TOKENS. Unresolvable targets (a sibling checkout that is not there)
-    are skipped: what cannot be measured is not reported."""
+    target is over POINTER_TOKENS: a sentence holding "read" and one of those words, with the
+    target after the "read" (so "the first section of X is read by …" is no pointer).
+    Unresolvable targets (a sibling checkout that is not there) are skipped: what cannot be
+    measured is not reported."""
     files = list(resident(root))
     rules = root / ".claude" / "rules"
     if rules.is_dir():
@@ -232,12 +259,14 @@ def check_pointers(root: Path) -> list[str]:
     for path in dict.fromkeys(files):
         rel = _rel(root, path)
         framework = "article-kit" in Path(rel).parts[:-1]
-        for line, para in _paragraphs(path.read_text(encoding="utf-8", errors="replace")):
-            for sentence in _SENTENCE_END_RE.split(para):
-                if not (_READ_RE.search(sentence) and _BEFORE_RE.search(sentence)):
+        for line_of, para in _paragraphs(path.read_text(encoding="utf-8", errors="replace")):
+            for start, sentence in _sentences(para):
+                read = _READ_RE.search(sentence)
+                if not (read and _BEFORE_RE.search(sentence)):
                     continue
-                for m in _MD_TARGET_RE.finditer(sentence):
+                for m in _MD_TARGET_RE.finditer(sentence, read.end()):
                     target = m.group(1) or m.group(2)
+                    line = line_of(start + m.start())
                     found = _resolve(root, path, target)
                     if found is None or (rel, found) in seen:
                         continue
@@ -271,9 +300,13 @@ def check_inline_dates(root: Path) -> list[str]:
             if _FENCE_RE.match(ln):
                 fenced = not fenced
                 continue
-            if fenced or _DATED_BOLD_RE.match(ln):
+            if fenced:
                 continue
-            if _ISO_DATE_RE.search(ln) or _DECISION_OF_RE.search(ln):
+            # The bold opener is the record-block check's; the rest of its line is still ours.
+            # A date inside a code span is a path or a command, not an account.
+            bold = _DATED_BOLD_RE.match(ln)
+            rest = _CODE_SPAN_RE.sub("", ln[bold.end():] if bold else ln)
+            if _ISO_DATE_RE.search(rest) or _DECISION_OF_RE.search(rest):
                 hits.append(i)
         if hits:
             shown = ", ".join(map(str, hits[:6])) + (", …" if len(hits) > 6 else "")

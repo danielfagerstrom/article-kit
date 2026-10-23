@@ -93,9 +93,24 @@ def test_the_resident_sum_is_reported_over_budget_and_not_under(tmp_path):
     _write(tmp_path, ".claude/rules/local.md", "word " * 200 + "\n")
     found = [a for a in shape.check(tmp_path) if "resident instructions" in a]
     assert len(found) == 1 and "2102 words" in found[0] and "in 3 file(s)" in found[0]
-    # The line budget binds on its own: 250 one-word lines are 250 lines.
-    _write(tmp_path, ".claude/rules/local.md", "w\n" * 250)
-    assert any("resident instructions" in a and "lines" in a for a in shape.check(tmp_path))
+
+
+
+def test_the_resident_line_budget_binds_on_its_own(tmp_path):
+    _write(tmp_path, "CLAUDE.md", "w\n" * 250)   # 250 words: far under the word budget
+    found = [a for a in shape.check(tmp_path) if "resident instructions" in a]
+    assert len(found) == 1 and "250 words, 250 lines" in found[0]
+
+
+def test_imports_stop_at_four_hops_and_take_trailing_punctuation_and_escaped_spaces(tmp_path):
+    # Relative to the importing file, as the memory docs say.
+    _write(tmp_path, "CLAUDE.md", "See @a1.md. Also @Design\\ Docs/api.md\n")
+    for i in range(1, 7):
+        _write(tmp_path, f"a{i}.md", f"next @a{i + 1}.md\n")
+    _write(tmp_path, "Design Docs/api.md", "imported through an escaped space\n")
+    got = {p.relative_to(tmp_path.resolve()).as_posix() for p in shape.resident(tmp_path)}
+    assert {"a1.md", "a2.md", "a3.md", "a4.md"} <= got and "a5.md" not in got
+    assert "Design Docs/api.md" in got
 
 
 def test_a_scoped_rule_does_not_count_towards_the_resident_sum(tmp_path):
@@ -123,6 +138,14 @@ def test_a_pointer_without_a_read_first_or_to_a_missing_file_is_not(tmp_path):
     assert not [a for a in shape.check(tmp_path) if "tells the session to read" in a]
 
 
+def test_a_pointer_is_reported_at_its_own_line_and_only_after_the_read(tmp_path):
+    _write(tmp_path, "docs/BIG.md", "x" * (4 * shape.POINTER_TOKENS + 400))
+    _write(tmp_path, "CLAUDE.md", "# x\n\n- one\n- two\n- three\n- Read `docs/BIG.md` before"
+           " acting.\n\nThe first section of `docs/BIG.md` is read by reviewers.\n")
+    found = [a for a in shape.check(tmp_path) if "tells the session to read" in a]
+    assert len(found) == 1 and "CLAUDE.md:6:" in found[0]
+
+
 def test_inline_dated_accounts_in_a_resident_file_are_reported(tmp_path):
     body = "".join(f"- A rule (the author's decision of 2026-10-0{i}, after a failure).\n"
                    for i in range(1, 7))
@@ -139,22 +162,27 @@ def test_a_clean_resident_file_and_the_cases_that_are_not_inline_dates(tmp_path)
     assert not [a for a in shape.check(tmp_path) if "inline dated account" in a]
 
 
-def test_the_frameworks_own_pointers_are_measured_against_article_kits_docs():
-    """The scaffold's rules point at `../article-kit/docs/`; measured against this repository's
-    docs, these are the pointers over the budget today. Q-0544 turns WRITING.md into a skill;
-    a new entry here means a rule began pointing at a long file."""
-    import re
-    over = set()
-    docs = scaffold.scaffold_dir().parent / "docs"
-    for p in (scaffold.scaffold_dir() / "claude" / "rules").glob("*.md"):
-        for _, para in shape._paragraphs(p.read_text(encoding="utf-8")):
-            for s in shape._SENTENCE_END_RE.split(para):
-                if shape._READ_RE.search(s) and shape._BEFORE_RE.search(s):
-                    for m in re.finditer(r"`\.\./article-kit/docs/([^`]+\.md)`", s):
-                        if shape._tokens((docs / m.group(1)).read_text("utf-8")) > \
-                                shape.POINTER_TOKENS:
-                            over.add((p.name, m.group(1)))
-    assert over <= {("writing.md", "WRITING.md")}, over
+def test_a_date_in_a_code_span_is_not_an_account_and_one_after_a_bold_opener_is(tmp_path):
+    _write(tmp_path, "CLAUDE.md", "# x\n\nNotes are `offices/notes/2026-10-23-load.md`.\n\n"
+           "**Decided 2026-09-10.** A rule (the author's decision of that day).\n")
+    found = [a for a in shape.check(tmp_path) if "inline dated account" in a]
+    assert len(found) == 1 and "1 line(s)" in found[0] and "(lines 5)" in found[0]
+
+
+def test_the_frameworks_own_pointers_are_measured_against_article_kits_docs(tmp_path):
+    """The scaffold's rules, installed as a sync installs them, beside a copy of this
+    repository's docs at `../article-kit/docs/`: the one pointer over the budget today is
+    `writing.md`'s to WRITING.md, which Q-0544 turns into a skill. Another means a rule began
+    pointing at a long file; none means the check stopped seeing this one."""
+    import shutil
+    article = tmp_path / "article"
+    shutil.copytree(scaffold.scaffold_dir() / "claude" / "rules",
+                    article / ".claude" / "rules" / "article-kit")
+    shutil.copytree(scaffold.scaffold_dir().parent / "docs", tmp_path / "article-kit" / "docs")
+    found = shape.check_pointers(article)
+    assert len(found) == 1, found
+    assert ("writing.md:" in found[0] and "`../article-kit/docs/WRITING.md`" in found[0]
+            and "the fix is article-kit's" in found[0])
 
 
 def test_the_framework_rules_fit_their_own_budget():
