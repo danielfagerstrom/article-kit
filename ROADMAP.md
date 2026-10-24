@@ -34,12 +34,10 @@ per module from `linkage.toml`, 2026-09-25). Open:
   worklist. The hub's own `CLAUDE.md` (4,300 words) gets the same pass.
 - **Step 6**, skills and agents as a plugin: the plugin and its marketplace are built and the
   scaffold declares them ([`docs/PLUGIN.md`](docs/PLUGIN.md), 2026-09-25); installed and checked
-  locally at v0.5.0 (2026-10-24). Open, and the author's because it is outside this repository:
-  the same check in a cloud session with `danielfagerstrom/article-kit` attached, removing
-  `~/.claude/skills/fidelity-review` and `~/.claude/agents/mathematician.md`, dropping the
-  `mathematician` row from the hub's `sync-agents.sh` table, and merging the two settings keys into
-  the article repos scaffolded before this. `docs/PLUGIN.md` § "Verifying it — the pilot" is the
-  checklist and the place the outcome is recorded.
+  locally and in a cloud container at v0.5.0, the user-level copies retired and every active
+  article enabling it (hub Q-0545, 2026-10-24). Done; `docs/PLUGIN.md` § "Verifying it — the
+  pilot" records the outcome and the one thing not verified (an install from project settings
+  alone).
 - **Step 5's follow-through in the articles.** `spatial-hemigroup-scale-space` declares its three
   `[[modules]]` in `linkage.toml` and deletes its `scripts/export-release.py`,
   `zenodo-release.py`, `count-register.py` and `scripts/tests/` once a release has been rehearsed

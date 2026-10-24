@@ -13,6 +13,11 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   runtime loads `article-kit:mathematician`), and the write skill's ~6.5k on-invoke is the real
   tokenizer's cost, while compaction cuts at `round(len / 4) > 5000`, the unit `linkage.skills`
   budgets in. The budget's comment in `linkage/skills.py`, which assumed the reverse, is corrected.
+- **Step 6 closed (hub Q-0545).** The cloud check passed (the `github` source resolves through the
+  proxy; affine lists the five skills and the agent), the user-level `mathematician` and
+  `fidelity-review` copies are gone, and the hub syncs the mathematician no more. Recorded in
+  `docs/PLUGIN.md` with the one thing left unverified: whether a fresh session installs the
+  plugin from project settings alone.
 
 ## v0.5.0 — 2026-10-24 — the standards as skills, an instruction budget, and a close ritual that matches the hub
 

@@ -230,5 +230,15 @@ five skills and both hooks. Two lines of `claude plugin details` read as faults 
   in all, the unit `linkage.skills` budgets in; by it the write skill is about 4,700 and survives a
   compaction whole.
 
-Still open: the cloud-session check, removing `~/.claude/skills/fidelity-review` and
-`~/.claude/agents/mathematician.md`, and the `mathematician` row of the hub's `sync-agents.sh`.
+**Closed the same day** (hub Q-0545). The author removed `~/.claude/agents/mathematician.md` and the
+`~/.claude/skills/fidelity-review` junction; the hub's `sync-agents.sh` dropped the `mathematician`
+row and its `.claude/settings.json` now declares the plugin (notes-wiki#204). In a cloud container
+with this repository attached, `claude plugin marketplace add danielfagerstrom/article-kit` resolved
+the `github` source through the proxy (no fallback needed), and a headless session started in
+`spatial-hemigroup-affine` listed `article-kit:fidelity-review`, `:tighten`, `:write`, `:release`,
+`:gate` and the agent `article-kit:mathematician`. `linkage check` prints no `[plugin]` advisory in
+affine, line, pyramids, the causal-kernels monograph or its SSVM extraction.
+
+Not verified: whether a fresh session installs the plugin from the project settings alone. On the
+laptop it did not, and the cloud check above installed it explicitly. If a fresh cloud session
+lacks the skills, the two commands belong in the environment's setup script.
