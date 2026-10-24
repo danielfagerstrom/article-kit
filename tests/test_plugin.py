@@ -97,6 +97,8 @@ def test_the_versions_do_not_drift(manifest, marketplace):
     assert manifest["version"] == version
     assert marketplace["metadata"]["version"] == version
     assert marketplace["plugins"][0]["version"] == version
+    import linkage
+    assert linkage.__version__ == version
 
 
 # --- what a scaffolded article declares -------------------------------------------------

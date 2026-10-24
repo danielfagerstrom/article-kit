@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+## v0.5.0 — 2026-10-24 — the standards as skills, an instruction budget, and a close ritual that matches the hub
+
+- **The version moves with the release (hub Q-0545).** `pyproject.toml`, `linkage/__init__.py`,
+  `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` say `0.5.0`. They had said
+  `0.1.0` through `v0.2.0`, `v0.3.0` and `v0.4.0`, and the plugin's version is what makes Claude Code
+  update an installed copy, so no release since the first had reached a machine that already had
+  the plugin. `docs/RELEASE.md` § "Versioning the framework" now names the four files, and
+  `tests/test_plugin.py` holds `linkage.__version__` to the same version.
 - **The writing, release and drafting-gate standards become plugin skills; a log of what
   instructions load (hub Q-0544, from the engineer office's E-0018 and E-0020).** An invoked skill's
   body is re-attached after a compaction (its first 5,000 tokens). A document the session merely
