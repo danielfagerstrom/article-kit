@@ -11,11 +11,11 @@ description: >
 
 `docs/WRITING.md` §§ 0–4, verbatim, the restraint budget first. On demand, at the step that needs
 them: § 5 (the process: draft, flag blind, fix at the anchor) and § 6 (the AI statement) in
-`${CLAUDE_PLUGIN_ROOT}/docs/WRITING.md`; the section contracts and the exposition rubric, § B and §
-C of `${CLAUDE_PLUGIN_ROOT}/docs/PUBLICATION-TEMPLATE.md`, for the section being written; its § D
-for the calibration exemplars. Relative links below are to `${CLAUDE_PLUGIN_ROOT}/docs/` (in
-article-kit itself, `docs/`). Generated from the document by `linkage.skills`; edit the document,
-not this file.
+`${CLAUDE_PLUGIN_ROOT}/docs/WRITING.md`; the section contracts and the exposition rubric, § B and § C
+of `${CLAUDE_PLUGIN_ROOT}/docs/PUBLICATION-TEMPLATE.md`, for the section being written; its § D for
+the calibration exemplars. After a compaction, invoke this skill again: the copy Claude Code keeps
+is cut at 5,000 tokens. Relative links below are to `${CLAUDE_PLUGIN_ROOT}/docs/` (in article-kit
+itself, `docs/`). Generated from the document by `linkage.skills`; edit the document, not this file.
 
 ## 2. The restraint budget — the rules the drafts break
 

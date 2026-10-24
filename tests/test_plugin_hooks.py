@@ -74,6 +74,28 @@ def test_a_compaction_start_is_logged_under_the_same_reason_key(tmp_path, real_r
     assert first["file_path"] is None and second["load_reason"] == "session_start"
 
 
+def test_the_hooks_files_own_command_logs_when_run_by_a_shell(tmp_path, real_run):
+    """The command string itself, as Claude Code runs it, not only the script."""
+    import shutil
+    sh = shutil.which("sh")
+    if sh is None:
+        import pytest
+        pytest.skip("no POSIX shell on this machine")
+    command = json.loads(HOOKS.read_text(encoding="utf-8"))["hooks"]["SessionStart"][0]["hooks"][0]["command"]
+    env = dict(os.environ, CLAUDE_PLUGIN_ROOT=str(REPO).replace("\\", "/"),
+               CLAUDE_PLUGIN_DATA=str(tmp_path))
+    r = real_run([sh, "-c", command], input=json.dumps(
+        {"session_id": "s", "hook_event_name": "SessionStart", "source": "compact"}),
+        text=True, capture_output=True, env=env, timeout=30)
+    assert r.returncode == 0 and r.stdout == ""
+    (line,) = lines(tmp_path)
+    assert line["load_reason"] == "compact"
+    # a plugin root that is not there still exits 0
+    env["CLAUDE_PLUGIN_ROOT"] = str(tmp_path / "gone")
+    assert real_run([sh, "-c", command], input="{}", text=True, capture_output=True, env=env,
+                    timeout=30).returncode == 0
+
+
 def test_nothing_it_is_fed_or_cannot_reach_makes_it_fail(tmp_path, real_run):
     run = runner(real_run)
     assert run({"hook_event_name": "InstructionsLoaded"}).returncode == 0          # no data dir

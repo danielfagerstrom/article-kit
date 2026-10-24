@@ -45,7 +45,13 @@ def test_check_reports_an_article_whose_settings_do_not_enable_the_plugin(articl
     (settings.parent / "settings.local.json").write_text(
         json.dumps({"enabledPlugins": {"article-kit@article-kit": False}}), encoding="utf-8")
     rc, out, _ = run_cli("--root", str(article.root), "check")
-    assert "advisory [plugin]" in out
+    assert "advisory [plugin] .claude/settings.local.json does not enable" in out
+    # a byte-order mark, as a Windows editor writes one, is not a missing setting
+    (settings.parent / "settings.local.json").unlink()
+    settings.write_text(json.dumps({"enabledPlugins": {"article-kit@article-kit": True}}),
+                        encoding="utf-8-sig")
+    rc, out, _ = run_cli("--root", str(article.root), "check")
+    assert "advisory [plugin]" not in out
 
 
 def test_a_fatal_finding_exits_one_and_is_printed(article):

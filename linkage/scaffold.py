@@ -201,17 +201,22 @@ def plugin_enabled(root: Path) -> bool:
     the skills its rules name (`/article-kit:write`, `:release`, `:gate`) visible to its sessions.
     `settings.local.json` overrides `settings.json`, as in Claude Code. A file that is absent or
     not JSON counts as not enabling it; a user-level enablement is not visible from here."""
-    found = None
+    return plugin_setting(root)[0]
+
+
+def plugin_setting(root: Path) -> tuple[bool, str]:
+    """(enabled, the settings file that decided it, or "" when none names the plugin)."""
+    found, where = None, ""
     for name in ("settings.json", "settings.local.json"):
         path = root / ".claude" / name
         try:
-            doc = json.loads(path.read_text(encoding="utf-8"))
+            doc = json.loads(path.read_text(encoding="utf-8-sig"))   # a Windows editor's BOM
         except (OSError, ValueError):
             continue
         plugins = doc.get("enabledPlugins") if isinstance(doc, dict) else None
         if isinstance(plugins, dict) and PLUGIN_KEY in plugins:
-            found = plugins[PLUGIN_KEY] is True
-    return bool(found)
+            found, where = plugins[PLUGIN_KEY] is True, f".claude/{name}"
+    return bool(found), where
 
 
 def drift(root: Path) -> list[str]:

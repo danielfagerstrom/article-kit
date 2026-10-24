@@ -166,7 +166,8 @@ axiom guard, on source text alone, so it costs seconds and needs no toolchain.
 
 Before a section is written, the drafting gate: [`DRAFTING-GATE.md`](DRAFTING-GATE.md)
 (`wiki gate --slot … --worklist` from the hub), run as `/article-kit:gate <section>`, a skill that
-takes the gate to a subagent and brings back only the box verdicts. Then, per section: one `.tex` file; statements
+takes the gate to a subagent and brings back only the box verdicts.
+Then, per section: one `.tex` file; statements
 transcribed verbatim under `% shared with blueprint` markers (`linkage check` reports each
 `verbatim`); the proofs of record; each cited fact stated once, as a numbered
 theorem with its ledger page anchor, before its first use (`WRITING.md` § 3, "borrowed facts are
@@ -266,8 +267,9 @@ Every `Agent` call sets `model`. Mechanical days run on opus, days that prove or
 mathematics on fable (the rubric: `~/.claude/CLAUDE.md`).
 
 **How they reach a session.** article-kit's own — `mathematician` and the five skills — arrive as the
-`article-kit` **plugin**, from the marketplace each article's `.claude/settings.json` declares, which
-is why the skills are namespaced: [`PLUGIN.md`](PLUGIN.md), and the migration off the user-level
-junctions is there too. The hub's own (`draft-reviewer`, `archivist`) and the librarian's stay owned
+`article-kit` **plugin**, which is why the skills are namespaced. They arrive only once the
+article's `.claude/settings.json` declares the marketplace and enables the plugin (`linkage check`
+reports an article that does not), and only at a plugin version that ships them:
+[`PLUGIN.md`](PLUGIN.md), with the migration off the user-level junctions. The hub's own (`draft-reviewer`, `archivist`) and the librarian's stay owned
 by their repositories and are kept current by the `SessionStart` hook
 (`.claude/sync-agents-hook.sh` → the hub's `sync-agents.sh`). No agent has two homes.

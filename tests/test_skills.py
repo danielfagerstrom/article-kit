@@ -41,7 +41,8 @@ def test_each_skill_is_what_its_document_renders(name):
 
 @pytest.mark.parametrize("name", NAMES)
 def test_each_skill_fits_what_a_compaction_reattaches(name):
-    assert skills.tokens(skill_text(name)) <= skills.TOKEN_CAP
+    """Held to the budget (chars/4), not the cap: the real tokenizer counts this markdown higher."""
+    assert skills.tokens(skill_text(name)) <= skills.TOKEN_BUDGET < skills.TOKEN_CAP
 
 
 @pytest.mark.parametrize("name", NAMES)
@@ -80,16 +81,43 @@ def test_the_gate_runs_forked_and_is_waited_for():
     assert (REPO / "docs" / "DRAFTING-GATE.md").read_text(encoding="utf-8").strip() in text
 
 
-def test_an_edited_document_is_caught_as_drift(tmp_path, monkeypatch):
-    """The drift test can fail: a changed sentence in the document changes the rendering."""
+@pytest.mark.parametrize("name,doc,old", [
+    ("write", "WRITING.md", "## 1. Voice"),
+    ("release", "RELEASE.md", "## The checklist"),
+    ("gate", "DRAFTING-GATE.md", "## The rule"),
+])
+def test_an_edited_document_is_caught_as_drift(tmp_path, monkeypatch, name, doc, old):
+    """The drift test can fail: a changed line in each document changes its skill's rendering."""
     docs = tmp_path / "docs"
     shutil.copytree(REPO / "docs", docs)
     monkeypatch.setattr(skills, "DOCS", docs)
-    before = skills.render_write()
-    p = docs / "WRITING.md"
-    p.write_text(p.read_text(encoding="utf-8").replace("## 1. Voice", "## 1. Voice (edited)"),
-                 encoding="utf-8")
-    assert skills.render_write() != before
+    before = skills.RENDER[name]()
+    p = docs / doc
+    text = p.read_text(encoding="utf-8")
+    assert old in text
+    p.write_text(text.replace(old, old + " (edited)"), encoding="utf-8")
+    assert skills.RENDER[name]() != before
+
+
+def test_the_gate_stops_without_a_section_and_starts_from_the_hub_tool():
+    text = skill_text("gate")
+    assert "stop and report that" in text and "wiki gate" in text and "this article's own" in text
+
+
+def test_the_release_skill_says_where_what_it_leaves_out_is():
+    head = " ".join(skill_text("release").split("## The rules")[0].split())   # unwrapped
+    assert '§ "The commands"' in head and "A paper with a supplement" in head
+
+
+def test_frontmatter_values_that_are_not_plain_words_are_quoted():
+    fm = skills._frontmatter(a="plain", b="x: y", c="<hint>", d="#tag")
+    assert "a: plain" in fm and 'b: "x: y"' in fm and 'c: "<hint>"' in fm and 'd: "#tag"' in fm
+
+
+def test_wrapping_never_starts_a_line_with_markdown_structure_or_splits_a_section_sign():
+    words = ("word " * 18 + "- not a bullet " + "word " * 18 + "§ B and § C ") * 3
+    for line in skills._wrap(words, 40):
+        assert not line.startswith(("- ", "# ", "§")) and not line.endswith("§")
 
 
 def test_a_missing_section_fails_loudly(tmp_path, monkeypatch):

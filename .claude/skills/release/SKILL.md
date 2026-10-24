@@ -8,10 +8,12 @@ description: >
 
 # Releasing a module: the rules and the checklist
 
-`docs/RELEASE.md` § "The rules" and § "The checklist", verbatim. The commands, in their order, are §
-"The commands" of `${CLAUDE_PLUGIN_ROOT}/docs/RELEASE.md`: read it at the step that runs them.
-Relative links below are to `${CLAUDE_PLUGIN_ROOT}/docs/` (in article-kit itself, `docs/`).
-Generated from the document by `linkage.skills`; edit the document, not this file.
+`docs/RELEASE.md` § "The rules" and § "The checklist", verbatim. The commands, in their order, are § "The
+commands" of `${CLAUDE_PLUGIN_ROOT}/docs/RELEASE.md`: read it at the step that runs them; so is "A
+paper with a supplement", which the checklist refers to. After a compaction, invoke this skill
+again: the copy Claude Code keeps is cut at 5,000 tokens. Relative links below are to
+`${CLAUDE_PLUGIN_ROOT}/docs/` (in article-kit itself, `docs/`). Generated from the document by
+`linkage.skills`; edit the document, not this file.
 
 ## The rules
 

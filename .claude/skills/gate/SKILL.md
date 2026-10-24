@@ -15,9 +15,12 @@ argument-hint: "<section, e.g. §5>"
 working directory. For each box, give its verdict (met, not met, or a judgement for the author) and
 the evidence: the command and the line of its output, or the file and line. Then give the answer
 "The rule" asks for. Read and run checks only; edit no file. You do not see the conversation that
-invoked you: everything you need is here, in the repository and in the hub (`$WIKI_VAULT`). Relative
-links below are to `${CLAUDE_PLUGIN_ROOT}/docs/` (in article-kit itself, `docs/`). Generated from
-the document by `linkage.skills`; edit the document, not this file.
+invoked you: everything you need is here, in the repository and in the hub (`$WIKI_VAULT`). If no
+section was given (the bold above is empty), stop and report that; do not guess one. Start from
+`wiki gate --slot "$ARGUMENTS" --worklist`, run in `$WIKI_VAULT` (§ "Running it" below). The outline
+is this article's own, the one its hub thread page names, whatever outline the text below gives as
+an example. Relative links below are to `${CLAUDE_PLUGIN_ROOT}/docs/` (in article-kit itself,
+`docs/`). Generated from the document by `linkage.skills`; edit the document, not this file.
 
 ---
 

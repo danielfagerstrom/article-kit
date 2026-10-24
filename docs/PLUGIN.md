@@ -43,7 +43,9 @@ its verdicts.
 `hooks/log_load.py` asynchronously on `InstructionsLoaded` and on `SessionStart` with the source
 `compact`. Each appends one JSON line — `session_id`, `event`, `file_path`, `load_reason`, `cwd`,
 `ts` — to `instructions.jsonl` in `${CLAUDE_PLUGIN_DATA}`, and nothing else: no file's content. It
-never blocks and exits 0 when it cannot write. It is how the compaction rate and the rules in force
+never blocks and exits 0 when it cannot write. The command is POSIX shell (`python3`, falling back
+to `python`): on Linux, macOS and Windows with Git Bash it runs; a Windows session whose hook shell
+is PowerShell gets nothing logged and, on `SessionStart`, a non-blocking hook error. It is how the compaction rate and the rules in force
 late in a session are counted rather than inferred (hub E-0020).
 
 Nothing else. The session **rules** are not in the plugin: they reach an article as
