@@ -28,6 +28,36 @@ handoff carries no dated record blocks and no heading that names a record (Statu
 Progress); each stays under its word budget; and a finished session prompt is deleted, not kept.
 When a file drifts from its purpose, it is rewritten to it; git holds the old text.
 
+**The instruction budget.** How much a session must keep in mind is set by how Claude Code loads
+files. `CLAUDE.md` and every rule without `paths:` frontmatter are *resident*: loaded at launch and
+"re-injected from disk" after a compaction. A path-scoped rule loads when its files are touched,
+and "compaction summarizes [it] away with everything else". Of the files the session read, Claude
+Code re-reads at most five after a compaction, the most recently modified first, and "a file over
+5,000 tokens comes back as a path reference without its content"
+([context window, "What survives compaction"](https://code.claude.com/docs/en/context-window)). An
+invoked skill's body is re-attached, "capped at 5,000 tokens per skill". The memory guide asks for
+"under 200 lines per CLAUDE.md file. Longer files consume more context and reduce adherence"
+([memory](https://code.claude.com/docs/en/memory)). So a rule that must hold late in a long session
+is resident or a skill, and the resident layer is kept small. In every repository:
+
+| what | budget | about |
+|---|---|---|
+| **resident**: `CLAUDE.md` plus every unscoped rule, the framework's included, summed | 200 lines and 2,000 words | 3,400 tokens |
+| a **path-scoped** rule | 900 words | 1,500 tokens |
+| a file a rule tells a session to read **"before"**, **"in full"** or **"first"** | 5,000 tokens, its rules first; otherwise a skill | 2,900 words |
+| the **handoff** (`notes/HANDOFF.md`) | 1,500 words; a "Decided" log is history and goes to `CHANGELOG.md` | 2,600 tokens |
+
+A resident file carries **no inline dated rationale** ("the author's decision of 2026-10-04, after
+…"): the rule stays as one sentence, and the account of how it came to be moves to `adr/`, where a
+pointer finds it. These files run about 1.7 tokens per word, so a word budget understates the cost
+by that factor; `linkage` estimates tokens as characters / 4. The resident sum counts everything
+in the files, fenced code included, since all of it is in context; the per-file `CLAUDE.md` budget
+above it counts prose only, so the two differ on a file with much code. `linkage check` prints the
+resident sum on every run, and three `shape` advisories report the rest: a resident sum over
+budget, a "read … before / in full / first" pointer whose target is over 5,000 tokens, and inline
+dates in a resident file. A pointer in a framework rule is reported in every article with "the fix
+is article-kit's".
+
 A source read is a record with two parts, not one: the full read,
 `records/<module>/READING-<citekey>.md` here, page by page with anchors, is this session's to write;
 the wiki source page, `wiki/sources/@<citekey>.md`, is a synthesis of what the programme takes from
@@ -59,7 +89,8 @@ Run from the hub or anywhere, once:
    (`uvx lean-lsp-mcp --lean-project-path Formalization`).
 5. CI: the reusable workflows of `.github/workflows/` (`docs.yml`, `manifest.yml`); cloud sessions:
    [`CLOUD.md`](CLOUD.md).
-6. The hub: the module in `constellation.json`, its thread page, one `wiki/log.md` line.
+6. The hub: the module in `constellation.json`, its thread page, one log entry as a fragment
+   `wiki/log.d/<YYYYMMDD-HHMM>.md`, never a line in `wiki/log.md` (hub `CLAUDE.md`, ADR-0031).
 
 ### 2. The draft — `draft/<name>.md`
 
@@ -205,7 +236,12 @@ are already loaded. `git status` first after any crash.
 5. A general lesson: a `process` item in article-kit's `WISHLIST.md`.
 6. A source read this session: its wiki source page, written in the hub (see "Where each kind of
    text lives" above) — if the session does not close it, `wiki queue harvest` picks it up.
-7. The hub: pull, the pin in `constellation.json`, one `wiki/log.md` line, `wiki lint`, commit, push.
+7. The hub: pull; one log entry as a fragment `wiki/log.d/<YYYYMMDD-HHMM>[-<n>].md`, headed
+   `## [YYYY-MM-DD] operation | Label`, since "a branch never touches `log.md`" (hub `CLAUDE.md`,
+   "index.md and log.md", which gives the name and the header; ADR-0031); `wiki lint`; commit, push.
+   A fragment in `wiki/log.d/`, never `wiki/log.md` itself.
+   The pin in `constellation.json` moves only at a release: "Session closes do not move it" (hub
+   `RELEASES.md`, "What a pin means").
 
 ## Agents, skills and models
 
