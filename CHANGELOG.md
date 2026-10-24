@@ -7,6 +7,13 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The plugin's local pilot, recorded (hub Q-0545).** `docs/PLUGIN.md` § "Verifying it — the
+  pilot" records the author's install in `spatial-hemigroup-affine` at 0.5.0 and why two lines of
+  `claude plugin details` are not faults: `Agents (0)` miscounts an explicit `agents` field (the
+  runtime loads `article-kit:mathematician`), and the write skill's ~6.5k on-invoke is the real
+  tokenizer's cost, while compaction cuts at `round(len / 4) > 5000`, the unit `linkage.skills`
+  budgets in. The budget's comment in `linkage/skills.py`, which assumed the reverse, is corrected.
+
 ## v0.5.0 — 2026-10-24 — the standards as skills, an instruction budget, and a close ritual that matches the hub
 
 - **The version moves with the release (hub Q-0545).** `pyproject.toml`, `linkage/__init__.py`,

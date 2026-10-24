@@ -212,3 +212,23 @@ Then in `spatial-hemigroup-scale-space`, after steps 2–4 above:
 
 Record the outcome in this section; if the `github` source does not resolve in the cloud, record
 which fallback was used.
+
+**Verified by the author, 2026-10-24, at v0.5.0**, in `spatial-hemigroup-affine` on the laptop
+(Claude Code 2.1.310): the project settings alone did not install the plugin (`claude plugin list`
+was empty until `claude plugin marketplace add danielfagerstrom/article-kit` and `claude plugin
+install article-kit@article-kit`, user scope); after that it is listed enabled at 0.5.0, with the
+five skills and both hooks. Two lines of `claude plugin details` read as faults and are not:
+
+- **`Agents (0)`** is the inventory ignoring an explicit `agents` field: the same plugin with the
+  file under `agents/` and no field counts 1. The runtime loads it either way; a headless session
+  with the plugin installed lists `article-kit:mathematician` among its agent types. The agent is
+  namespaced, so a dispatch by the bare name `mathematician` reaches the plugin's only once
+  `~/.claude/agents/mathematician.md` is gone.
+- **`write ~6.5k` on-invoke** is the real tokenizer's count (the command spreads one
+  `count_tokens` total over the components by character share), which is what invoking costs.
+  Compaction cuts a re-attached skill by a different measure, `round(len / 4) > 5000` with 25,000
+  in all, the unit `linkage.skills` budgets in; by it the write skill is about 4,700 and survives a
+  compaction whole.
+
+Still open: the cloud-session check, removing `~/.claude/skills/fidelity-review` and
+`~/.claude/agents/mathematician.md`, and the `mathematician` row of the hub's `sync-agents.sh`.

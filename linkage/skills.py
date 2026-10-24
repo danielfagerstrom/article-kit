@@ -28,10 +28,12 @@ REPO = Path(__file__).resolve().parent.parent
 DOCS = REPO / "docs"
 SKILLS = REPO / ".claude" / "skills"
 TOKEN_CAP = 5000   # what Claude Code re-attaches of an invoked skill after a compaction
-# The budget a body is held to, estimated as characters / 4. The real tokenizer counts this markdown
-# (backticks, §, dashes, LaTeX) higher than chars/4, by an amount not measured here; 4,800 leaves
-# some room, and the bodies are ordered so that what a cut would lose is the least needed. Each
-# body also says to invoke it again after a compaction, which restores it whole.
+# The budget a body is held to, in characters / 4: the measure compaction itself applies, which
+# truncates a re-attached skill when round(len / 4) exceeds 5,000 (read from Claude Code 2.1.310;
+# docs/PLUGIN.md § "Verifying it — the pilot"). The real tokenizer counts this markdown about a
+# third higher, which is what invoking a skill costs, not where it is cut. 4,800 leaves room for
+# the header Claude Code adds; the bodies are ordered so that what a cut would lose is the least
+# needed, and each says to invoke it again after a compaction, which restores it whole.
 TOKEN_BUDGET = 4800
 
 _H2_RE = re.compile(r"(?m)^(?=## )")
