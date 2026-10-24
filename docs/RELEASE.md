@@ -17,8 +17,12 @@ its CLI. The rhythm:
 1. A framework change lands on `main` through a pull request; CI (`ruff`, `pytest`, the scaffolded
    article) is green. `CHANGELOG.md` gets its line under Unreleased in the same change.
 2. It gets a tag when it is worth consuming: the Unreleased entry is headed `## vX.Y.Z — <date> —
-   <title>`, and the author tags the merge commit (`git tag vX.Y.Z <commit>`, `git push origin
-   vX.Y.Z`). Versions are `v0.x.y` until the framework is stable: a new check, workflow input or
+   <title>`, the version is set to `X.Y.Z` in `pyproject.toml`, `linkage/__init__.py`,
+   `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` (`tests/test_plugin.py` holds
+   them equal), and the author tags the merge commit (`git tag vX.Y.Z <commit>`, `git push origin
+   vX.Y.Z`). The plugin's version is what moves an installed copy: Claude Code keeps a plugin at the
+   version its manifest names until that changes, so a release that leaves it alone never reaches a
+   machine that already has the plugin. The tags reached `v0.4.0` with every file still at `0.1.0`. Versions are `v0.x.y` until the framework is stable: a new check, workflow input or
    rule is a minor bump; a fix is a patch; anything that makes a passing article fail (a check
    turned from advisory to fatal, an input renamed) is a minor bump while `v0`, and says so in the
    changelog.
