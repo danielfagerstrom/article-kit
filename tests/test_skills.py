@@ -41,7 +41,7 @@ def test_each_skill_is_what_its_document_renders(name):
 
 @pytest.mark.parametrize("name", NAMES)
 def test_each_skill_fits_what_a_compaction_reattaches(name):
-    """Held to the budget (chars/4), not the cap: the real tokenizer counts this markdown higher."""
+    """Held to the budget, not the cap, in chars/4: the unit compaction measures a skill in."""
     assert skills.tokens(skill_text(name)) <= skills.TOKEN_BUDGET < skills.TOKEN_CAP
 
 

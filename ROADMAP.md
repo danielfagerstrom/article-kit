@@ -33,9 +33,9 @@ per module from `linkage.toml`, 2026-09-25). Open:
   per-project memories moved into the rules and the memories deleted. `linkage shape` is the
   worklist. The hub's own `CLAUDE.md` (4,300 words) gets the same pass.
 - **Step 6**, skills and agents as a plugin: the plugin and its marketplace are built and the
-  scaffold declares them ([`docs/PLUGIN.md`](docs/PLUGIN.md), 2026-09-25). Open, and the author's
-  because it is outside this repository: `claude plugin validate` and the `/plugin` check locally,
-  the same in a cloud session with `danielfagerstrom/article-kit` attached, removing
+  scaffold declares them ([`docs/PLUGIN.md`](docs/PLUGIN.md), 2026-09-25); installed and checked
+  locally at v0.5.0 (2026-10-24). Open, and the author's because it is outside this repository:
+  the same check in a cloud session with `danielfagerstrom/article-kit` attached, removing
   `~/.claude/skills/fidelity-review` and `~/.claude/agents/mathematician.md`, dropping the
   `mathematician` row from the hub's `sync-agents.sh` table, and merging the two settings keys into
   the article repos scaffolded before this. `docs/PLUGIN.md` § "Verifying it — the pilot" is the
