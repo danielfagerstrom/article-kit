@@ -171,18 +171,19 @@ def test_a_date_in_a_code_span_is_not_an_account_and_one_after_a_bold_opener_is(
 
 def test_the_frameworks_own_pointers_are_measured_against_article_kits_docs(tmp_path):
     """The scaffold's rules, installed as a sync installs them, beside a copy of this
-    repository's docs at `../article-kit/docs/`: the one pointer over the budget today is
-    `writing.md`'s to WRITING.md, which Q-0544 turns into a skill. Another means a rule began
-    pointing at a long file; none means the check stopped seeing this one."""
+    repository's docs at `../article-kit/docs/`, send a session to no long file before it acts:
+    `writing.md`'s "read WRITING.md in full" became `/article-kit:write` (hub Q-0544). So that
+    this cannot pass by the check going blind, the same setup with one rule re-pointed at
+    WRITING.md must report it."""
     import shutil
     article = tmp_path / "article"
-    shutil.copytree(scaffold.scaffold_dir() / "claude" / "rules",
-                    article / ".claude" / "rules" / "article-kit")
+    rules = article / ".claude" / "rules" / "article-kit"
+    shutil.copytree(scaffold.scaffold_dir() / "claude" / "rules", rules)
     shutil.copytree(scaffold.scaffold_dir().parent / "docs", tmp_path / "article-kit" / "docs")
+    assert shape.check_pointers(article) == []
+    _write(rules, "planted.md", "Read `../article-kit/docs/WRITING.md` in full before drafting.\n")
     found = shape.check_pointers(article)
-    assert len(found) == 1, found
-    assert ("writing.md:" in found[0] and "`../article-kit/docs/WRITING.md`" in found[0]
-            and "the fix is article-kit's" in found[0])
+    assert len(found) == 1 and "planted.md:1" in found[0] and "the fix is article-kit's" in found[0]
 
 
 def test_the_framework_rules_fit_their_own_budget():

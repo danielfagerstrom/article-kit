@@ -54,7 +54,9 @@ manifest without transclusion fields a hard failure, so one can never reach the 
 | `scaffold/repo/` | the templates of a new article's `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `notes/HANDOFF.md`, `adr/` and `records/` |
 | `scaffold/blueprint/` | the LaTeX scaffolding: theorem environments, plasTeX config, the linkage macros, the render allowlist |
 | `.github/workflows/` | reusable workflows (`workflow_call`) the article repos call |
-| `.claude-plugin/` | the plugin and marketplace manifests: the three components below reach an article session as the `article-kit` plugin ([`docs/PLUGIN.md`](docs/PLUGIN.md)) |
+| `.claude-plugin/` | the plugin and marketplace manifests: the components below reach an article session as the `article-kit` plugin ([`docs/PLUGIN.md`](docs/PLUGIN.md)) |
+| `.claude/skills/write/`, `release/`, `gate/` | the writing, release and drafting-gate standards as skills, so they survive a compaction: `/article-kit:write`, `/article-kit:release`, `/article-kit:gate <section>` (forked). Rendered from `docs/` by `linkage.skills`; never edited by hand |
+| `hooks/` | the plugin's instruction log: which instruction files load, and when a session compacts, appended to `${CLAUDE_PLUGIN_DATA}/instructions.jsonl` (paths and reasons only) |
 | `.claude/agents/mathematician.md` | the shared sub-agent; shipped by the plugin, and a project agent in this repository's own sessions |
 | `.claude/skills/fidelity-review/` | does the Lean prove what the article states, or something weaker or vacuous: the method, prompts, templates and `scripts/f7sweep.py`. `/article-kit:fidelity-review` from the plugin |
 | `.claude/skills/tighten/` | shorten a document to a page limit by measuring which paragraphs are cheapest to shorten. `/article-kit:tighten` |

@@ -7,8 +7,8 @@ paths:
 
 # article-kit — the axiom ledger and the trust boundary
 
-Framework-owned (`linkage init --sync`); do not edit here. The ledger's format and rules are
-`../article-kit/docs/LINKAGE.md`.
+Framework-owned (`linkage init --sync`); do not edit here. `../article-kit/docs/LINKAGE.md` is the
+checker's reference for the ledger's format and rules; `linkage check` enforces it.
 
 - **An anchor is verified only when the source's statement is transcribed verbatim from the page
   image into the entry** (the formula, its hypotheses, the sentence it sits in), beside the

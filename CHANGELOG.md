@@ -7,6 +7,38 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The writing, release and drafting-gate standards become plugin skills; a log of what
+  instructions load (hub Q-0544, from the engineer office's E-0018 and E-0020).** An invoked skill's
+  body is re-attached after a compaction (its first 5,000 tokens). A document the session merely
+  read is summarised away, and over 5,000 tokens it returns as a path only. `writing.md`'s "read
+  `WRITING.md` in full" (about 6,100 tokens) was therefore lost at the first compaction of a
+  drafting session. Three new skills, rendered from `docs/` by `linkage.skills` (the documents stay
+  the text of record):
+  - `/article-kit:write`: `WRITING.md` §§ 0–4 verbatim, the restraint budget first (~4,700 tokens);
+  - `/article-kit:release`: `RELEASE.md`'s rules and checklist (~3,100 tokens). The commands
+    would have taken it over the cap, so they stay in `RELEASE.md`, read at their step;
+  - `/article-kit:gate <section>`: `DRAFTING-GATE.md` with `context: fork` and
+    `background: false`, so the gate runs in a subagent and returns only its verdicts.
+
+  `tests/test_skills.py` fails when a `SKILL.md` drifts from its document. The pointers change to
+  match:
+  - `writing.md` now says to invoke `/article-kit:write` before drafting and again after a
+    compaction, and keeps its digest;
+  - `core.md` names the three skills;
+  - `PROCESS.md` §§ 7, 8 and 10 and its agents table name them;
+  - `blueprint.md` and `ledger.md` call `LINKAGE.md` "the checker's reference", which
+    `linkage check` enforces.
+
+  `linkage check` gains a `[plugin]` advisory when the article's `.claude/settings.json` (or
+  `settings.local.json`, which overrides it) does not enable `article-kit@article-kit`, so a skill
+  pointer with no plugin behind it is reported. The plugin gains `hooks/hooks.json`, run
+  asynchronously on `InstructionsLoaded` and on `SessionStart` with the source `compact`.
+  `hooks/log_load.py` appends one JSON line per event (session, event, file path, load reason,
+  cwd, time; no content) to `${CLAUDE_PLUGIN_DATA}/instructions.jsonl`, and exits 0 on any failure.
+  The Q-0542 guard test now holds the scaffold's read-first pointers at none, with a planted
+  pointer showing that it can still fire. Articles see the skills once their settings enable the
+  plugin (hub Q-0545). `plugin.json` pins a version, so the new skills reach an installed plugin
+  at the next framework release.
 - **The close ritual stops moving the pin and writing `wiki/log.md`; an instruction budget, checked
   by `linkage shape` (hub Q-0542, from the engineer office's E-0019).** `core.md` § "Close a
   session" and `PROCESS.md` § "Opening and closing a session" step 7 told every article session to

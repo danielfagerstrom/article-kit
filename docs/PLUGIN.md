@@ -19,9 +19,34 @@ plugin" is the request.
 
 | component | plugin name in a session | source of truth |
 |---|---|---|
+| `write` skill | `/article-kit:write` | `docs/WRITING.md` §§ 0–4, rendered by `linkage.skills` |
+| `release` skill | `/article-kit:release` | `docs/RELEASE.md` § "The rules" and § "The checklist", rendered |
+| `gate` skill (`context: fork`) | `/article-kit:gate <section>` | `docs/DRAFTING-GATE.md`, rendered |
 | `fidelity-review` skill | `/article-kit:fidelity-review` | `.claude/skills/fidelity-review/` |
 | `tighten` skill | `/article-kit:tighten` | `.claude/skills/tighten/` |
 | `mathematician` agent | `mathematician` | `.claude/agents/mathematician.md` |
+| the instruction log (hooks) | — | `hooks/hooks.json`, `hooks/log_load.py` |
+
+**The three standards as skills** (hub Q-0544). The writing, release and drafting-gate standards
+are what a session must keep in force for hours, and a document the session merely read does not
+survive a compaction: it is summarised away, and over 5,000 tokens it returns as a path only. An
+invoked skill's body is re-attached instead (its first 5,000 tokens;
+[context window, "What survives compaction"](https://code.claude.com/docs/en/context-window)). So
+each standard is also a skill, its body the document's text verbatim, rules first. The documents
+stay the text of record at their paths; `linkage.skills` renders the bodies and
+`tests/test_skills.py` fails when a `SKILL.md` drifts from it: after editing one of the three
+documents, run `uv run python -m linkage.skills`. The gate runs with `context: fork` and
+`background: false`, so its checklist never enters the drafting context and the session waits for
+its verdicts.
+
+**The instruction log.** `hooks/hooks.json` (the plugin's default hooks file) runs
+`hooks/log_load.py` asynchronously on `InstructionsLoaded` and on `SessionStart` with the source
+`compact`. Each appends one JSON line — `session_id`, `event`, `file_path`, `load_reason`, `cwd`,
+`ts` — to `instructions.jsonl` in `${CLAUDE_PLUGIN_DATA}`, and nothing else: no file's content. It
+never blocks and exits 0 when it cannot write. The command is POSIX shell (`python3`, falling back
+to `python`): on Linux, macOS and Windows with Git Bash it runs; a Windows session whose hook shell
+is PowerShell gets nothing logged and, on `SessionStart`, a non-blocking hook error. It is how the compaction rate and the rules in force
+late in a session are counted rather than inferred (hub E-0020).
 
 Nothing else. The session **rules** are not in the plugin: they reach an article as
 framework-owned copies under `.claude/rules/article-kit/`, written by `linkage init` and checked

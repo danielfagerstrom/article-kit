@@ -165,14 +165,17 @@ axiom guard, on source text alone, so it costs seconds and needs no toolchain.
 ### 7. The article — `paper/`
 
 Before a section is written, the drafting gate: [`DRAFTING-GATE.md`](DRAFTING-GATE.md)
-(`wiki gate --slot … --worklist` from the hub). Then, per section: one `.tex` file; statements
+(`wiki gate --slot … --worklist` from the hub), run as `/article-kit:gate <section>`, a skill that
+takes the gate to a subagent and brings back only the box verdicts.
+Then, per section: one `.tex` file; statements
 transcribed verbatim under `% shared with blueprint` markers (`linkage check` reports each
 `verbatim`); the proofs of record; each cited fact stated once, as a numbered
 theorem with its ledger page anchor, before its first use (`WRITING.md` § 3, "borrowed facts are
 stated, not folded in"); the trust base in one subsection (§ 1.1) with the headline `#print axioms`
 block and the table of which statement rests on which fact. That table is the only place the
 dependence is said: no sentence before an `[A]` node lists the facts it rests on (`WRITING.md` § 3). The writing standard is
-[`WRITING.md`](WRITING.md), the section contracts and the exposition rubric
+[`WRITING.md`](WRITING.md), its drafting rules (§§ 0–4) invoked as `/article-kit:write` before a
+section is drafted and again after a compaction; the section contracts and the exposition rubric
 [`PUBLICATION-TEMPLATE.md`](PUBLICATION-TEMPLATE.md). A module that follows another restates what it
 uses of it. Changes the paper forces on shared text are made in the blueprint and re-transcribed
 (the article mirror). The reverse direction binds too, under the same gate (§ 5): a pull request
@@ -182,7 +185,8 @@ drift or stale pin introduced by the branch.
 
 ### 8. The passes
 
-In this order, each on the text as it then stands:
+In this order, each on the text as it then stands, with `/article-kit:write` invoked for every pass
+that revises prose:
 
 1. **Readability**, against `PUBLICATION-TEMPLATE.md` § B and § C: each section opens with its aim,
    terms at first use, figures where an object needs to be seen.
@@ -213,7 +217,9 @@ batches of work. A change to the paper after a build is frozen means a new freez
 
 [`RELEASE.md`](RELEASE.md): the rules, the checklist, and the order of the commands (the DOI
 reserved first, the first page checked by the scripts, the verification export where the repository
-stays private).
+stays private). The rules and the checklist are the skill `/article-kit:release`, invoked before
+the first release step and again after a compaction; the commands are read from `RELEASE.md` at
+their step.
 
 ### 11. After the release
 
@@ -251,15 +257,19 @@ are already loaded. `git status` first after any crash.
 | `librarian` (library repo) | every source, every page anchor; dispatch is pre-authorized | sonnet |
 | `draft-reviewer` (hub) | blind review of one section's prose | opus |
 | `archivist` (hub) | the process record, the AI statement's numbers | sonnet |
+| `/article-kit:write` skill | every prose draft or revision (§§ 7, 8) | — |
+| `/article-kit:gate` skill | the drafting gate, in a subagent (§ 7) | — |
+| `/article-kit:release` skill | the release (§ 10) | — |
 | `/article-kit:fidelity-review` skill | phase 6 | opus reviewers |
 | `/article-kit:tighten` skill | page limits | — |
 
 Every `Agent` call sets `model`. Mechanical days run on opus, days that prove or draft new
 mathematics on fable (the rubric: `~/.claude/CLAUDE.md`).
 
-**How they reach a session.** article-kit's own — `mathematician` and the two skills — arrive as the
-`article-kit` **plugin**, from the marketplace each article's `.claude/settings.json` declares, which
-is why the skills are namespaced: [`PLUGIN.md`](PLUGIN.md), and the migration off the user-level
-junctions is there too. The hub's own (`draft-reviewer`, `archivist`) and the librarian's stay owned
+**How they reach a session.** article-kit's own — `mathematician` and the five skills — arrive as the
+`article-kit` **plugin**, which is why the skills are namespaced. They arrive only once the
+article's `.claude/settings.json` declares the marketplace and enables the plugin (`linkage check`
+reports an article that does not), and only at a plugin version that ships them:
+[`PLUGIN.md`](PLUGIN.md), with the migration off the user-level junctions. The hub's own (`draft-reviewer`, `archivist`) and the librarian's stay owned
 by their repositories and are kept current by the `SessionStart` hook
 (`.claude/sync-agents-hook.sh` → the hub's `sync-agents.sh`). No agent has two homes.

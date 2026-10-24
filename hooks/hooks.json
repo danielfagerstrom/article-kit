@@ -1,0 +1,28 @@
+{
+  "description": "article-kit: log which instruction files load, and when a session compacts (hub Q-0544, E-0020). Paths and reasons only; asynchronous; never blocks.",
+  "hooks": {
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/log_load.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/hooks/log_load.py\" 2>/dev/null || true",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/log_load.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/hooks/log_load.py\" 2>/dev/null || true",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

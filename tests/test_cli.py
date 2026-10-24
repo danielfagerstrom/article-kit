@@ -28,6 +28,32 @@ def test_check_prints_the_resident_sum_under_budget_too(article):
     assert "Resident instructions: 4 words, 3 lines" in out
 
 
+def test_check_reports_an_article_whose_settings_do_not_enable_the_plugin(article):
+    """The rules name /article-kit:write, :release and :gate (hub Q-0544)."""
+    import json
+    article.blueprint(statement(label="thm:x"))
+    settings = article.root / ".claude" / "settings.json"
+    settings.parent.mkdir(parents=True, exist_ok=True)
+    settings.write_text(json.dumps({"hooks": {}}), encoding="utf-8")
+    rc, out, _ = run_cli("--root", str(article.root), "check")
+    assert rc == 0 and "advisory [plugin]" in out and "article-kit@article-kit" in out
+    settings.write_text(json.dumps({"enabledPlugins": {"article-kit@article-kit": True}}),
+                        encoding="utf-8")
+    rc, out, _ = run_cli("--root", str(article.root), "check")
+    assert rc == 0 and "advisory [plugin]" not in out
+    # settings.local.json overrides, as in Claude Code
+    (settings.parent / "settings.local.json").write_text(
+        json.dumps({"enabledPlugins": {"article-kit@article-kit": False}}), encoding="utf-8")
+    rc, out, _ = run_cli("--root", str(article.root), "check")
+    assert "advisory [plugin] .claude/settings.local.json does not enable" in out
+    # a byte-order mark, as a Windows editor writes one, is not a missing setting
+    (settings.parent / "settings.local.json").unlink()
+    settings.write_text(json.dumps({"enabledPlugins": {"article-kit@article-kit": True}}),
+                        encoding="utf-8-sig")
+    rc, out, _ = run_cli("--root", str(article.root), "check")
+    assert "advisory [plugin]" not in out
+
+
 def test_a_fatal_finding_exits_one_and_is_printed(article):
     article.blueprint(statement(label="thm:x", status=None))
     rc, out, _ = run_cli("--root", str(article.root), "check")
