@@ -79,7 +79,7 @@ def test_the_shared_skills_and_agent_are_the_ones_shipped(manifest):
     """
     skills = {rel.rsplit("/", 1)[-1] for rel in manifest["skills"]}
     agents = {rel.rsplit("/", 1)[-1].removesuffix(".md") for rel in manifest["agents"]}
-    assert skills == {"fidelity-review", "tighten"}
+    assert skills == {"fidelity-review", "tighten", "write", "release", "gate"}
     assert agents == {"mathematician"}
 
 

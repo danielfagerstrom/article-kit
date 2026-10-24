@@ -94,6 +94,14 @@ def cmd_check(args) -> int:
             f"[scaffold] {rel} differs from the framework's copy — edit it in the linkage "
             "repo and re-run `linkage init --sync`, or the change is lost on the next sync"
         )
+    # The rules name the plugin's skills; without the plugin they point at nothing (hub Q-0544).
+    if not scaffold.plugin_enabled(cfg.root):
+        f.advisory.append(
+            f"[plugin] .claude/settings.json does not enable `{scaffold.PLUGIN_KEY}` — the "
+            "session rules name /article-kit:write, :release and :gate, which this repository's "
+            "sessions then cannot see; merge the scaffold's `extraKnownMarketplaces` and "
+            "`enabledPlugins` keys (article-kit docs/PLUGIN.md, 'What an article declares')"
+        )
     # Instruction files hold instructions, not the record (ADR-0001). Advisory only.
     from . import shape
     f.advisory.extend(shape.check(cfg.root))

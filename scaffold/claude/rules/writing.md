@@ -8,10 +8,13 @@ paths:
 
 Framework-owned (`linkage init --sync`); do not edit here.
 
-**Before drafting or revising any prose in this repository, read
-`../article-kit/docs/WRITING.md` in full**, and `../article-kit/docs/PUBLICATION-TEMPLATE.md`
-§ B for the section you are writing. The first draft of a module written without the standard had
-to be corrected section by section at the author's review.
+**Invoke `/article-kit:write` before drafting or revising prose, and again after a compaction.**
+It carries the drafting rules, `WRITING.md` §§ 0–4, and an invoked skill survives a compaction
+where a document the session once read does not. Without the plugin, the same rules are
+`../article-kit/docs/WRITING.md` §§ 0–4. The section contracts are
+`../article-kit/docs/PUBLICATION-TEMPLATE.md` § B, for the section you are writing. The first draft
+of a module written without the standard had to be corrected section by section at the author's
+review.
 
 The rules that are broken most, as a reminder, not a substitute:
 

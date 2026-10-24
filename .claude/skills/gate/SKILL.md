@@ -1,0 +1,173 @@
+---
+name: gate
+description: >
+  Run the section readiness gate, DRAFTING-GATE.md, on one section of this article in a separate
+  subagent, and return each box's verdict with its evidence. Invoke with the section, before the
+  section is drafted.
+context: fork
+background: false
+argument-hint: "<section, e.g. §5>"
+---
+
+# Run the section readiness gate
+
+**Your task.** Run the gate below on section **$ARGUMENTS** of the article repository in the current
+working directory. For each box, give its verdict (met, not met, or a judgement for the author) and
+the evidence: the command and the line of its output, or the file and line. Then give the answer
+"The rule" asks for. Read and run checks only; edit no file. You do not see the conversation that
+invoked you: everything you need is here, in the repository and in the hub (`$WIKI_VAULT`). Relative
+links below are to `${CLAUDE_PLUGIN_ROOT}/docs/` (in article-kit itself, `docs/`). Generated from
+the document by `linkage.skills`; edit the document, not this file.
+
+---
+
+# Section readiness gate
+
+Before a section of the monograph is drafted as **prose**, it must pass this gate.
+
+Prose is the last and cheapest step, not the payoff — a re-voicing of a settled structure for a fixed
+audience. The value lives upstream, in the grounded notes and the blueprint spine. Writing polished
+prose ahead of that structure is how precision gets lost: the writer (human or LLM) ends up papering a
+structural gap with fluent words, which reads well and says less. This gate exists to stop that.
+
+Each check names **the artifact that owns the signal**, so the gate is also the responsibility map: if a
+box has no clean owner, that is a hole in the foundation, not in the prose.
+
+---
+
+## The gate
+
+A section may be drafted as prose only when every applicable box is checked.
+
+### 1. Spine — the section's role is settled
+*owner: the outline — `Notes/wiki/outlines/spatio-temporal-scale-space.md`, its `## Slots` section*
+- [ ] Fixed place and order in the outline — i.e. the section is a slot.
+- [ ] A one-line thesis: the single claim the section makes. (`thesis:` sub-bullet on the slot.)
+- [ ] Scope boundary explicit — what it delivers vs. what it defers to a sibling or successor.
+      (`scope:` sub-bullet.)
+
+### 2. Statements — the formal spine exists
+*owner: `blueprint/src/content.tex` + `blueprint/AXIOMS.md`*
+- [ ] Every theorem/definition the section will assert is a blueprint node, tagged **[T]** or **[A]**.
+- [ ] Each **[T]** node is `\leanok` (proved), or explicitly listed as frontier (item 6).
+- [ ] Each **[A]** node is grounded in `AXIOMS.md` (named theorem, page anchor, citekey), or flagged
+      un-pinned. That entry is what the hub's `cited` grade rests on (item 3).
+
+### 3. Content — the knowledge is grounded and mature
+*owner: the wiki content note (e.g. `Notes/wiki/covariant-memory-evolution.md`) + its quality axes*
+- [ ] A content note carries the actual argument (the "what"), with references and Lean pointers.
+- [ ] The note clears the **gate triple `(maturity: evergreen, confidence: ≥ cited, lifecycle: active)`**
+      — or the shortfall *is* the section's declared frontier (item 6).
+- [ ] Open questions / contradictions in the note are resolved or explicitly parked.
+
+> **On the triple.** Earlier drafts of this gate asked for "maturity at or above `grounded`". There is
+> no such level: `grounded` was this repo's invention, and it collapsed three independent things into
+> one word. The wiki's schema is deliberately **three orthogonal axes** — `maturity` (seed → budding →
+> evergreen) is how worked-out the prose is, `confidence` (speculative → probable → cited → verified)
+> is how sure it is correct, `lifecycle` (active → stale → superseded) is freshness. A note can
+> honestly be `evergreen` yet only `probable`; that is a finished write-up of an open question, not a
+> defect, and a single "grounded" reading cannot express it. The hub owns this schema
+> ([`Notes/CLAIMS.md`](file:///C:/Users/danie/Documents/Notes/CLAIMS.md)); this gate consumes it and
+> must not mint levels of its own. `wiki rollup` already aggregates each slot's notes weakest-link
+> against exactly this triple.
+>
+> **On the confidence floor.** The confidence leg is a **floor, not an equality** (hub ROADMAP #16,
+> 2026-07-26): a `cited` note clears the gate and a `verified` note exceeds it. `cited` is the grade
+> for a claim resting on an **[A]** interface — a classical result this repo pins in `AXIOMS.md` with
+> a page anchor and a citekey, and that Lean *accepts* rather than proves. Checking such a result
+> against the literature is **this repo's** job and `AXIOMS.md` is the record of it; once an entry is
+> approved there the hub does not second-guess it, and there is nothing it could do to fix it if it
+> did. Ranking `cited` below `verified` keeps [A] and [T] visibly different — they are genuinely
+> different things — while accepting it at the gate stops an approved axiom from blocking a section
+> that legitimately depends on classical analysis. Note that `\leanok`/`\notready` are **not**
+> consulted on an [A] node: there `\notready` means "never a Lean target", which is the expected state
+> for a cited classical result, not a shortfall. An **un-pinned** [A] is the different case — no ledger
+> entry, so nothing to trust — and it stays frontier (item 6).
+
+### 4. Illustration & numerics — the story is visible and checked
+*owner: `scripts/` + the content note*
+- [ ] Every load-bearing figure is identified and at least sketched.
+      *(If you can't draw the step, its story isn't clear yet — a fail, not a defer.)*
+- [ ] Numerical claims (tail rates, masses, verifications) have a reproducible script.
+
+### 5. Register — the writing target is fixed
+*owner: [`WRITING.md`](WRITING.md) (audience + voice + technical register), with the module checked against § 0's default list and a "beyond the default" line added only if it goes beyond that list*
+- [ ] Every concept the section uses that sits below the audience floor has a background-then-use plan
+      (a sentence or two of what it is and why it's the right tool, then use).
+
+### 6. Honesty — the frontier is marked, not hidden
+*owner: the prose, checked against items 2–3*
+- [ ] Anything research-stage (an un-pinned [A], a `budding` note, an unproved [T]) is named as frontier
+      in the text, never narrated with a theorem's confidence.
+
+### 7. Single-sourcing — statements can't drift
+*owner: [`LINKAGE.md`](LINKAGE.md) + `linkage check` (linkage/checks.py)*
+- [ ] Each theorem the prose shares with the blueprint carries `% shared with blueprint <label>` naming a
+      real blueprint label (target: the identical `\label`).
+- [ ] `linkage check` passes (exit 0).
+
+### 8. Paper surface — the drafted prose resolves
+*owner: [`PUBLICATION-TEMPLATE.md`](PUBLICATION-TEMPLATE.md) § B *Det.* + `linkage paper` (linkage/paper.py)*
+
+The one box that is checked **after** the prose exists, not before it: the others are readiness
+conditions on upstream artifacts, this one reads the paper sources. It is the deterministic half of
+the publication contract, so it belongs to the section's *done*, not to its *ready* — run it before
+the section is called finished and before any release.
+
+- [ ] `linkage paper` passes (exit 0): every `\ref` resolves, every `\cite` key is in the `.bib`,
+      no item pointer names an item the target does not have, and no hand-written `\tag{N.M}` carries
+      another section's number.
+- [ ] Its advisories are read and either fixed or accepted: the four mandatory declarations, the
+      abstract's length, numbered results nothing refers to, cited entries with no DOI, and bare
+      `§`/`Thm.` pointers with neither a citation nor a label.
+
+*The judgement half of the same contract — is the abstract's contribution specific, is prior work
+positioned, is each result interpreted — stays with the reviewer agents (`/review-draft`), which flag
+and never gate.*
+
+---
+
+## The rule
+
+- Draft prose only when **items 1–3, 5, 6** pass.
+- Item 4 should precede, but figures may be drafted alongside the prose.
+- Item 7 is enforced by `linkage check` (linkage/checks.py) (run it before drafting/publishing).
+- Item 8 is enforced by `linkage paper` (linkage/paper.py), and is read *after* drafting: it is the
+  only box whose subject is the prose itself.
+
+**Meta-rule:** when a box fails, **fix the upstream artifact — do not compensate in the prose.**
+Compensating in prose is the exact failure this gate prevents.
+
+## Running it
+
+The hub executes this document. From anywhere in the wiki vault, or from this repo with
+`$WIKI_VAULT` set to it:
+
+```bash
+wiki gate --slot "§5"              # all seven boxes, each read from its owning artifact
+wiki gate --slot "§5" --worklist   # just what to go and do, merged with the evaluator's list
+wiki gate --check                  # exit 1 if a machine-checkable box fails
+```
+
+It reports items 1–4 deterministically, hands items 5–6 to a reader, and leaves items 7 and 8 to this
+repo's `linkage check` and `linkage paper`.
+**It never reports READY, by design:** items 5 and 6 are judgements about prose, and item 6's cached
+findings are free text that mixes violations with clearances — a tool that "read" them would be
+inventing authority it does not have. What it *can* assert is whether the audit behind item 6 is
+current, since a section may not lean on an audit of prose that has since changed. So its best verdict
+is `NEEDS-REVIEW`: everything checkable clears, now go and read.
+
+The hub owns that tool and its schema (`Notes/CLAIMS.md` § "The gate"); this document is the spec it
+implements. If a box here changes, the change lands here first.
+
+## Relation to the pipeline
+
+This gate is the concrete form of the "Handoff signal" in `RESEARCH.md` (an item moves from *developing
+here* to *writing in the repo* when its wiki page is mature enough). It makes "mature enough" auditable,
+section by section.
+
+The stages it sits between:
+
+    ideas → grounded notes (refs + Lean) → blueprint spine → figures/numerics → [GATE] → prose
+
+Prose is downstream of the gate. Everything above it is where the work — and the value — actually lives.

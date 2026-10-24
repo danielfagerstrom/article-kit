@@ -5,8 +5,8 @@ paths:
 
 # article-kit — the blueprint
 
-Framework-owned (`linkage init --sync`); do not edit here. The rules the checks enforce are
-`../article-kit/docs/LINKAGE.md`; the phase is `../article-kit/docs/PROCESS.md` § 3.
+Framework-owned (`linkage init --sync`); do not edit here. `../article-kit/docs/LINKAGE.md` is the
+checker's reference; `linkage check` enforces it. The phase is `../article-kit/docs/PROCESS.md` § 3.
 
 - **The blueprint is the text of record.** The paper and the wiki transcribe its nodes verbatim.
   Statements and proofs are publication-quality mathematics in the register of

@@ -193,6 +193,27 @@ def init(root: Path, slug: str, subs: dict[str, str] | None = None,
     return 0
 
 
+PLUGIN_KEY = "article-kit@article-kit"
+
+
+def plugin_enabled(root: Path) -> bool:
+    """Whether the article's project settings enable the article-kit plugin, which is what makes
+    the skills its rules name (`/article-kit:write`, `:release`, `:gate`) visible to its sessions.
+    `settings.local.json` overrides `settings.json`, as in Claude Code. A file that is absent or
+    not JSON counts as not enabling it; a user-level enablement is not visible from here."""
+    found = None
+    for name in ("settings.json", "settings.local.json"):
+        path = root / ".claude" / name
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        plugins = doc.get("enabledPlugins") if isinstance(doc, dict) else None
+        if isinstance(plugins, dict) and PLUGIN_KEY in plugins:
+            found = plugins[PLUGIN_KEY] is True
+    return bool(found)
+
+
 def drift(root: Path) -> list[str]:
     """Framework-owned files whose article copy no longer matches the framework's."""
     src = scaffold_dir()

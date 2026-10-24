@@ -8,8 +8,9 @@ article-kit, where every article gets it. The framework's docs are in the siblin
 **This repository is an article module.** The process it follows, phase by phase, is
 `../article-kit/docs/PROCESS.md`; read the section of the phase you are in before starting work in
 it. The writing standard is `../article-kit/docs/WRITING.md`, the release discipline
-`../article-kit/docs/RELEASE.md`, the linkage rules `../article-kit/docs/LINKAGE.md`. This
-repository's own rules are its `CLAUDE.md`.
+`../article-kit/docs/RELEASE.md`, the linkage rules `../article-kit/docs/LINKAGE.md`; the first two
+and the drafting gate are also the skills `/article-kit:write`, `/article-kit:release` and
+`/article-kit:gate`, which survive a compaction. This repository's own rules are its `CLAUDE.md`.
 
 ## Open a session
 
