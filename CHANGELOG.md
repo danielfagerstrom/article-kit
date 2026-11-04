@@ -7,6 +7,11 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage release export`: a blueprint chapter may be several files.** `05` in a module's `chapters`
+  now takes every `05-*.tex`, in the order the development's `content.tex` inputs them, and the export's
+  `content.tex` sets the chapter counter once for the chapter. It refused such a chapter; the affine
+  paper's chapter 5 is six files, whose alphabetical order is not their reading order.
+
 - **The plugin's local pilot, recorded (hub Q-0545).** `docs/PLUGIN.md` § "Verifying it — the
   pilot" records the author's install in `spatial-hemigroup-affine` at 0.5.0 and why two lines of
   `claude plugin details` are not faults: `Agents (0)` miscounts an explicit `agents` field (the

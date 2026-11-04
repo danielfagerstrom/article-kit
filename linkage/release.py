@@ -547,8 +547,13 @@ def export_content_tex(files: list[str], tag: str, extra: bool = True) -> str:
         "",
         *(["\\input{theorems-extra.tex}", ""] if extra else []),
     ]
+    # The further files of a chapter split over several continue it, so the counter is set once
+    # for each chapter and not for each file.
+    chapter = None
     for name in files:
-        lines.append(f"\\setcounter{{chapter}}{{{int(name[:2]) - 1}}}")
+        if name[:2] != chapter:
+            chapter = name[:2]
+            lines.append(f"\\setcounter{{chapter}}{{{int(chapter) - 1}}}")
         lines.append(f"\\input{{parts/{name}}}")
     return "\n".join(lines) + "\n"
 
@@ -839,15 +844,25 @@ class Exporter:
     # -- reading the blueprint ---------------------------------------------------------------
 
     def chapter_files(self, chapters: list[str]) -> list[str]:
-        """`02` -> `02-preliminaries.tex`; a chapter with no file is an error."""
+        """`02` -> `02-preliminaries.tex`; a chapter with no file is an error. A chapter split over
+        several files gives all of them, in the order the development's content.tex inputs them,
+        since their alphabetical order need not be their reading order and the numbering follows
+        the reading order."""
+        content = self.parts.parent / "content.tex"
+        text = content.read_text(encoding="utf-8") if content.exists() else ""
+
+        def reading_order(path: Path) -> tuple[int, str]:
+            at = strip_comments(text).find(f"parts/{path.name}")
+            return (at if at >= 0 else len(text), path.name)
+
         out = []
         for ch in chapters:
-            hits = sorted(self.parts.glob(f"{ch}-*.tex"))
-            if len(hits) != 1:
+            hits = sorted(self.parts.glob(f"{ch}-*.tex"), key=reading_order)
+            if not hits:
                 raise ReleaseError(
-                    f"chapter {ch}: {len(hits)} files match "
+                    f"chapter {ch}: no file matches "
                     f"{self.parts.relative_to(self.root).as_posix()}/{ch}-*.tex")
-            out.append(hits[0].name)
+            out += [p.name for p in hits]
         return out
 
     def label_chapters(self) -> dict[str, str]:
@@ -984,15 +999,15 @@ class Exporter:
         parts_rel = self.parts.relative_to(self.root).as_posix()
         lean_rel = self.form.relative_to(self.root).as_posix()
 
-        def chapter_file(ch: str) -> str:
+        def chapter_files(ch: str) -> list[str]:
             hits = sorted(p for p in tree
                           if re.fullmatch(rf"{re.escape(parts_rel)}/{ch}-[^/]*\.tex", p))
-            if len(hits) != 1:
-                raise ReleaseError(f"--cites {tag}: chapter {ch}: {len(hits)} files match "
+            if not hits:
+                raise ReleaseError(f"--cites {tag}: chapter {ch}: no file matches "
                                    f"{parts_rel}/{ch}-*.tex at {tag}")
-            return hits[0]
+            return hits
 
-        chapter_names = [Path(chapter_file(c)).name for c in chapters]
+        chapter_names = [Path(p).name for c in chapters for p in chapter_files(c)]
 
         label_chapter: dict[str, str] = {}
         for p, text in tree.items():

@@ -1063,6 +1063,13 @@ def test_content_tex_inputs_theorems_extra_only_where_the_article_has_one() -> N
     assert "theorems-extra" not in without and "\\input{parts/02-first.tex}" in without
 
 
+def test_content_tex_sets_the_chapter_counter_once_for_a_chapter_of_several_files() -> None:
+    text = release.export_content_tex(["02-a.tex", "05-z.tex", "05-b.tex"], "v0.1", extra=False)
+    assert text.count("\\setcounter{chapter}{1}") == 1
+    assert text.count("\\setcounter{chapter}{4}") == 1
+    assert text.index("parts/05-z.tex") < text.index("parts/05-b.tex")
+
+
 # ---- the export removes the files it no longer writes --------------------------------------------
 
 def _export_to(repo: Path, out_dir: Path, *extra: str):
