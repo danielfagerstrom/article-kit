@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`docs/RELEASE.md`: a Zenodo deposit's file order, corrected.** The rehearsal checklist said
+  `iso-v0.1` listed the zip first and told a reader to reorder the draft when `status` showed that.
+  On the real deposit of the affine paper's `v0.1`, `upload`'s write of `files.order` did not hold
+  and `publish` refused a good record: the records API lists the zip first on all six of the
+  programme's records, while the two public pages read (`iso-v0.1`, the affine paper's `v0.1`)
+  preview the PDF and list it first. The section now says so, and the entry under v0.5.0 stands as
+  what was believed then. The check itself is unchanged; `WISHLIST.md` asks for its repair.
+
 - **`linkage release export`: a blueprint chapter may be several files.** `05` in a module's `chapters`
   now takes every `05-*.tex`, in the order the development's `content.tex` inputs them, and the export's
   `content.tex` sets the chapter counter once for the chapter. It refused such a chapter; the affine
