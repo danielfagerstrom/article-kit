@@ -358,6 +358,54 @@ draft means unfinished work (the queue's dispatcher), and CI skips drafts."
 
 ---
 
+## `zenodo publish`: the file-order check refuses a good deposit
+
+**Wanted by** spatial-hemigroup-affine (Paper VII), 2026-11-04, at the release of `v0.1`.
+
+`publish` refused the deposit with `the first file listed is
+spatial-hemigroup-scale-space-affine-v0.1.zip, not the paper's PDF`, and the author published with
+`--allow-file-order`. Nothing was wrong with the record. The check reads the records API, and the
+API's order is not the one a reader sees:
+
+- **The API.** On all six released records of the programme (`causal-kernels` `v1.1.0`, the line
+  paper's `v0.1`, `cone-v0.1`, `selection-v0.1`, `iso-v0.1`, the affine paper's `v0.1`), the public
+  `/api/records/<id>/files` lists the zip first, with `order` empty and `default_preview` the PDF
+  (read 2026-11-04).
+- **The page.** The public pages of `iso-v0.1` (zenodo.org/records/23357468) and the affine paper's
+  `v0.1` (zenodo.org/records/23963515) preview the PDF and list the PDFs before the zip (read
+  2026-11-04). The other four pages were not read.
+- **The origin of the check.** Q-0486 started from "the published record lists the zip first" in
+  `iso-v0.1`. That holds of the API and not of the page as read now. What the page showed on the day
+  `iso-v0.1` was published is not known.
+- **The write.** `upload`'s write of `files.order` has now run against the real Zenodo once. The
+  same `PUT` carries the default preview, which held; the order did not: `publish` read the zip
+  first, and the published `files.order` is empty. The cause is not established. The written
+  procedure has only `status` between `upload` and `publish`; `metadata` and `preview` each write
+  the draft back without `order`, which may also clear it.
+
+Both pages' order is also alphabetical (`.pdf`, `.supplement.pdf`, `.zip`), so the page may simply
+sort by name. All six deposits have the same stem, so they cannot tell.
+
+**Why it matters.** The check guards an irreversible step, and on this evidence it refuses every
+deposit. An override taken every time is no check: a real fault would go through with it. The
+refusal also sends the author back to `upload` or the draft page for nothing.
+
+**Wanted.**
+
+1. One sandbox deposit whose zip sorts before its PDF by name, to see what decides the page's order.
+2. `publish` refuses on what is known to reach the reader: a `default_preview` that is not the
+   paper's PDF, which it prints today and does not check. The API's order stays in `status`, labelled
+   as the API's.
+3. `upload` stops writing `files.order`, unless step 1 shows that it reaches the page; in that case
+   `metadata` and `preview` keep it.
+4. The docstrings of `file_order_fault` and `set_default_preview` in `linkage/zenodo.py` still state
+   the old reading ("listed the zip first", "The record's page lists the files in that order"), and
+   so does the refusal's advice. They change with the check, along with `tests/test_release.py`.
+
+`docs/RELEASE.md` § "The commands" now says what is above; the check itself is unchanged.
+
+---
+
 *No other open requests.*
 
 ---
