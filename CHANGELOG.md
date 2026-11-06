@@ -15,6 +15,12 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   are unchanged (`upload` still writes `files.order`); `WISHLIST.md` keeps the sandbox experiment and
   that step.
 
+- **`scaffold/claude/rules/core.md`: a finished pull request opens ready for review.** A cloud session's
+  environment told it to open pull requests as drafts, and two finished ones (spatial-hemigroup-affine
+  #170, notes-wiki #269) sat as drafts with CI skipped. A draft means unfinished work, the queue
+  dispatcher's mark, so "Close a session" now says so. An article gets it at its next `linkage init --sync`;
+  the entry in `WISHLIST.md` that asked for it is deleted.
+
 - **`docs/RELEASE.md`: a Zenodo deposit's file order, corrected.** The rehearsal checklist said
   `iso-v0.1` listed the zip first and told a reader to reorder the draft when `status` showed that.
   On the real deposit of the affine paper's `v0.1`, `upload`'s write of `files.order` did not hold

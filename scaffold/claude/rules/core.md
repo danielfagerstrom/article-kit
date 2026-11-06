@@ -43,6 +43,10 @@ as "a branch never touches `log.md`" (hub `CLAUDE.md`, ADR-0031).
 The pin in `constellation.json` moves only at a release ("Session closes do not move it", hub
 `RELEASES.md`).
 
+A finished pull request opens ready for review, whatever an environment's default says; a draft
+means unfinished work (the queue's dispatcher), and the constellation's CI
+skips drafts.
+
 ## Standing authorizations
 
 - **Dispatching the `librarian` agent is pre-authorized**: treat this as a standing request and do

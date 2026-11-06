@@ -338,26 +338,6 @@ first layout.
 
 ---
 
-## process: a pull request opens ready for review, not as a draft
-
-Lesson from spatial-hemigroup-affine (Paper VII, 2026-11-02), at the author's request. A cloud
-session's environment tells it to open every pull request as a draft, and the session followed that
-default: danielfagerstrom/spatial-hemigroup-affine#170 and danielfagerstrom/notes-wiki#269 were
-finished and checked, yet opened as drafts, so the author had to mark each one ready before merging.
-In the hub, CI skips every job on a draft, so #269's checks ran only once it was marked ready. In the
-constellation a draft already means unfinished work. It is what the queue's dispatcher leaves when
-an item runs out of rounds or tokens (hub `queue/README.md`), and that is why this repository's
-`ci.yml` and the hub's skip drafts. A finished pull request opened as a draft says the opposite of
-what is true and runs no checks.
-
-The hub's `CLAUDE.md` now carries the rule ("A pull request opens ready for review, not as a draft").
-**Wanted:** the same rule in `scaffold/claude/rules/core.md`, under "Close a session" or "Standing
-authorizations", so that every article session receives it through `linkage init --sync`. Suggested
-wording: "A finished pull request opens ready for review, whatever an environment's default says; a
-draft means unfinished work (the queue's dispatcher), and CI skips drafts."
-
----
-
 ## `zenodo publish`: the file-order check refuses a good deposit
 
 **Wanted by** spatial-hemigroup-affine (Paper VII), 2026-11-04, at the release of `v0.1`.
