@@ -21,7 +21,7 @@ Three steps, run by the author, in this order:
                re-export, tag.
   2. upload    upload the release files into the draft: the PDF at the export's root and a zip of
                the export's tagged tree (git archive), or the files given with --file.
-  3. publish   publish the draft; refused when the first file listed is not the paper's PDF
+  3. publish   publish the draft; refused when the default preview is not the paper's PDF
                (--allow-file-order overrides). This is irreversible: a published Zenodo record cannot be
                deleted, only superseded by a new version. The step asks for the word "publish".
 
@@ -69,8 +69,9 @@ def set_default_preview(st: dict, tok: str, name: str, order: list[str] | None =
 
     `files.order` (a list of file names) sits beside `files.default_preview` in the records API's
     draft (InvenioRDM; the draft page's reordering writes it). The deposit API has no such
-    field. The record's page lists the files in that order, and a published record's order cannot
-    be changed, so `upload` sets it and `publish` reads it back.
+    field. Whether the record's page follows that order is not established (the API listed the
+    zip first on all six released records while the pages read preview the PDF), so `publish`
+    checks the default preview and only `status` reports the order.
 
     The legacy deposit API this module otherwise uses has no such field; the records API
     (InvenioRDM) has `files.default_preview` on the draft, and the same token reaches it. The
@@ -115,13 +116,15 @@ def draft_files(st: dict, tok: str) -> tuple[list[str], str | None]:
     return names, files.get("default_preview")
 
 
-def file_order_fault(names: list[str], paper: str | None) -> str | None:
-    """Why the order is not one to publish: the first file is what a reader lands on, and a
-    published record's order cannot be changed (affine's `iso-v0.1` listed the zip first)."""
+def preview_fault(names: list[str], preview: str | None, paper: str | None) -> str | None:
+    """Why the draft is not one to publish: the default preview is what a reader sees first, and
+    a published record's files cannot be changed. The API's file order is not checked: on all six
+    released records it lists the zip first with `order` empty, while the public pages preview
+    the PDF (hub Q-0622)."""
     if not names:
         return "the draft lists no files"
-    if paper and names[0] != paper:
-        return f"the first file listed is {names[0]}, not the paper's PDF {paper}"
+    if paper and preview != paper:
+        return f"the default preview is {preview or 'NONE'}, not the paper's PDF {paper}"
     return None
 
 
@@ -421,7 +424,7 @@ def cmd_status(a) -> int:
     except ZenodoError as e:
         print("  file order: could not be read:", e.args[0].splitlines()[0])
         return 0
-    print("  file order:", " > ".join(names) or "NONE")
+    print("  file order (the API's, not necessarily the page's):", " > ".join(names) or "NONE")
     print("  default preview:", preview or "NONE")
     return 0
 
@@ -440,13 +443,14 @@ def cmd_publish(a) -> int:
                           f"`linkage release zenodo metadata` and check the draft page again")
     names, preview = draft_files(st, token(st["sandbox"]))
     pdfs = release_pdfs(export)
-    if fault := file_order_fault(names, pdfs[0].name if pdfs else None):
+    if fault := preview_fault(names, preview, pdfs[0].name if pdfs else None):
         if not a.allow_file_order:
-            raise ZenodoError(f"{fault}: not publishing. Run `linkage release zenodo upload` "
-                              f"again or reorder the files on the draft page; "
+            raise ZenodoError(f"{fault}: not publishing. Run `linkage release zenodo preview` "
+                              f"or set the default preview on the draft page; "
                               f"--allow-file-order publishes all the same")
-        print(f"file order: {fault} (--allow-file-order: going on)")
-    print("file order:", " > ".join(names), "| default preview:", preview or "NONE")
+        print(f"default preview: {fault} (--allow-file-order: going on)")
+    print("default preview:", preview or "NONE", "| file order (the API's, not the page's):",
+          " > ".join(names))
     print(f"About to publish deposition {st['id']} on {where} with DOI {st['doi']}.")
     print("A published record cannot be deleted. Type the word publish to go on:")
     if input().strip() != "publish":
