@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`zenodo publish` checks the default preview, not the API's file order (hub Q-0622).** The check
+  refused every deposit: the records API lists the zip first with `order` empty on all six released
+  records, while the public pages preview the PDF. `publish` now refuses when `default_preview` is not
+  the paper's PDF; the file order is printed by `status` and `publish`, labelled as the API's.
+  `--allow-file-order` is kept and overrides the preview check. `upload`, `metadata` and `preview`
+  are unchanged (`upload` still writes `files.order`); `WISHLIST.md` keeps the sandbox experiment and
+  that step.
+
 - **`docs/RELEASE.md`: a Zenodo deposit's file order, corrected.** The rehearsal checklist said
   `iso-v0.1` listed the zip first and told a reader to reorder the draft when `status` showed that.
   On the real deposit of the affine paper's `v0.1`, `upload`'s write of `files.order` did not hold

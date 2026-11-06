@@ -762,7 +762,7 @@ def build_parser() -> argparse.ArgumentParser:
                     help="upload: upload these files instead of the defaults; preview: the "
                          "file to preview")
     rz.add_argument("--allow-file-order", action="store_true",
-                    help="publish: go on although the draft's first file is not the paper's PDF")
+                    help="publish: go on although the draft's default preview is not the paper's PDF")
     rz.set_defaults(func=cmd_release_zenodo)
     rv = sub.add_parser("review", help="pool the draft-reviewer's flags across reviews "
                                        "and rank them by breadth (REVIEWER-CONTRACT.md)")
