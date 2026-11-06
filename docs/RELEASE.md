@@ -261,9 +261,11 @@ the first real deposit to run that write, the affine paper's `v0.1` (2026-11-04)
 not hold: the API read the zip first, and the published record's `files.order` is empty. Its public
 page previews the PDF and lists it before the zip. `iso-v0.1`, whose "zip first" prompted the
 check, reads the same way on both counts, and the API reads the same on the programme's other
-released records. `publish` still refuses on the API's order, so until that check changes
-([`WISHLIST.md`](../WISHLIST.md)) a deposit whose default preview is the paper's PDF goes through
-with `--allow-file-order`. A published record's files cannot be reordered; only a new version can.
+released records. `publish` therefore refuses on the default preview, which is what reaches the
+reader, and only reports the API's order (`status` and `publish` label it as the API's).
+`--allow-file-order` stays as the override of that preview check. Whether the page's order follows
+the API's is not established ([`WISHLIST.md`](../WISHLIST.md)); `upload` still writes
+`files.order`. A published record's files cannot be reordered; only a new version can.
 
 What the first runs taught, now built into the scripts: the release date line may span two lines
 (the gate reads the whole braced `\date{...}`); guard lines are matched to exported modules by

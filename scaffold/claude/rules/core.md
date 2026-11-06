@@ -44,7 +44,8 @@ The pin in `constellation.json` moves only at a release ("Session closes do not 
 `RELEASES.md`).
 
 A finished pull request opens ready for review, whatever an environment's default says; a draft
-means unfinished work (the queue's dispatcher), and CI skips drafts.
+means unfinished work (the queue's dispatcher), and the constellation's CI
+skips drafts.
 
 ## Standing authorizations
 

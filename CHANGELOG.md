@@ -7,10 +7,18 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`zenodo publish` checks the default preview, not the API's file order (hub Q-0622).** The check
+  refused every deposit: the records API lists the zip first with `order` empty on all six released
+  records, while the public pages preview the PDF. `publish` now refuses when `default_preview` is not
+  the paper's PDF; the file order is printed by `status` and `publish`, labelled as the API's.
+  `--allow-file-order` is kept and overrides the preview check. `upload`, `metadata` and `preview`
+  are unchanged (`upload` still writes `files.order`); `WISHLIST.md` keeps the sandbox experiment and
+  that step.
+
 - **`scaffold/claude/rules/core.md`: a finished pull request opens ready for review.** A cloud session's
   environment told it to open pull requests as drafts, and two finished ones (spatial-hemigroup-affine
   #170, notes-wiki #269) sat as drafts with CI skipped. A draft means unfinished work, the queue
-  dispatcher's mark, so "Close a session" now says so. `linkage init --sync` delivers it to every article;
+  dispatcher's mark, so "Close a session" now says so. An article gets it at its next `linkage init --sync`;
   the entry in `WISHLIST.md` that asked for it is deleted.
 
 - **`docs/RELEASE.md`: a Zenodo deposit's file order, corrected.** The rehearsal checklist said
