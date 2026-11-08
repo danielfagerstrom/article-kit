@@ -233,7 +233,7 @@ if command -v tectonic >/dev/null 2>&1; then
 else
   log "installing Tectonic ${TECTONIC_VERSION} → /usr/local/bin"
   TMPD="$(mktemp -d)"
-  if curl -fsSL -o "$TMPD/tectonic.tar.gz" \
+  if curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors -o "$TMPD/tectonic.tar.gz" \
       "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz"; then
     tar -xzf "$TMPD/tectonic.tar.gz" -C "$TMPD" tectonic
     mv "$TMPD/tectonic" /usr/local/bin/tectonic

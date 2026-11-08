@@ -7,6 +7,13 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The Tectonic and pandoc downloads retry.** `docs.yml` fetched Tectonic, and `manifest.yml`
+  pandoc, from GitHub's release servers once. On 2026-11-08 those servers answered `504` for over an
+  hour, and five articles' `main` went red on merges that changed nothing in their builds. The
+  downloads now retry five times, ten seconds apart (`curl --retry-all-errors`,
+  `wget --retry-on-http-error`), and so does the Tectonic download in `scaffold/claude/cloud-setup.sh`.
+  An article gets it when it moves its pin to the tag that carries this entry.
+
 - **`zenodo publish` checks the default preview, not the API's file order (hub Q-0622).** The check
   refused every deposit: the records API lists the zip first with `order` empty on all six released
   records, while the public pages preview the PDF. `publish` now refuses when `default_preview` is not
