@@ -93,7 +93,7 @@ jobs:
       # — the hub's freshness warning fired on the projected manifest).
       - name: Install pinned pandoc
         run: |
-          wget -q -O "$RUNNER_TEMP/pandoc.deb" \
+          wget -q --tries=5 --waitretry=10 --retry-on-http-error=429,500,502,503,504 -O "$RUNNER_TEMP/pandoc.deb" \
             "https://github.com/jgm/pandoc/releases/download/${{ inputs.pandoc_version }}/pandoc-${{ inputs.pandoc_version }}-1-amd64.deb"
           sudo dpkg -i "$RUNNER_TEMP/pandoc.deb"
           pandoc --version | head -1
