@@ -533,6 +533,11 @@ def cmd_pins(args) -> int:
 def cmd_init(args) -> int:
     from . import scaffold
     root = args.root or Path.cwd()
+    if args.check:
+        if not args.sync:
+            print("linkage init: --check needs --sync", file=sys.stderr)
+            return 2
+        return scaffold.check(root)   # before the config: a broken linkage.toml must not stop it
     slug = args.slug
     if slug is None:
         # --sync inside an existing article: take the slug from its config
@@ -790,6 +795,9 @@ def build_parser() -> argparse.ArgumentParser:
     i.add_argument("--slug", help="satellite id, e.g. 'hcs' (omit with --sync)")
     i.add_argument("--sync", action="store_true",
                    help="refresh the framework-owned files only; leave article files alone")
+    i.add_argument("--check", action="store_true",
+                   help="with --sync: write nothing; list each framework-owned file that differs "
+                        "from the scaffold and whose change it is; exit 1 on any difference")
     i.add_argument("--title", help="document title for the rendered web/print templates")
     i.add_argument("--github", help="the article repo's URL")
     i.add_argument("--home", help="published site URL")

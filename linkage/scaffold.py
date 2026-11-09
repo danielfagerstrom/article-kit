@@ -230,3 +230,63 @@ def drift(root: Path) -> list[str]:
         if _read(dest) != _read(src / rel):
             out.append(dest_rel)
     return out
+
+
+def last_sync(root: Path) -> dict[str, str]:
+    """The hashes `init` recorded, per framework-owned destination, of the scaffold copy the
+    article last received. Empty when there is no stamp or it is unreadable."""
+    try:
+        doc = json.loads(_read(root / "blueprint" / STAMP))
+        recorded = doc["framework_owned"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
+    return recorded if isinstance(recorded, dict) else {}
+
+
+def drift_directions(root: Path) -> list[tuple[str, str]]:
+    """Each drifted framework-owned file with whose change it is.
+
+    Compared with the hash recorded at the last sync: `scaffold` when the article's copy is
+    still what it received (the framework changed since), `article` when the framework's copy
+    is still what it sent (the article edited its copy), `both` when each moved, `unrecorded`
+    when the stamp does not name the file (a repository synced without a `blueprint/`, or
+    before the stamp existed).
+    """
+    src = scaffold_dir()
+    recorded = last_sync(root)
+    rels = {dest_rel: rel for rel, dest_rel in FRAMEWORK_OWNED.items()}
+    out = []
+    for dest_rel in drift(root):
+        theirs, ours = sha(_read(root / dest_rel)), sha(_read(src / rels[dest_rel]))
+        then = recorded.get(dest_rel)
+        if then is None:
+            direction = "unrecorded"
+        elif theirs == then:
+            direction = "scaffold"
+        elif ours == then:
+            direction = "article"
+        else:
+            direction = "both"
+        out.append((dest_rel, direction))
+    return out
+
+
+DIRECTION_TEXT = {
+    "scaffold": "the scaffold changed since the last sync: `linkage init --sync` brings it in",
+    "article": "the article edited its copy: move the edit into article-kit first, or a sync loses it",
+    "both": "the scaffold changed and the article edited its copy: reconcile in article-kit, then sync",
+    "unrecorded": "no record of the last sync names it: compare the two by hand",
+}
+
+
+def check(root: Path) -> int:
+    """`init --sync --check`: print what a sync would change and whose change it is; write nothing.
+    Exit 1 when any framework-owned file differs."""
+    found = drift_directions(root)
+    for rel, direction in found:
+        print(f"{rel}: {direction} \u2014 {DIRECTION_TEXT[direction]}")
+    if not found:
+        print("scaffold: every framework-owned file matches the framework's copy")
+        return 0
+    print(f"scaffold: {len(found)} framework-owned file(s) differ")
+    return 1

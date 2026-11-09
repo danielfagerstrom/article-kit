@@ -150,3 +150,71 @@ def test_init_writes_the_two_licence_texts_and_sync_does_not(fresh, tmp_path):
     old.mkdir()
     scaffold.init(old, slug="old", sync=True)
     assert not (old / "LICENSES").exists()
+
+
+# --- init --sync --check -------------------------------------------------------------
+
+CORE = ".claude/rules/article-kit/core.md"
+
+
+def _check(root):
+    return run_cli("--root", str(root), "init", "--sync", "--check")
+
+
+def _stamp_hash(root, dest_rel, text):
+    path = root / "blueprint" / scaffold.STAMP
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["framework_owned"][dest_rel] = scaffold.sha(text)
+    path.write_text(json.dumps(doc), encoding="utf-8")
+
+
+def test_check_is_clean_and_exits_0_on_a_fresh_scaffold(fresh):
+    rc, out, err = _check(fresh)
+    assert rc == 0, out + err
+    assert "matches" in out
+
+
+def test_check_names_a_local_edit_as_the_articles(fresh):
+    owned = fresh / CORE
+    owned.write_text("% mine\n", encoding="utf-8")
+    rc, out, _ = _check(fresh)
+    assert rc == 1
+    assert CORE + ": article" in out
+    assert owned.read_text(encoding="utf-8") == "% mine\n"   # writes nothing
+
+
+def test_check_names_a_scaffold_change_as_the_scaffolds(fresh):
+    """The article's copy is what it last received; the framework's has since moved."""
+    _stamp_hash(fresh, CORE, "an older scaffold copy\n")
+    (fresh / CORE).write_text("an older scaffold copy\n", encoding="utf-8")
+    rc, out, _ = _check(fresh)
+    assert rc == 1
+    assert CORE + ": scaffold" in out
+    assert scaffold.drift_directions(fresh) == [(CORE, "scaffold")]
+
+
+def test_check_names_both_when_each_side_moved(fresh):
+    _stamp_hash(fresh, CORE, "an older scaffold copy\n")
+    (fresh / CORE).write_text("% mine\n", encoding="utf-8")
+    assert scaffold.drift_directions(fresh) == [(CORE, "both")]
+
+
+def test_check_says_unrecorded_without_a_stamp(fresh):
+    (fresh / "blueprint" / scaffold.STAMP).unlink()
+    (fresh / "blueprint" / "src" / "latexmkrc").write_text("% x\n", encoding="utf-8")
+    rc, out, _ = _check(fresh)
+    assert rc == 1
+    assert "blueprint/src/latexmkrc: unrecorded" in out
+
+
+def test_check_runs_where_linkage_toml_is_broken(fresh):
+    (fresh / "linkage.toml").write_text("this is [not toml\n", encoding="utf-8")
+    (fresh / "scripts" / "build-blueprint.sh").write_text("# x\n", encoding="utf-8")
+    rc, out, err = _check(fresh)
+    assert rc == 1, out + err
+    assert "scripts/build-blueprint.sh" in out
+
+
+def test_check_needs_sync(fresh):
+    rc, _, _ = run_cli("--root", str(fresh), "init", "--check")
+    assert rc == 2

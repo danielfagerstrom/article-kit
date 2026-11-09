@@ -7,6 +7,16 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage init --sync --check` lists the framework files an article's copy differs in, and whose
+  change it is (hub Q-0698, E-0022 part 1).** A scaffold change reaches an article only at its next
+  `init --sync`, and nothing said when one was due; `linkage check`'s `[scaffold]` advisory says
+  "differs" without saying which side moved. `--check` writes nothing, prints each differing
+  framework-owned file with `scaffold` (the framework changed since the last sync), `article` (the
+  article edited its copy), `both` or `unrecorded`, and exits 1 on any difference. It reads only the
+  scaffold's file list, so a broken `linkage.toml` does not stop it. The direction comes from the hash
+  `init` already records in `blueprint/.linkage-scaffold.json`, so no article needs a new sync first;
+  a repository without a `blueprint/` has no stamp and reports `unrecorded`.
+
 - **The Tectonic and pandoc downloads retry.** `docs.yml` fetched Tectonic, and `manifest.yml`
   pandoc, from GitHub's release servers once. On 2026-11-08 those servers answered `504` for over an
   hour, and five articles' `main` went red on merges that changed nothing in their builds. The

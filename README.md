@@ -21,6 +21,7 @@ and where every kind of text lives. The decision behind it is
 ```bash
 linkage init --slug <slug> --title "<title>"   # a new article: scaffolding, rules, templates
 linkage init --sync                             # refresh the framework-owned files
+linkage init --sync --check                     # write nothing; list the files that differ and whose change it is (exit 1 on any)
 linkage check                                   # every in-repo edge, plus drift and shape advisories
 linkage check --wiki $WIKI_VAULT                # also the \notes{} edge to the hub
 linkage paper                                   # the paper sources: refs, cite keys, pointers, front matter
