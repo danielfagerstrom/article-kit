@@ -1008,7 +1008,9 @@ vault) to see which blueprint labels the wiki's claims rest on and at what confi
 first**. It reports *raw* demand — a pure function of the wiki's claims, carrying no proved-status — so
 **we do the join** against our own `\leanok`, the half we own and the only one that is authoritative.
 The hub's ordering already puts the most load-bearing non-frontier demand first; join it with proved
-`asc` to drop what is done and the top is the prover's worklist. Frontier-flagged demands are the wiki's
+`asc` to drop what is done and the top is the prover's worklist. Frontier-flagged demands (the hub's
+`claim/… frontier` flag, a claim the wiki declares research-stage; wider than an article's
+⟨frontier⟩ mark, `WRITING.md` § 4) are the wiki's
 declared-open leads and rank last — not blocking any note. A demand may name a label **not in the
 blueprint yet** (the hub flags it `⚠ NOT a blueprint node yet`) — that is the wiki asking for a *new*
 theorem; the right response is to add the node (or push back), exactly as one would triage a

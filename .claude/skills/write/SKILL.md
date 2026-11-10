@@ -161,9 +161,8 @@ citation (a `\ledger{A3}`-style cite), that is a macro question, not a prose one
 then stated flatly. A result that is genuinely surprising does not need to be told that it is.
 
 **Hedge where honestly warranted** (*at least a first step*, *no experimental evaluation is done*),
-never falsely tentative, never grandiose. Where something is research-stage, say so in the text
-(gate item 6): an unproved statement, an unpinned interface or a `budding` note is named as frontier
-where it occurs, never narrated with a theorem's confidence.
+never falsely tentative, never grandiose. What is not proved here is marked where it is claimed,
+in the right word (§ 4).
 
 ---
 
@@ -244,7 +243,13 @@ decisions, so each article's `adr/` records its own; this standard records that 
   the disclosure is made, not a length budget. (Module C of `spatial-hemigroup-scale-space` had
   four and a half pages here before the mathematics began; the moderate split above is what it
   kept.)
-- **The frontier is named where it occurs**, in the sentence that would otherwise overstate.
+- **Status is marked where it is claimed, with the right word**, in the sentence that would
+  otherwise overstate; a draft's ⟨…⟩ mark is plain prose in print. *Proved elsewhere* (a
+  record, a module, the literature): a reference, ⟨proved in …, printed in § k⟩. *Open*,
+  untried: ⟨open⟩. *Out of scope*: ⟨not treated here⟩. *Conjectured*, on recorded evidence:
+  ⟨conjectured: the evidence⟩. *Frontier* only when a prior-art search found no proof elsewhere
+  and a serious attempt to prove it failed, both recorded: ⟨frontier: search; attempt⟩; else it
+  is open. A missing Lean proof is stated in § 1.1, never marked inline.
 - **Descriptive, non-hyped naming**, and no deliverable referred to by section number.
 - **Proofs of record follow the machine-checked route.** Where the Lean proof and a shorter printed
   argument diverge, the printed proof is rewritten to the checked route; the other route survives

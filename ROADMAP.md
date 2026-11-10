@@ -76,7 +76,7 @@ promised them.
 ### Reviewer output contract — adopt (the spec and the aggregator are done)
 
 [`docs/REVIEWER-CONTRACT.md`](docs/REVIEWER-CONTRACT.md) is specified and implemented: the
-scope-and-hypothesis tags (`SCOPE`, `HYPOTHESIS`, `COUNT`, `NOTATION`, `TRANSCLUSION`, `FRONTIER`)
+scope-and-hypothesis tags (`SCOPE`, `HYPOTHESIS`, `COUNT`, `NOTATION`, `TRANSCLUSION`, `STATUS`, formerly `FRONTIER`)
 with definitions and examples, the defect identity that pools flags from different reviewers and
 ranks them by the number of independent discoveries, the section-contract declaration, and
 `linkage review` over it all. What is left is the hub's: `draft-reviewer.md` emits prose reports and

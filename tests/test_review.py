@@ -250,3 +250,18 @@ def test_the_cli_json_is_the_whole_aggregate():
     doc = json.loads(out)
     assert {"reviews", "threads", "defects", "malformed"} == set(doc)
     assert len(doc["reviews"]) == 3
+
+
+def test_frontier_is_read_as_status(tmp_path):
+    # FRONTIER was renamed STATUS on 2026-11-10 (WRITING.md § 4: "frontier" now names only a
+    # statement with a recorded prior-art search and a recorded failed attempt). Review records
+    # written before the rename, and the fixtures here, keep their tag and still aggregate.
+    lines = A.read_text(encoding="utf-8").splitlines()
+    rev, flag = json.loads(lines[0]), json.loads(lines[1])
+    flag["tag"], flag["layer"] = "FRONTIER", "structure"
+    p = tmp_path / "legacy.jsonl"
+    p.write_text(json.dumps(rev) + "\n" + json.dumps(flag) + "\n", encoding="utf-8")
+    doc, _, rc = review.aggregate([p], FIXTURES)
+    assert rc == 0, doc["malformed"]
+    assert [d["tag"] for d in doc["defects"]] == ["STATUS"]
+    assert "FRONTIER" not in review.LAYER_OF

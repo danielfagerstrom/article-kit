@@ -36,10 +36,15 @@ from pathlib import Path
 # malformed: the layer is not a second opinion, it is which half of the template the tag
 # belongs to (§B structure, §C voice).
 STRUCTURE_TAGS = (
-    "SCOPE", "HYPOTHESIS", "COUNT", "QUANTITY", "FRONTIER",
+    "SCOPE", "HYPOTHESIS", "COUNT", "QUANTITY", "STATUS",
     "CONTRACT", "PROMISE", "ORPHAN", "ENVELOPE", "POINTER", "TRANSCLUSION",
     "PROVENANCE", "NOTATION", "UNDEFINED", "UNSOURCED",
 )
+# Former names, read as the current tag. `FRONTIER` became `STATUS` on 2026-11-10: the flag is
+# any status not marked at the point of claim, or marked with the wrong word, and "frontier" now
+# names only a statement with a recorded prior-art search and a recorded failed attempt
+# (WRITING.md § 4). Review records written before the rename keep their tag.
+TAG_ALIASES = {"FRONTIER": "STATUS"}
 VOICE_TAGS = (
     "MOTIVATION", "PICTURE", "PROSE",
     "NEGPAR", "PARTTAIL", "PARALADDER", "SALIENCE", "SINCERITY", "SIGNPOST",
@@ -311,6 +316,7 @@ def _flag(rec: dict, review: str, src: str, lineno: int) -> tuple[Flag | None, l
     if not isinstance(sev, int) or isinstance(sev, bool) or not 1 <= sev <= 3:
         bad.append(Problem(src, lineno, f"flag: severity {sev!r} is not 1, 2 or 3"))
     tag = rec.get("tag")
+    tag = TAG_ALIASES.get(tag, tag) if isinstance(tag, str) else tag
     if isinstance(tag, str) and tag not in LAYER_OF:
         bad.append(Problem(src, lineno, f"flag: tag {tag!r} is not in the vocabulary"))
     elif isinstance(tag, str) and rec.get("layer") != LAYER_OF[tag]:
