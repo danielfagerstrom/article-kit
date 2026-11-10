@@ -1082,6 +1082,17 @@ the report is what a person reads for that.
   in an article is a delivery by `linkage init --sync` (framework-owned, so `linkage check` flags a
   diverging copy). Fix it in article-kit and re-sync; never edit the article's copy.
 
+  `linkage init --sync --check` says when a sync is due and what it would do. It writes nothing and
+  reads only the scaffold's file list, so it runs where `linkage.toml` is broken. For each
+  framework-owned file whose copy differs it prints the path and the direction, and it exits 1 on any
+  difference. The direction compares the article's copy and the scaffold's with the hash that the
+  last `init` recorded in `blueprint/.linkage-scaffold.json`: `scaffold` (the article's copy is what
+  it received; the framework changed: a mechanical `linkage init --sync`), `article` (the framework's
+  copy is what it sent; the article edited its copy: move the edit into article-kit first or the
+  sync loses it), `both`, or `unrecorded` (the stamp does not name the file: a repository synced
+  without a `blueprint/`, which writes no stamp, or before the stamp existed; compare by hand). A
+  file absent from the article is not listed.
+
   Two dependencies bite, and both are silent — a desk with MiKTeX and Graphviz installed hides
   each of them, and neither failure stops the build. **Graphviz is needed at build time**:
   `plastexdepgraph` pulls in `pygraphviz`, a binding against the Graphviz C library, and without
