@@ -169,8 +169,8 @@ than it caught, and all three are now filtered:
   *case* name part of a document in some company and are ordinary subject nouns in others,
   hence the STRONG/WEAK tiering: one strong word suffices, weak words count in pairs. A flat
   list put the false-positive rate on the least padded paper at three in four.
-- **Frontier and scope disclosures read exactly like padding**, and the process requires them
-  ("the frontier is marked, not hidden"). A sentence saying what is *not* proved, carried out
+- **Status and scope disclosures read exactly like padding**, and the process requires them
+  ("status is marked, not hidden"). A sentence saying what is *not* proved, carried out
   or claimed is excluded, and *disclosure* is a fourth keep-reason.
 - **Mathematical idiom and predication**: "both sides" of an inequality, "on the half line",
   and a document noun as the subject of a copula — *"The lemma is an equivalence"* says what

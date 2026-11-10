@@ -26,7 +26,9 @@ A section may be drafted as prose only when every applicable box is checked.
 ### 2. Statements — the formal spine exists
 *owner: `blueprint/src/content.tex` + `blueprint/AXIOMS.md`*
 - [ ] Every theorem/definition the section will assert is a blueprint node, tagged **[T]** or **[A]**.
-- [ ] Each **[T]** node is `\leanok` (proved), or explicitly listed as frontier (item 6).
+- [ ] Each **[T]** node is `\leanok` (proved in Lean), or its status is declared (item 6): proved
+      on paper (here, in a record, or in another module) and listed as not formalized in the § 1.1
+      trust base, or else open, conjectured or frontier.
 - [ ] Each **[A]** node is grounded in `AXIOMS.md` (named theorem, page anchor, citekey), or flagged
       un-pinned. That entry is what the hub's `cited` grade rests on (item 3).
 
@@ -34,7 +36,8 @@ A section may be drafted as prose only when every applicable box is checked.
 *owner: the wiki content note (e.g. `Notes/wiki/covariant-memory-evolution.md`) + its quality axes*
 - [ ] A content note carries the actual argument (the "what"), with references and Lean pointers.
 - [ ] The note clears the **gate triple `(maturity: evergreen, confidence: ≥ cited, lifecycle: active)`**
-      — or the shortfall *is* the section's declared frontier (item 6).
+      — or the shortfall is declared in the section (item 6): each statement the note does not
+      settle is marked with its status there (open, conjectured, frontier, or proved elsewhere).
 - [ ] Open questions / contradictions in the note are resolved or explicitly parked.
 
 > **On the triple.** Earlier drafts of this gate asked for "maturity at or above `grounded`". There is
@@ -59,7 +62,9 @@ A section may be drafted as prose only when every applicable box is checked.
 > that legitimately depends on classical analysis. Note that `\leanok`/`\notready` are **not**
 > consulted on an [A] node: there `\notready` means "never a Lean target", which is the expected state
 > for a cited classical result, not a shortfall. An **un-pinned** [A] is the different case — no ledger
-> entry, so nothing to trust — and it stays frontier (item 6).
+> entry, so nothing to trust. It is not frontier, since a cited result is proved elsewhere; the
+> section cites it as any source and § 1.1 lists it among the cited facts not yet checked against
+> their source (item 6).
 
 ### 4. Illustration & numerics — the story is visible and checked
 *owner: `scripts/` + the content note*
@@ -72,10 +77,17 @@ A section may be drafted as prose only when every applicable box is checked.
 - [ ] Every concept the section uses that sits below the audience floor has a background-then-use plan
       (a sentence or two of what it is and why it's the right tool, then use).
 
-### 6. Honesty — the frontier is marked, not hidden
+### 6. Honesty — status is marked, not hidden, and with the right word
 *owner: the prose, checked against items 2–3*
-- [ ] Anything research-stage (an un-pinned [A], a `budding` note, an unproved [T]) is named as frontier
-      in the text, never narrated with a theorem's confidence.
+- [ ] Every statement the section uses without proving it here carries its status where it is
+      claimed, never narrated with a theorem's confidence, in the words and marks of
+      [`WRITING.md`](WRITING.md) § 4: proved elsewhere (a forward or plain reference), open, out of
+      scope, conjectured (with its evidence), or frontier.
+- [ ] A statement is marked frontier only with both records named: the prior-art search that found
+      no proof of it elsewhere, and the serious attempt to prove it that failed. Without them it is
+      open; proved in a record or another module, it is a reference.
+- [ ] What has no Lean proof (an unproved [T]) or no ledger entry (an un-pinned [A]) is stated in the
+      § 1.1 trust base, not marked inline.
 
 ### 7. Single-sourcing — statements can't drift
 *owner: [`LINKAGE.md`](LINKAGE.md) + `linkage check` (linkage/checks.py)*

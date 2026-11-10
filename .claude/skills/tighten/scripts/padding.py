@@ -67,8 +67,8 @@ META = STRONG | WEAK
 IDIOM = re.compile(r"\b(both sides|either side|left-?hand side|right-?hand side|other side|"
                    r"half[- ]lines?|half[- ]plane|one side|the sides of)\b", re.I)
 
-# A sentence disclosing what is NOT done -- the frontier, the scope -- reads like meta-talk
-# and is required rather than padding (the drafting gate's "the frontier is marked, not
+# A sentence disclosing what is NOT done -- a status, the scope -- reads like meta-talk
+# and is required rather than padding (the drafting gate's "status is marked, not
 # hidden"). Two of the false positives on the second paper tested were of that kind.
 DISCLOSURE = re.compile(r"\b(not|never|no|nothing|neither)\b[^.]{0,60}?\b(proved|proven|"
                         r"carried out|treated|attempted|established|formalized|formalised|"
@@ -164,7 +164,7 @@ def classify(sent: str):
     if count:
         reasons.append("enumeration")
     # A candidate names part of the document, points somewhere else in it or counts what is
-    # coming, and carries no mathematics, reference, citation, anchor or frontier disclosure
+    # coming, and carries no mathematics, reference, citation, anchor or status disclosure
     # of its own. One STRONG word is enough; WEAK words count only in pairs, or singly when
     # something is being enumerated ("Five kinds of operator appear"). The ratio floor is low
     # on purpose: an announcement dilutes its document nouns with the subject's ("Locality

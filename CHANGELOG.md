@@ -7,6 +7,20 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **"Frontier" is narrowed to its proper meaning; status is marked with the right word (the
+  author's ruling of 2026-11-10).** The rules called anything research-stage "frontier": an unproved
+  [T], an unpinned [A], a `budding` note. Drafts followed them and marked results already proved in
+  a record or another module, and questions nobody had tried, as frontier (spatial-hemigroup-pyramids
+  § 7 had about ten such marks). A statement is now frontier only when a recorded prior-art search
+  found no proof of it elsewhere and a recorded serious attempt to prove it failed. The rest take
+  their own words and marks: proved elsewhere (a reference, ⟨proved in …, printed in § k⟩), open
+  (⟨open⟩), out of scope (⟨not treated here⟩), conjectured (⟨conjectured: the evidence⟩). A missing
+  Lean proof is a § 1.1 trust-base fact, never an inline mark. Changed: `WRITING.md` §§ 1 and 4,
+  `DRAFTING-GATE.md` items 2, 3 and 6 and the note on un-pinned [A] nodes, `REVIEWER-CONTRACT.md`
+  (the `FRONTIER` flag becomes `STATUS` and also covers the wrong word; `linkage review` still reads
+  `FRONTIER` as `STATUS`), a gloss in `LINKAGE.md` on the hub's wider `frontier` claim flag, the
+  `tighten` skill's wording, and the `write` and `gate` skills re-rendered.
+
 - **`linkage init --sync --check` lists the framework files an article's copy differs in, and whose
   change it is (hub Q-0698, E-0022 part 1).** A scaffold change reaches an article only at its next
   `init --sync`, and nothing said when one was due; `linkage check`'s `[scaffold]` advisory says

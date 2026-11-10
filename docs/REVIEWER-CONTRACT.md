@@ -148,7 +148,7 @@ flag:
 | `HYPOTHESIS` | a condition the body carries is absent where the claim is made |
 | `COUNT` | an economy or enumeration claim the text's own proofs falsify |
 | `QUANTITY` | a reported number that does not name the object computed: the text describes one variant, configuration or quantity, and the number is another's |
-| `FRONTIER` | unsettled or cited status not marked *at the point of claim* (absence of a marker is `note-evaluator`'s; misplacement is this) |
+| `STATUS` | a statement's status not marked *at the point of claim*, or marked with the wrong word (absence of a marker anywhere is `note-evaluator`'s; misplacement and the wrong word are this). Formerly `FRONTIER`, still accepted |
 
 **Structure**
 
@@ -249,10 +249,16 @@ is usually blueprint-side or a re-transcription, which is what `shared_with_blue
 > *probe:* compare the node's `\uses` set against the `\ref`s in this proof. *refs:*
 > `prop:extreme-rays`, `lem:positivity`. *shared_with_blueprint:* `true`.
 
-**`FRONTIER` — unsettled or cited status not marked *at the point of claim*.** The document knows
-elsewhere that a result is conjectural, proved only on paper, or imported from a source; the sentence
-that uses it does not say so. The *absence* of the marker anywhere is `note-evaluator`'s business
-(grounding); its *misplacement* — present in §2, missing in the sentence that leans on it — is this.
+**`STATUS` — a statement's status not marked *at the point of claim*, or marked with the wrong
+word.** The document knows elsewhere that a result is conjectural, open, imported from a source, or
+proved only on paper; the sentence that uses it does not say so, or a summary reads a paper proof as
+machine-checked against what § 1.1 says. The *absence* of the marker anywhere is
+`note-evaluator`'s business (grounding); its *misplacement* — present in §2, missing in the sentence
+that leans on it — is this. So is the **wrong word**, by [`WRITING.md`](WRITING.md) § 4's five: a
+statement marked frontier without both a recorded prior-art search and a recorded failed attempt
+(it is open, or, if a record or another module proves it, a reference), and a missing Lean proof
+marked inline instead of stated in the § 1.1 trust base. The tag was `FRONTIER` until 2026-11-10;
+`linkage review` still reads that name, as `STATUS`.
 
 > *anchor:* `since the completeness of the family is known`
 > *claim:* `thm:completeness` is an `[A]` interface node grounded in `@lindeberg2011`, and the
@@ -303,7 +309,7 @@ one side. The scope-audit mode is that pass as a reviewer run.
   own hypotheses and quantifiers, *before* rereading the summary; compare. A number is restated from
   the table, caption or script that produced it, and its description compared with what was
   computed.
-- **Flags** are `SCOPE`, `HYPOTHESIS`, `COUNT`, `QUANTITY`, `FRONTIER` and `TRANSCLUSION`; nothing in
+- **Flags** are `SCOPE`, `HYPOTHESIS`, `COUNT`, `QUANTITY`, `STATUS` and `TRANSCLUSION`; nothing in
   the voice layer. `refs` names the cited statement's label **first** — the primary referent — and
   then any the surface sits beside, so the flag pools with a section review's flag on the same
   statement (pooling intersects the full set) without the neighbours chaining it into every other
@@ -427,7 +433,7 @@ the list stays as the checklist a later change to either side is held to.
 3. **Carry the strengths line into the review record**, where it is required, instead of into the
    report's opening paragraph.
 4. **Teach the seven non-prose-surface tags** — `SCOPE`, `HYPOTHESIS`, `COUNT`, `QUANTITY`,
-   `NOTATION`, `TRANSCLUSION`, `FRONTIER` — with the definitions and examples above, beside the prose-surface
+   `NOTATION`, `TRANSCLUSION`, `STATUS` — with the definitions and examples above, beside the prose-surface
    tags it already carries from `ai-prose-patterns.md` §1. Eight of the ten threads in the trial
    batch were not prose-surface, so an agent with only the old vocabulary cannot emit most of what
    matters.
