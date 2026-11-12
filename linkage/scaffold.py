@@ -106,7 +106,8 @@ def _absent_artifacts(root: Path) -> set[str]:
     """`--sync` in a repository lacking an artifact skips what belongs to it.
 
     The path-scoped rules load only when a matching file is read, so copying them would be
-    harmless, but the `blueprint/` build files and the stamp would litter a paper-only repo.
+    harmless, but the `blueprint/` build files would litter a paper-only repo (its stamp goes at
+    the repository root instead).
     """
     from . import config
     try:
@@ -179,10 +180,10 @@ def init(root: Path, slug: str, subs: dict[str, str] | None = None,
             dest.write_text(render(_read(src / rel), subs), encoding="utf-8")
             wrote.append(dest_rel)
 
-    if "blueprint" not in absent:
-        (root / "blueprint").mkdir(parents=True, exist_ok=True)
-        (root / "blueprint" / STAMP).write_text(
-            json.dumps({"framework_owned": stamp}, indent=2) + "\n", encoding="utf-8")
+    stamp_path = root / STAMP if "blueprint" in absent else root / "blueprint" / STAMP
+    stamp_path.parent.mkdir(parents=True, exist_ok=True)
+    stamp_path.write_text(
+        json.dumps({"framework_owned": stamp}, indent=2) + "\n", encoding="utf-8")
 
     print(f"scaffold: wrote {len(wrote)}, left {len(kept)} in place")
     for w in wrote:
@@ -235,12 +236,14 @@ def drift(root: Path) -> list[str]:
 def last_sync(root: Path) -> dict[str, str]:
     """The hashes `init` recorded, per framework-owned destination, of the scaffold copy the
     article last received. Empty when there is no stamp or it is unreadable."""
-    try:
-        doc = json.loads(_read(root / "blueprint" / STAMP))
-        recorded = doc["framework_owned"]
-    except (OSError, ValueError, KeyError, TypeError):
-        return {}
-    return recorded if isinstance(recorded, dict) else {}
+    for path in (root / "blueprint" / STAMP, root / STAMP):
+        try:
+            recorded = json.loads(_read(path))["framework_owned"]
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        if isinstance(recorded, dict):
+            return recorded
+    return {}
 
 
 def drift_directions(root: Path) -> list[tuple[str, str]]:
@@ -249,8 +252,7 @@ def drift_directions(root: Path) -> list[tuple[str, str]]:
     Compared with the hash recorded at the last sync: `scaffold` when the article's copy is
     still what it received (the framework changed since), `article` when the framework's copy
     is still what it sent (the article edited its copy), `both` when each moved, `unrecorded`
-    when the stamp does not name the file (a repository synced without a `blueprint/`, or
-    before the stamp existed).
+    when the stamp does not name the file (synced before the stamp existed).
     """
     src = scaffold_dir()
     recorded = last_sync(root)

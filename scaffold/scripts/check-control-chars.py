@@ -15,7 +15,10 @@ Usage: python scripts/check-control-chars.py [paths...]   (default: the tracked 
 from __future__ import annotations
 
 import sys
+import tomllib
 from pathlib import Path
+
+CONFIG_NAME = "linkage.toml"
 
 DEFAULT_GLOBS = [
     "blueprint/src/**/*.tex",
@@ -23,7 +26,41 @@ DEFAULT_GLOBS = [
     "draft/*.md",
     "*.md",
     "Formalization/**/*.lean",
+    # Records are written by the same sessions with the same tools: a `\ref` written through a
+    # shell heredoc became a CR in a plan under notes/ and passed this check (2026-09-19).
+    # A glob with no match is empty, not an error.
+    "notes/**/*.md",
+    "notes/**/*.txt",
+    "records/**/*.md",
+    "records/**/*.txt",
+    "adr/*.md",
 ]
+
+# Per paper directory (`linkage.toml`'s `paths.paper`, one or a list; `paper` without a config).
+# Added 2026-08-24: two corruption incidents (a CR in 10-locality.tex, four BELLs in
+# 08-examples.tex) reached commits because the paper tree was not scanned; `linkage check`'s
+# [chars] pass covers it, but this script is the first gate. Further modules' directories
+# (`paper-b/`, `paper-c/`, ADR-0006) are read from the config, not named here.
+PAPER_GLOBS = ["{d}/**/*.tex", "{d}/*.bib", "{d}/*.md"]
+
+
+def paper_dirs(root: Path) -> list[str]:
+    """The configured paper directories, read as `check-swallowed-prose.py` reads them; a missing
+    or broken `linkage.toml`, or no `paths.paper` key, falls back to `paper`."""
+    try:
+        with open(root / CONFIG_NAME, "rb") as f:
+            paper = tomllib.load(f).get("paths", {}).get("paper", "paper")
+    except (OSError, ValueError):
+        return ["paper"]
+    if isinstance(paper, str):
+        return [paper]
+    if isinstance(paper, list) and all(isinstance(d, str) for d in paper):
+        return list(paper)
+    return ["paper"]
+
+
+def default_globs(root: Path) -> list[str]:
+    return DEFAULT_GLOBS + [g.format(d=d.strip("/")) for d in paper_dirs(root) for g in PAPER_GLOBS]
 
 LF = 0x0A
 CR = 0x0D
@@ -51,7 +88,7 @@ def main(argv: list[str]) -> int:
         paths = [Path(a) for a in argv[1:]]
     else:
         paths = []
-        for pattern in DEFAULT_GLOBS:
+        for pattern in default_globs(root):
             paths.extend(sorted(root.glob(pattern)))
 
     failed = False
