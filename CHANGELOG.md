@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The control-character gate scans what the articles' local copies already did; a repository
+  without a `blueprint/` gets a sync stamp.** At its next `linkage init --sync` an article's
+  `scripts/check-control-chars.py` also scans every paper directory `linkage.toml` names (`.tex` at
+  any depth, `.bib`, `.md`; `paper` without a config), `notes/` and `records/` (`.md`, `.txt`) and
+  `adr/*.md` (the incidents of 2026-08-24 and 2026-09-19), which three articles had patched by hand.
+  `--sync` writes its stamp at `.linkage-scaffold.json` in the repository root when there is no
+  `blueprint/`, and `--check` reads either place, so a paper-only article's drift is no longer all
+  `unrecorded`.
 - **"Frontier" is narrowed to its proper meaning; status is marked with the right word (the
   author's ruling of 2026-11-10).** The rules called anything research-stage "frontier": an unproved
   [T], an unpinned [A], a `budding` note. Drafts followed them and marked results already proved in

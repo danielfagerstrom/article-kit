@@ -133,6 +133,41 @@ def test_sync_works_in_a_paper_only_repository(tmp_path):
     assert scaffold.drift(root) == []
 
 
+def _paper_only(tmp_path):
+    root = tmp_path / "paper-only"
+    (root / "paper").mkdir(parents=True)
+    (root / "linkage.toml").write_text('slug = "ppr"\n', encoding="utf-8")
+    rc, out, err = run_cli("--root", str(root), "init", "--sync")
+    assert rc == 0, out + err
+    return root
+
+
+def test_sync_stamps_a_paper_only_repository_at_the_root(tmp_path):
+    root = _paper_only(tmp_path)
+    stamp = json.loads((root / scaffold.STAMP).read_text(encoding="utf-8"))
+    assert "scripts/check-control-chars.py" in stamp["framework_owned"]
+    assert not (root / "blueprint").exists()
+    rc, out, err = _check(root)
+    assert rc == 0, out + err
+
+
+def test_check_tells_a_scaffold_change_from_a_local_edit_without_a_blueprint(tmp_path):
+    root = _paper_only(tmp_path)
+    older = "# an older scaffold copy\n"
+    rel = "scripts/check-control-chars.py"
+    path = root / scaffold.STAMP
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["framework_owned"][rel] = scaffold.sha(older)
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    (root / rel).write_text(older, encoding="utf-8")
+    assert scaffold.drift_directions(root) == [(rel, "scaffold")]
+    rc, out, _ = _check(root)
+    assert rc == 1
+    assert rel + ": scaffold" in out
+    (root / rel).write_text("# mine\n", encoding="utf-8")
+    assert scaffold.drift_directions(root) == [(rel, "both")]
+
+
 def test_the_build_script_is_delivered_with_the_utf8_fix_and_lf_endings(fresh):
     data = (fresh / "scripts" / "build-blueprint.sh").read_bytes()
     assert b"\r" not in data

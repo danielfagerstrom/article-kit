@@ -1088,11 +1088,12 @@ the report is what a person reads for that.
   reads only the scaffold's file list, so it runs where `linkage.toml` is broken. For each
   framework-owned file whose copy differs it prints the path and the direction, and it exits 1 on any
   difference. The direction compares the article's copy and the scaffold's with the hash that the
-  last `init` recorded in `blueprint/.linkage-scaffold.json`: `scaffold` (the article's copy is what
+  last `init` recorded in `blueprint/.linkage-scaffold.json` (`.linkage-scaffold.json` at the
+  repository root when the article has no `blueprint/`; `--check` reads either): `scaffold` (the article's copy is what
   it received; the framework changed: a mechanical `linkage init --sync`), `article` (the framework's
   copy is what it sent; the article edited its copy: move the edit into article-kit first or the
-  sync loses it), `both`, or `unrecorded` (the stamp does not name the file: a repository synced
-  without a `blueprint/`, which writes no stamp, or before the stamp existed; compare by hand). A
+  sync loses it), `both`, or `unrecorded` (the stamp does not name the file: the repository was synced
+  before the stamp existed; compare by hand). A
   file absent from the article is not listed.
 
   Two dependencies bite, and both are silent — a desk with MiKTeX and Graphviz installed hides
