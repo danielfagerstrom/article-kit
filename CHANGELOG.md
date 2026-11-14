@@ -7,6 +7,27 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+## v0.6.0 — 2026-11-14 — a Lean log of the article's own warnings, and the status words
+
+- **`lean.yml`'s build log shows the article's own Lean warnings only (new input
+  `own_warnings_only`, default true).** Lake prints the warnings of every module it builds or
+  replays, and a pinned dependency is compiled from source in CI: spatial-hemigroup-pyramids' run
+  43583992727 printed 645 warnings, 250 of them from `AffineHemigroup` (the affine module's
+  export) and `ScaleSpaceCore`, which no consuming repository can fix. lean-action now stops before
+  `lake build` and the workflow builds through a filter it writes from a heredoc. A Lake job block
+  is the article's own when the file its messages name exists in the package's tree outside
+  `.lake/`; a dependency names its files relative to its own root, so no list of module roots has
+  to follow the lakefile. A dependency's block is hidden and counted on one closing line unless it
+  holds an error; every error, from any package, is printed in full. The own warnings are printed
+  as Lake wrote them, counted by kind (`sorry`, the linter, `other`) and by file in the job
+  summary, and the first ten that are not a `sorry` become `::warning` annotations on the pull
+  request. The unfiltered log is the job artifact `lake-build-log`. The step's exit status is
+  still `lake build`'s, and the filter cannot fail or truncate the build (`tee -p`, and a raw
+  pass-through on an internal error). On that run's log it keeps all 395 own warnings (259 of them
+  the skeleton's `sorry`) and hides the 250. `own_warnings_only: false` hands the build back to
+  lean-action. `tests/test_lean_workflow.py` runs the heredoc's text and the two steps on an
+  excerpt of the real log; `docs/PROCESS.md` step 5 names `lean.yml` and says what its log shows.
+  A minor bump, as a new input; nothing that passed fails.
 - **The control-character gate lets a `.bib` indent with TABs.** Better BibTeX's export indents
   every field with one, and the gate, scanning `paper/*.bib` since the previous entry, rejected
   every line of the affine module's two bibliographies. A TAB that only indents is allowed in a
