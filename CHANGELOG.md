@@ -7,6 +7,11 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The control-character gate lets a `.bib` indent with TABs.** Better BibTeX's export indents
+  every field with one, and the gate, scanning `paper/*.bib` since the previous entry, rejected
+  every line of the affine module's two bibliographies. A TAB that only indents is allowed in a
+  `.bib`; one after a line's first other character (a `\t` swallowed from `\textit`) is still
+  caught, and in every other file type any TAB still is.
 - **The control-character gate leaves captured tool output alone.** A file named `*-output.txt`
   is what a command printed, kept as a record: the affine module's freeze-gate logs keep the
   terminal's bold escape around "done.", and two PDF text dumps keep TeX's large-delimiter glyph
@@ -516,7 +521,7 @@ A module moves to this tag when it next runs (`docs/RELEASE.md`, "Versioning the
 - `linkage release`: a three-part tag (`v1.0.0`, `v1.1.0`) now parses, so the rule 6 gate finds a
   later version's first release; it used to treat Paper I's `v1.1.0` as a first release and skip
   the date-line and version-history checks without a word. And a Lean declaration whose name ends
-  in a prime (`sonine_conservation'`) is found, where the pattern's trailing `` never matched
+  in a prime (`sonine_conservation'`) is found, where the pattern's trailing `\b` never matched
   after `'` (and let `foo` match `foo'`). Both found by the first dry run of Paper I's v1.1.0.
 - `linkage paper`'s item-count check (`\ref{p}(3)` past a statement's item count) is now
   module-aware (Q-0171): it resolves a label within the referencing file's own `paths.paper`

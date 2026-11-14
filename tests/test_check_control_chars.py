@@ -85,6 +85,26 @@ def test_crlf_line_endings_are_legal(tmp_path):
     assert run(tmp_path).returncode == 0
 
 
+def test_a_bib_indented_with_tabs_passes(tmp_path):
+    """Better BibTeX indents every field of its export with a TAB."""
+    write(tmp_path, "paper/references.bib", b"@article{a,\r\n\ttitle = {T},\r\n\t\tyear = {1}\r\n}\r\n")
+    rc = run(tmp_path)
+    assert rc.returncode == 0, rc.stderr
+
+
+def test_a_tab_inside_a_bib_line_is_caught(tmp_path):
+    """`\\textit` through a non-raw string: a TAB after the field's first character."""
+    write(tmp_path, "paper/references.bib", b"@article{a,\n\ttitle = {On \textit{x}},\n}\n")
+    rc = run(tmp_path)
+    assert rc.returncode == 1
+    assert "references.bib:2" in rc.stderr.replace("\\", "/")
+
+
+def test_an_indenting_tab_outside_a_bib_is_still_caught(tmp_path):
+    write(tmp_path, "paper/s.tex", b"\tindented\n")
+    assert run(tmp_path).returncode == 1
+
+
 def test_the_configured_paper_directories_are_scanned(tmp_path):
     (tmp_path / "linkage.toml").write_text(
         'paths.paper = ["paper", "paper-b"]\n', encoding="utf-8")
