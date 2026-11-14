@@ -7,6 +7,11 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The control-character gate leaves captured tool output alone.** A file named `*-output.txt`
+  is what a command printed, kept as a record: the affine module's freeze-gate logs keep the
+  terminal's bold escape around "done.", and two PDF text dumps keep TeX's large-delimiter glyph
+  codes. The default scan skips them, so the first sync that scanned `records/` no longer fails
+  the blueprint build on eighteen archived logs; a file named on the command line is still checked.
 - **The control-character gate scans what the articles' local copies already did; a repository
   without a `blueprint/` gets a sync stamp.** At its next `linkage init --sync` an article's
   `scripts/check-control-chars.py` also scans every paper directory `linkage.toml` names (`.tex` at

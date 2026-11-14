@@ -36,6 +36,12 @@ DEFAULT_GLOBS = [
     "adr/*.md",
 ]
 
+# Captured tool output, kept as a record (`records/<x>/freeze-gates-q0451-output.txt`): what a
+# command printed, terminal escapes and PDF glyph codes included, not text a session wrote. Its
+# control bytes are the program's, faithfully kept; the gate is for corruption in written text.
+# The default scan skips these; a path given on the command line is still checked.
+CAPTURED_OUTPUT_SUFFIX = "-output.txt"
+
 # Per paper directory (`linkage.toml`'s `paths.paper`, one or a list; `paper` without a config).
 # Added 2026-08-24: two corruption incidents (a CR in 10-locality.tex, four BELLs in
 # 08-examples.tex) reached commits because the paper tree was not scanned; `linkage check`'s
@@ -89,7 +95,8 @@ def main(argv: list[str]) -> int:
     else:
         paths = []
         for pattern in default_globs(root):
-            paths.extend(sorted(root.glob(pattern)))
+            paths.extend(p for p in sorted(root.glob(pattern))
+                         if not p.name.endswith(CAPTURED_OUTPUT_SUFFIX))
 
     failed = False
     for path in paths:
