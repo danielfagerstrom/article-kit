@@ -87,8 +87,12 @@ Run from the hub or anywhere, once:
    `lakefile.toml` that pins `scale-space-lean` at a tag; link the shared package store
    (`python $WIKI_VAULT/lake-store.py link <repo>`); `.mcp.json` for `lean-lsp-mcp`
    (`uvx lean-lsp-mcp --lean-project-path Formalization`).
-5. CI: the reusable workflows of `.github/workflows/` (`docs.yml`, `manifest.yml`); cloud sessions:
-   [`CLOUD.md`](CLOUD.md).
+5. CI: the reusable workflows of `.github/workflows/` (`docs.yml`, `manifest.yml`, and `lean.yml`
+   once there is a Lean project); cloud sessions: [`CLOUD.md`](CLOUD.md). `lean.yml`'s build log
+   shows the article's own Lean warnings only: a dependency's (Mathlib, a pinned export, the core
+   library) are counted on one line and kept in the job artifact `lake-build-log`, the own ones are
+   counted by kind in the job summary, and every error is printed. `own_warnings_only: false` prints
+   everything; the workflow's header says how a file is recognised as the article's own.
 6. The hub: the module in `constellation.json`, its thread page, one log entry as a fragment
    `wiki/log.d/<YYYYMMDD-HHMM>.md`, never a line in `wiki/log.md` (hub `CLAUDE.md`, ADR-0031).
 

@@ -5,7 +5,8 @@ name: Lean CI (reusable)
 # depend on the author's desktop.
 #
 # Five guards, in order of what they protect:
-#   1. the build itself (leanprover/lean-action, with `lake exe cache get` for Mathlib)
+#   1. the build itself (leanprover/lean-action, with `lake exe cache get` for Mathlib; the
+#      log shows this package's warnings only, see below)
 #   2. no `sorry` in the library sources
 #   3. the boundary harness (`linkage boundary`) — a per-theorem `#guard_msgs` axiom pin, a
 #      positive probe per headline result, adversarial goals that must stay `sorry`, and a
@@ -44,6 +45,28 @@ name: Lean CI (reusable)
 # every run regardless, because its `.ltar` bundles live in `~/.cache/mathlib`, which was
 # never cached. Everything else (the package checkouts, this article's own build, a private
 # core library's build) is kept, because nothing else re-fetches it.
+#
+# ── Why the build log shows only this package's warnings ─────────────────────────────────
+# Lake prints the warnings of every module it builds or replays, a dependency's included: a
+# released module the article pins (an export, a shared core library) is compiled from source
+# here, and its linter warnings filled the log. Pyramids' run 43583992727 printed 645 warnings,
+# 250 of them from `AffineHemigroup` and `ScaleSpaceCore`, which the consuming repository cannot
+# fix. With `own_warnings_only` (the default) lean-action only installs the toolchain and pulls
+# Mathlib's cache, and the build runs here, through a filter written below:
+#   - Lake's output is one block per job that logged anything, a header line and its messages.
+#     A block is the package's own when the file its messages name exists in the package's tree
+#     (the lakefile's directory) outside `.lake/`. A dependency's file names are relative to that
+#     dependency's root (`AffineHemigroup/Polar.lean`), so they do not; no list of module roots
+#     has to be kept in step with the lakefile.
+#   - A dependency's block is hidden and counted, unless it holds an error: every error, from any
+#     package, is printed in full. One line at the end gives the hidden count per module root.
+#   - The package's own warnings are printed as Lake wrote them, counted by kind (`sorry`, the
+#     linter that raised it, or `other`) in the job summary, and the first ten (those that are
+#     not a `sorry` first) become `::warning file=…` annotations, which is all GitHub shows.
+#   - The unfiltered log is the job artifact `lake-build-log`.
+# The step's exit status is `lake build`'s. The filter cannot fail the build: on an internal
+# error it passes the rest of the log through, and `tee -p` keeps the build writing to the
+# artifact even if the filter stops reading.
 
 on:
   workflow_call:
@@ -72,6 +95,15 @@ on:
         required: false
         default: CIAxiomGuard.lean
         type: string
+      own_warnings_only:
+        description: >-
+          Show only this package's own Lean warnings in the build log; a dependency's (Mathlib,
+          a pinned export, a shared core library) are hidden and counted, and the unfiltered
+          log is kept as the job artifact `lake-build-log`. Errors from any package are always
+          shown. False hands the build back to lean-action and prints everything.
+        required: false
+        default: true
+        type: boolean
       boundary_strict_shadows:
         description: >-
           Fail the boundary harness on a declaration sharing its name with a standard
@@ -191,12 +223,295 @@ jobs:
       # CI red — without the glob, only the root import closure is built.
       # `use-github-cache: false` because this workflow does the caching itself; see the
       # header. Leaving it on would restore a second, Mathlib-inclusive copy of `.lake`.
-      - name: Build the Lean library
+      # With `own_warnings_only` lean-action stops before `lake build` (`build: false`), and
+      # the build runs in the next steps through the warning filter.
+      - name: Set up Lean and build the library
         uses: leanprover/lean-action@v1
         with:
           lake-package-directory: ${{ inputs.lean_dir }}
+          build: ${{ inputs.own_warnings_only && 'false' || 'default' }}
           build-args: ${{ inputs.build_jobs != '' && format('-j {0} {1}', inputs.build_jobs, inputs.build_args) || inputs.build_args }}
           use-github-cache: "false"
+
+      # The filter `own_warnings_only` builds through (see the header). It is written from here,
+      # not fetched, so that it is always the version of this workflow; tests/test_lean_workflow.py
+      # runs this very text, and this step and the next, on an excerpt of a real Lake log.
+      - name: Write the Lake log filter
+        if: inputs.own_warnings_only
+        run: |
+          cat > "$RUNNER_TEMP/lake_log.py" <<'LAKE_LOG_PY'
+          """Filter `lake build` output down to the consuming package's own messages.
+
+          Lake prints one block per job that logged something: a header line (`⚠ [3198/3227] Replayed
+          AffineHemigroup.Polar`) and the job's messages under it. A dependency's file names are relative
+          to that dependency's own root (`AffineHemigroup/Polar.lean`), not `.lake/packages/...`, so a
+          block is attributed by asking whether its file exists in this package's tree (`--root`, the
+          lakefile's directory) outside `.lake/`. A dependency's block is hidden and counted unless it
+          holds an error; every other line passes through unchanged and in order. The filter never fails
+          the build: it exits 0, and on an internal error it passes the rest of its input through raw.
+          The next step, "Build the Lean library (this package's warnings only)", is how it is run.
+          """
+
+          import argparse
+          import os
+          import re
+          import sys
+          from collections import Counter
+
+          HEADER = re.compile(r"^\S{1,3} \[\d+/\d+\] \S")
+          MESSAGE = re.compile(r"^(warning|error|info): (.+?\.lean):(\d+):(\d+): ?(.*)$")
+          LINTER = re.compile(r"set_option (linter\.[A-Za-z0-9_.]+) false")
+          # Lake's closing lines; everything from one of them on is printed as it is.
+          TAIL = re.compile(r"^(Build completed|Some required (builds|targets) logged failures|error: build failed)")
+
+
+          def is_own(path, root):
+              norm = path.replace("\\", "/")
+              if "/.lake/" in "/" + norm:
+                  return False
+              full = path if os.path.isabs(path) else os.path.join(root, path)
+              if not os.path.isfile(full):
+                  return False
+              rel = os.path.relpath(os.path.realpath(full), os.path.realpath(root)).replace("\\", "/")
+              return not rel.startswith("../") and not ("/" + rel).count("/.lake/")
+
+
+          def kind_of(text, rest):
+              if "declaration uses" in text and "sorry" in text:
+                  return "sorry"
+              for line in rest:
+                  m = LINTER.search(line)
+                  if m:
+                      return m.group(1)
+              return "other"
+
+
+          def escape_data(s):
+              return s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+          def escape_prop(s):
+              return escape_data(s).replace(":", "%3A").replace(",", "%2C")
+
+
+          class Filter:
+              def __init__(self, root, annotate, out):
+                  self.root = root
+                  self.annotate = annotate
+                  self.out = out
+                  self.block = None  # lines of the current job block
+                  self.tail = False
+                  self.own = Counter()  # own warnings by kind
+                  self.own_files = Counter()
+                  self.own_errors = 0
+                  self.dep = Counter()  # hidden dependency warnings by module root
+                  self.dep_infos = 0
+                  self.notes = []  # own warnings and errors, for the annotations
+                  self.annotations = 0
+
+              def emit(self, line):
+                  self.out.write(line + "\n")
+
+              def feed(self, line):
+                  if self.tail:
+                      self.emit(line)
+                  elif HEADER.match(line):
+                      self.close()
+                      self.block = [line]
+                  elif TAIL.match(line):
+                      self.close()
+                      self.tail = True
+                      self.emit(line)
+                  elif self.block is not None:
+                      self.block.append(line)
+                  else:
+                      self.emit(line)
+
+              def messages(self, lines):
+                  """(severity, path, line, col, text, continuation lines) for each message in a block."""
+                  found, cur = [], None
+                  for ln in lines[1:]:
+                      m = MESSAGE.match(ln)
+                      if m or ln.startswith(("warning:", "error:", "info:", "trace:")):
+                          cur = None
+                      if m:
+                          cur = [m.group(1), m.group(2), int(m.group(3)), int(m.group(4)), m.group(5), []]
+                          found.append(cur)
+                      elif cur is not None:
+                          cur[5].append(ln)
+                  return found
+
+              def close(self):
+                  lines, self.block = self.block, None
+                  if lines is None:
+                      return
+                  msgs = self.messages(lines)
+                  paths = [m[1] for m in msgs]
+                  has_error = lines[0].startswith("✖") or any(ln.startswith("error") for ln in lines[1:])
+                  own = any(is_own(p, self.root) for p in paths)
+                  if paths and not own and not has_error:
+                      for sev, path, *_ in msgs:
+                          norm = path.replace("\\", "/")
+                          if "/.lake/packages/" in "/" + norm:  # `.lake/packages/<pkg>/…`: the package
+                              root = norm.split(".lake/packages/", 1)[1].split("/")[0]
+                          else:  # relative to the dependency's own root: its module root
+                              root = norm.split("/")[0].removesuffix(".lean")
+                          if sev == "warning":
+                              self.dep[root] += 1
+                          elif sev == "info":
+                              self.dep_infos += 1
+                      return
+                  for ln in lines:
+                      self.emit(ln)
+                  for sev, path, row, col, text, rest in msgs:
+                      if not is_own(path, self.root):
+                          continue
+                      if sev == "warning":
+                          kind = kind_of(text, rest)
+                          self.own[kind] += 1
+                          self.own_files[path] += 1
+                      elif sev == "error":
+                          self.own_errors += 1
+                          kind = "error"
+                      else:
+                          continue
+                      self.notes.append((sev, kind, path, row, col, text))
+
+              def finish(self):
+                  self.close()
+
+              def annotations_out(self, limit):
+                  """At most `limit` warnings and `limit` errors as `::warning file=…` annotations.
+
+                  GitHub shows the first ten of each per step and drops the rest, and every annotation
+                  is a line of the raw log too; so they are capped, errors first, and a warning that is
+                  not a `sorry` (a statement awaiting proof, by design in a skeleton) before one that is."""
+                  if self.annotate is None:
+                      return
+                  errors = [n for n in self.notes if n[0] == "error"][:limit]
+                  warns = sorted((n for n in self.notes if n[0] == "warning"),
+                                 key=lambda n: n[1] == "sorry")[:limit]
+                  for sev, kind, path, row, col, text in errors + warns:
+                      file = path if os.path.isabs(path) else os.path.normpath(
+                          os.path.join(self.annotate, path)).replace("\\", "/")
+                      self.emit(f"::{sev} file={escape_prop(file)},line={row},col={col + 1},"
+                                f"title={escape_prop('Lean ' + kind)}::{escape_data(text)}")
+                      self.annotations += 1
+
+              def report(self, log_name):
+                  hidden = sum(self.dep.values())
+                  if hidden or self.dep_infos:
+                      per = ", ".join(f"{r} {n}" for r, n in self.dep.most_common())
+                      where = f"; the full log is the job artifact `{log_name}`" if log_name else ""
+                      self.emit(f"{hidden} dependency warnings hidden ({per}), and {self.dep_infos} "
+                                f"dependency infos{where}.")
+                  total = sum(self.own.values())
+                  self.emit(f"{total} warnings in this package's own files.")
+
+              def summary(self, path, log_name):
+                  total = sum(self.own.values())
+                  hidden = sum(self.dep.values())
+                  out = ["### Lean build: warnings", ""]
+                  out.append(f"**{total}** in this package's own files ({len(self.own_files)} files); "
+                             f"**{hidden}** from dependencies hidden from the log.")
+                  if self.own_errors:
+                      out.append(f"**{self.own_errors}** errors in this package's own files; every "
+                                 "error, a dependency's too, is in the log in full.")
+                  out.append("")
+                  if self.own:
+                      out += ["| kind | count |", "|---|---:|"]
+                      out += [f"| `{k}` | {n} |" for k, n in self.own.most_common()]
+                      files = self.own_files.most_common()
+                      out += ["", "<details><summary>by file</summary>", "", "| file | count |", "|---|---:|"]
+                      out += [f"| `{f}` | {n} |" for f, n in files[:40]]
+                      if len(files) > 40:
+                          out.append(f"| {len(files) - 40} more files | {sum(n for _, n in files[40:])} |")
+                      out += ["", "</details>", ""]
+                  if self.dep:
+                      out += ["| dependency (hidden) | warnings |", "|---|---:|"]
+                      out += [f"| `{r}` | {n} |" for r, n in self.dep.most_common()]
+                      out.append("")
+                  if log_name:
+                      out.append(f"The unfiltered build log is the job artifact `{log_name}`.")
+                  if self.annotate is not None and len(self.notes) > self.annotations:
+                      out.append(f"Annotated on the pull request: {self.annotations} of the "
+                                 f"{len(self.notes)} own warnings and errors (GitHub shows ten of each "
+                                 "per step); the log lists them all.")
+                  with open(path, "a", encoding="utf-8") as f:
+                      f.write("\n".join(out) + "\n")
+
+
+          def main(argv=None):
+              ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+              ap.add_argument("--root", default=".", help="the consuming package's directory (the lakefile's)")
+              ap.add_argument("--annotate", metavar="PREFIX", default=None,
+                              help="emit ::warning annotations, file names prefixed with PREFIX (the "
+                                   "package directory relative to the repository root)")
+              ap.add_argument("--summary", metavar="FILE", default=None, help="append a Markdown summary")
+              ap.add_argument("--max-annotations", type=int, default=10,
+                              help="annotations of each severity at most (GitHub shows ten per step)")
+              ap.add_argument("--log-name", default="", help="the artifact holding the unfiltered log")
+              args = ap.parse_args(argv)
+              stdin = open(sys.stdin.fileno(), encoding="utf-8", errors="replace", closefd=False)
+              sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
+              f = Filter(args.root, args.annotate, sys.stdout)
+              try:
+                  for raw in stdin:
+                      f.feed(raw.rstrip("\n").rstrip("\r"))
+                  f.finish()
+                  f.report(args.log_name)
+                  f.annotations_out(args.max_annotations)
+                  if args.summary:
+                      f.summary(args.summary, args.log_name)
+              except Exception as e:  # never lose the build's output to a bug in here
+                  sys.stdout.write(f"::warning::lake log filter failed ({e!r}); the rest is unfiltered\n")
+                  if f.block:
+                      sys.stdout.write("\n".join(f.block) + "\n")
+                  for raw in stdin:
+                      sys.stdout.write(raw)
+              return 0
+
+
+          if __name__ == "__main__":
+              sys.exit(main())
+          LAKE_LOG_PY
+
+      # `lake build` as lean-action runs it, the same target and `-j`, its output through the
+      # filter. PIPESTATUS[0] is the build's own status, so a failed build fails the step exactly
+      # as before; the filter's status only decides whether the raw log is printed instead.
+      - name: Build the Lean library (this package's warnings only)
+        if: inputs.own_warnings_only
+        working-directory: ${{ inputs.lean_dir }}
+        env:
+          BUILD_ARGS: ${{ inputs.build_jobs != '' && format('-j {0} {1}', inputs.build_jobs, inputs.build_args) || inputs.build_args }}
+          LEAN_DIR: ${{ inputs.lean_dir }}
+        run: |
+          log="$RUNNER_TEMP/lake-build.log"
+          set +e
+          # shellcheck disable=SC2086  # BUILD_ARGS is a word list, as lean-action expands it
+          lake build $BUILD_ARGS 2>&1 \
+            | tee -p "$log" \
+            | python3 "$RUNNER_TEMP/lake_log.py" --root . --annotate "$LEAN_DIR" \
+                --summary "$GITHUB_STEP_SUMMARY" --log-name lake-build-log
+          status=("${PIPESTATUS[@]}")
+          set -e
+          if [ "${status[2]}" -ne 0 ]; then
+            echo "::warning::the Lake log filter exited ${status[2]}; the unfiltered log follows"
+            cat "$log"
+          fi
+          if [ "${status[0]}" -ne 0 ]; then
+            echo "::error::lake build failed (exit ${status[0]})"
+            exit "${status[0]}"
+          fi
+
+      - name: Keep the unfiltered build log
+        if: always() && inputs.own_warnings_only
+        uses: actions/upload-artifact@v4
+        with:
+          name: lake-build-log
+          path: ${{ runner.temp }}/lake-build.log
+          if-no-files-found: ignore
+          retention-days: 14
 
       # The save that follows is the one that used to fail silently. Two things protect it:
       # the `.ltar` bundles are scratch once unpacked and are several GB, so they go; and if
