@@ -70,16 +70,23 @@ def default_globs(root: Path) -> list[str]:
 
 LF = 0x0A
 CR = 0x0D
+TAB = 0x09
 
 
-def offenders(data: bytes) -> list[tuple[int, int]]:
-    """Return (offset, byte) for each illegal control character."""
+def offenders(data: bytes, indent_tabs: bool = False) -> list[tuple[int, int]]:
+    """Return (offset, byte) for each illegal control character.
+
+    `indent_tabs` allows TABs that only indent a line, as a Better BibTeX export of a `.bib`
+    writes every field; a TAB after the line's first other character (a `\\t` swallowed from
+    `\\textit` in a title) is still caught."""
     bad = []
     for i, c in enumerate(data):
         if c >= 0x20 or c == LF:
             continue
         if c == CR and i + 1 < len(data) and data[i + 1] == LF:
             continue  # CRLF line ending
+        if indent_tabs and c == TAB and (i == 0 or data[i - 1] in (LF, TAB)):
+            continue  # indentation
         bad.append((i, c))
     return bad
 
@@ -103,7 +110,7 @@ def main(argv: list[str]) -> int:
         if not path.is_file():
             continue
         data = path.read_bytes()
-        for offset, char in offenders(data):
+        for offset, char in offenders(data, indent_tabs=path.suffix == ".bib"):
             failed = True
             snippet = data[max(0, offset - 40):offset + 40]
             print(
