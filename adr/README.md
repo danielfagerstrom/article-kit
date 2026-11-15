@@ -27,3 +27,4 @@ article's `adr/`; one about the wiki or the programme belongs in the hub's.
 | ADR | decision | status |
 |---|---|---|
 | [0001](0001-article-kit-owns-the-article-process.md) | article-kit owns the article process, and instruction files hold only instructions | Accepted 2026-09-21 |
+| [0002](0002-an-article-declares-its-parts-and-its-phase.md) | an article declares its parts and its phase in `linkage.toml`; the checks, the CI and the site follow | Proposed |
