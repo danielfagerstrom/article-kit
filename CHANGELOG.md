@@ -7,6 +7,13 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`docs.yml` puts `notes/` on the drafts page.** For a repository with an `[article]` table,
+  each `notes/**/*.md` is rendered with the pinned pandoc to `notes/<path>.html` and listed under
+  "Notes" on the landing page, titled by its first heading; other files under `notes/` are
+  copied beside them. The development head only, never a release channel, which is public. A
+  repository without the table builds as before, and no input changed. This retires the last
+  hand-written docs workflow (spatial-hemigroup-pyramids). `tests/test_docs_workflow.py`.
+
 ## v0.7.0 — 2026-11-15 — an article declares its parts and its phase
 
 A minor bump: a new table, two commands and new workflow behaviour. Nothing that passed fails; every repository without an `[article]` table gains one advisory, and its CI builds and deploys as before. To adopt: move the three workflow pins and `linkage_ref` to `v0.7.0`, add the `[article]` table (docs/LINKAGE.md, "Parts and phase"), and run `linkage init --sync`.

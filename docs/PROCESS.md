@@ -100,7 +100,8 @@ Run from the hub or anywhere, once:
 5. CI: `linkage init` seeds `.github/workflows/article.yml`, the one caller of the reusable
    workflows (`docs.yml`, `manifest.yml`, `lean.yml`), pinned to the article-kit release that
    wrote it. What runs follows the `[article]` table. The drafts page (`/drafts/<site>/`) shows
-   the draft from the first push once `site` is set, and the Lean job starts at `skeleton`. The
+   the draft and `notes/` from the first push once `site` is set, and the Lean job starts at
+   `skeleton`. The
    repository needs the R2 and `NOTES_WIKI_TOKEN` secrets. Cloud sessions:
    [`CLOUD.md`](CLOUD.md). `lean.yml`'s build log
    shows the article's own Lean warnings only: a dependency's (Mathlib, a pinned export, the core
