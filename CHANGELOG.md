@@ -7,6 +7,10 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+## v0.7.0 — 2026-11-15 — an article declares its parts and its phase
+
+A minor bump: a new table, two commands and new workflow behaviour. Nothing that passed fails; every repository without an `[article]` table gains one advisory, and its CI builds and deploys as before. To adopt: move the three workflow pins and `linkage_ref` to `v0.7.0`, add the `[article]` table (docs/LINKAGE.md, "Parts and phase"), and run `linkage init --sync`.
+
 - **The reusable workflows follow the `[article]` table (ADR-0002).**
   - **`docs.yml`.** A first step reads `linkage.toml`. A repository without the table builds and
     deploys exactly as before. One with it:
