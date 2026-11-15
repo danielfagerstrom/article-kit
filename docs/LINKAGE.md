@@ -926,6 +926,31 @@ resolves to a `slug.md` under the wiki.
 Run it before publishing and as **gate item 7** (`paper/DRAFTING-GATE.md`); a pre-release / CI step is the
 natural home.
 
+### Absent parts
+
+A repository need not have every part. A paper-only satellite (a conference version whose
+blueprint and Lean live in the long paper's repository) has a paper and nothing else; an article at
+its draft has neither a Lean tree nor a paper yet. Three parts are recognised, each anchored on one
+`[paths]` key: the **blueprint** (`blueprint`, with its companions `axioms`, `macros` and
+`allowlist`), the **Lean** tree (`lean`) and the **paper** (`paper`).
+
+A part is **absent** when `linkage.toml` leaves its anchor key out *and* nothing exists at the
+default path (`blueprint/src/content.tex`, `Formalization/`, `paper/`). A key that is written is a
+declaration: a declared path that does not exist is still a config error (exit 2), so a typo is
+never read as "this repository has none". Two half-declarations are refused too: a blueprint
+companion named without the blueprint, and `lean_packages` without a Lean tree. When the blueprint
+is present, its companions are required as before.
+
+`linkage check` says first which parts are absent, then skips what has nothing to read: the
+blueprint, ledger, closure and Lean checks without a blueprint; the trust-base check (rule 13)
+without a blueprint and a Lean tree, with an advisory if the paper marks such a subsection anyway;
+rule 12's advisory without a blueprint, since every statement of a paper-only repository has no node
+here by design. The paper-side checks it can still run (control characters, a `% shared with
+blueprint` marker, which fails, saying the repository has no blueprint) run as before. A command
+that cannot work without a part (`--emit-manifest`, `manifest`, `closure`, `axioms`, `demand`,
+`release export`) stops with a config error naming it. `linkage init --sync` skips the files of an
+absent part, by the same reading.
+
 ## The cross-repo channel — manifest out, demand in
 
 The reference edges above are pointers; the **workflow** with the wiki is two-way and runs over two

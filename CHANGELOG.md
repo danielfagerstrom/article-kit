@@ -7,6 +7,16 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage check` reads a part that `linkage.toml` leaves out as absent, not as missing.** A
+  paper-only repository (a conference version whose blueprint and Lean are the long paper's)
+  leaves the blueprint and Lean paths out on purpose, and `config.load` filled them with their
+  defaults and then exited 2 because they did not exist. A part (blueprint, Lean, paper) is now absent when
+  its anchor key is left out and nothing exists at the default path. `linkage check` names the
+  absent parts and skips the checks that would read them; a path that is written and does not
+  exist is still an error. Commands that need an absent part stop with a config error naming it.
+  `linkage init --sync` reads the parts the same way. `docs/LINKAGE.md`, "Absent parts";
+  `tests/test_absent_parts.py`. Nothing that passed fails.
+
 ## v0.6.0 — 2026-11-14 — a Lean log of the article's own warnings, and the status words
 
 - **`lean.yml`'s build log shows the article's own Lean warnings only (new input

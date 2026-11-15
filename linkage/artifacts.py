@@ -39,6 +39,8 @@ def lean_declared_names(cfg: Config) -> set[str]:
     packages live there, so they are scanned by explicit path instead.
     """
     names: set[str] = set()
+    if not cfg.has("lean"):
+        return names   # no Lean part: `config.load` refuses `lean_packages` without one
     for f in cfg.lean.rglob("*.lean"):
         if ".lake" in f.parts:
             continue
@@ -89,7 +91,10 @@ def ledger_entries_from_text(text: str, key: str) -> dict[str, LedgerEntry]:
 
 
 def ledger_entries(cfg: Config) -> dict[str, LedgerEntry]:
-    """`AXX` -> its ledger entry, for this article's own `AXIOMS.md`."""
+    """`AXX` -> its ledger entry, for this article's own `AXIOMS.md` (none without a
+    blueprint part: the ledger is one of its files)."""
+    if not cfg.has("blueprint"):
+        return {}
     return ledger_entries_from_text(read(cfg.axioms), cfg.ledger_key)
 
 
@@ -102,6 +107,8 @@ def render_safe_commands(cfg: Config) -> set[str]:
     a false failure with no way to satisfy it short of vetting one's own macro in the
     allowlist.
     """
+    if not cfg.has("blueprint"):
+        return set()   # the macros file and the allowlist are the blueprint's
     defined = set(re.findall(r"\\(?:new|provide|renew)command\*?\{?\\([A-Za-z]+)",
                              expand_inputs(cfg.macros)))
     vetted = {

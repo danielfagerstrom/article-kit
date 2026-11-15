@@ -571,7 +571,10 @@ def run(
         if missing := [lab for lab in mk.blueprint_labels if lab not in labels]:
             fatal.append(
                 f"[paper]  {mk.file}:{mk.line}: 'shared with blueprint "
-                f"{', '.join(missing)}' but no such blueprint label"
+                f"{', '.join(missing)}' but "
+                + ("no such blueprint label" if cfg.has("blueprint") else
+                   "this repository has no blueprint part -- a statement taken from "
+                   "another article's blueprint cites it instead of sharing it")
             )
             continue
         if (mk.statement_label and mk.statement_label != mk.blueprint_label
@@ -666,7 +669,9 @@ def run(
     # Rule 4 enumerates the paper only through its markers, so an unmarked statement is
     # invisible to it. Advisory: the population is unknown and a fatal check would block
     # every article on day one (LINKAGE.md rule 12 says how to promote it).
-    unshared = unshared_statements(cfg)
+    # Not without a blueprint part: every statement of a paper-only repository has no node
+    # here by design, and an advisory on each would say nothing.
+    unshared = unshared_statements(cfg) if cfg.has("blueprint") else []
     for file, line, env, label in unshared:
         advisory.append(
             f"[unshared] {file}:{line}: \\begin{{{env}}}"
@@ -680,9 +685,21 @@ def run(
     # Silent for a paper without the `% trust base: begin` marker. Imported here because
     # it reads the `linkage closure` source index, and closure imports this module.
     from .trustbase import check as trust_base
-    tb = trust_base(bp, cfg, markers, fresh=fresh_axioms)
-    fatal.extend(tb.fatal)
-    advisory.extend(tb.advisory)
+    from .trustbase import regions
+    if cfg.has("blueprint") and cfg.has("lean"):
+        tb = trust_base(bp, cfg, markers, fresh=fresh_axioms)
+        fatal.extend(tb.fatal)
+        advisory.extend(tb.advisory)
+        tb_stats = tb.stats
+    else:
+        # The subsection is checked against this repository's ledger and Lean; without
+        # them there is nothing to check it against, which the author should hear about.
+        tb_stats = {}
+        if regions(cfg)[0]:
+            advisory.append(
+                "[trust-base] the paper marks a trust-base subsection, but this repository "
+                f"has no {' and no '.join(sorted(cfg.absent & {'blueprint', 'lean'}))} part "
+                "to check it against -- it is not checked (LINKAGE.md rule 13)")
 
     # 13b. a committed constant-map export older than the Lean it was generated from
     # (2026-10-09, Q-0383). Nothing in `check` reads it any more -- rule 13 reads
@@ -741,7 +758,7 @@ def run(
         "proof_drift": proof_counts["drift"],
         "proof_unmatched": proof_counts["unmatched"],
         "paper_unshared": len(unshared),
-        "trust_base": tb.stats,
+        "trust_base": tb_stats,
         "homes": lib.stats,
         "homes_notes": lib.notes,
         "reached_unproved": len(reached_unproved),
