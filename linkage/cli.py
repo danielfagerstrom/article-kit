@@ -13,6 +13,8 @@
     linkage boundary [--strict-shadows] [--with-mathlib]
     linkage lean clones [--wiki PATH] [--max-clones N] [--allow NAME] [--allow-file PATH] [--json]
     linkage init [--slug SLUG]
+    linkage parts [--json]
+    linkage phase [--advance] [--record PATH]
 
 Run from anywhere inside an article repo; the config is found by walking up to
 `linkage.toml`.
@@ -108,6 +110,12 @@ def cmd_check(args) -> int:
     # Instruction files hold instructions, not the record (ADR-0001). Advisory only.
     from . import shape
     f.advisory.extend(shape.check(cfg.root))
+    # What the `[article]` table obliges: the parts its phase requires, no unlisted part's
+    # directory, and on an anonymous repository the anonymity scan (ADR-0002).
+    from . import article
+    ap = article.problems(cfg)
+    f.fatal.extend(ap.fatal)
+    f.advisory.extend(ap.advisory)
 
     if args.pin_shared and (f.unpinned or f.proof_unpinned):
         shas = {n.label: n.shared_sha for n in bp.nodes if n.label}
@@ -123,10 +131,18 @@ def cmd_check(args) -> int:
         return 0
 
     s = f.stats
-    if cfg.absent:
+    have = [p for p in config.PARTS if cfg.has(p)]
+    if cfg.article.declared:
+        # Said first: the declaration is what every check below was read against.
+        later = [p for p in config.PARTS if cfg.listed(p) and not cfg.has(p)]
+        print(f"Article: phase {cfg.phase() or '(none)'}; parts {', '.join(have) or 'none'}"
+              + (f"; not yet {', '.join(later)}" if later else "")
+              + (f"; never {', '.join(p for p in config.PARTS if not cfg.listed(p))}"
+                 if set(config.PARTS) - cfg.article.parts else "")
+              + ("; anonymous" if cfg.article.anonymous else "") + ".")
+    elif cfg.absent - {"draft"}:
         # Said first, so that a reader of a paper-only (or early-phase) repository's output
         # knows why the blueprint and closure lines are not there (LINKAGE.md, "Absent parts").
-        have = [p for p in config.PARTS if cfg.has(p)]
         print(f"Parts: {', '.join(have) or 'none'}; absent: {', '.join(sorted(cfg.absent))} "
               f"({config.CONFIG_NAME} leaves them out) -- their checks are skipped.")
     _print_blueprint_stats(cfg, s)
@@ -554,6 +570,85 @@ def cmd_pins(args) -> int:
     return 0
 
 
+def cmd_parts(args) -> int:
+    """The declaration (ADR-0002): the parts, which exist, the phase, and the CI's jobs."""
+    from . import article
+    cfg = config.load(args.root)
+    doc = article.projection(cfg)
+    if args.json:
+        print(json.dumps(doc, indent=2, ensure_ascii=False))
+        return 0
+    print(f"{cfg.slug}: " + ("declared" if doc["declared"] else
+                             "no [article] table; parts inferred from the tree"))
+    print(f"  phase:   {doc['phase'] or '(none)'}")
+    print(f"  parts:   {', '.join(doc['parts']) or 'none'} "
+          f"(present: {', '.join(doc['present']) or 'none'})")
+    for m in doc["modules"]:
+        if m["phase"] or m["site"]:
+            print(f"  module {m['name']}: phase {m['phase'] or '-'}, site {m['site'] or '-'}")
+    print(f"  site:    {', '.join(doc['sites']) or 'none'}"
+          + ("; anonymous" if doc["anonymous"] else ""))
+    if doc["cites"]:
+        print(f"  cites:   {', '.join(doc['cites'])}")
+    print("  jobs:    " + ", ".join(k for k, v in doc["jobs"].items() if v))
+    return 0
+
+
+def _check_fatal(cfg) -> list[str]:
+    """`linkage check`'s failures, run in-process with its defaults (for `linkage phase`)."""
+    from . import article
+    bp = parse_latex.parse(cfg)
+    f = checks.run(
+        bp, cfg,
+        lean_names=artifacts.lean_declared_names(cfg),
+        ledger=artifacts.ledger_entries(cfg),
+        markers=artifacts.paper_markers(cfg),
+        safe_commands=artifacts.render_safe_commands(cfg),
+        control_chars=artifacts.control_chars(cfg),
+    )
+    return f.fatal + article.problems(cfg).fatal
+
+
+def cmd_phase(args) -> int:
+    """Where the repository stands, what the next phase lacks, and `--advance` to it."""
+    from . import article, scaffold
+    cfg = config.load(args.root)
+    if not cfg.article.declared:
+        raise config.ConfigError(
+            f"{config.CONFIG_NAME} has no `[article]` table -- declare the parts and the phase "
+            "first (LINKAGE.md, \"Parts and phase\")")
+    if cfg.article.phase is None:
+        for m in cfg.modules:
+            print(f"module {m.name}: phase {m.phase or '(none)'}")
+        if args.advance:
+            raise config.ConfigError(
+                "the phases are per module here: edit the module's `phase` in "
+                f"{config.CONFIG_NAME} by hand, after `linkage check` passes")
+        return 0
+    cur = cfg.article.phase
+    nxt = article.next_phase(cur)
+    print(f"Phase: {cur} (PROCESS.md § {article.SECTION[cur]}).")
+    if nxt is None:
+        print("  The last phase: nothing follows.")
+        return 0
+    lacks = article.entry_lacks(cfg, nxt, args.record, _check_fatal(cfg))
+    print(f"Next:  {nxt} (PROCESS.md § {article.SECTION[nxt]}).")
+    for item in lacks:
+        print(f"  lacks {item}")
+    if not lacks:
+        print("  nothing lacking.")
+    if not args.advance:
+        return 0
+    if lacks:
+        print(f"\nPHASE NOT ADVANCED: {len(lacks)} condition(s) open.")
+        return 1
+    toml = cfg.root / config.CONFIG_NAME
+    toml.write_bytes(article.set_phase(toml.read_text(encoding="utf-8"), nxt)
+                     .encode("utf-8"))
+    print(f"\nAdvanced to {nxt}. Syncing the framework files of the parts it has:")
+    return scaffold.init(cfg.root, slug=cfg.slug, sync=True)
+
+
 def cmd_init(args) -> int:
     from . import scaffold
     root = args.root or Path.cwd()
@@ -579,6 +674,19 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--root", type=Path, default=None,
                     help="article repo root (default: walk up to linkage.toml)")
     sub = ap.add_subparsers(dest="cmd", required=True)
+
+    pa = sub.add_parser("parts", help="the [article] declaration: parts, phase, site, and "
+                                      "the CI's jobs (ADR-0002)")
+    pa.add_argument("--json", action="store_true",
+                    help="the projection the CI reads and manifest.yml writes into the hub")
+    pa.set_defaults(func=cmd_parts)
+    ph = sub.add_parser("phase", help="the phase, what the next one lacks; --advance to it")
+    ph.add_argument("--advance", action="store_true",
+                    help="move to the next phase when nothing is lacking, then --sync")
+    ph.add_argument("--record", type=Path, metavar="PATH",
+                    help="a record of the judgement the next phase needs (the author's "
+                         "approval of the skeleton, before `proving`), relative to the root")
+    ph.set_defaults(func=cmd_phase)
 
     c = sub.add_parser("check", help="verify every blueprint/Lean/ledger/paper edge")
     c.add_argument("--wiki", type=Path,

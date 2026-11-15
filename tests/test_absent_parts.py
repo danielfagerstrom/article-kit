@@ -38,13 +38,13 @@ def _check(root, *extra):
 # --- what `config.load` reads as absent ------------------------------------------------
 
 
-def test_a_full_article_has_every_part(article):
-    assert article.cfg.absent == frozenset()
+def test_a_full_article_has_every_part_but_a_draft(article):
+    assert article.cfg.absent == {"draft"}   # the fixture writes none; nothing checks it
 
 
 def test_paths_left_out_of_a_paper_only_repository_are_absent_parts(tmp_path):
     cfg = config.load(_paper_only(tmp_path))
-    assert cfg.absent == {"blueprint", "lean"}
+    assert cfg.absent == {"draft", "blueprint", "lean"}
     assert cfg.has("paper") and not cfg.has("blueprint")
     assert cfg.missing() == []
     assert cfg.lean_uses is None
@@ -52,7 +52,7 @@ def test_paths_left_out_of_a_paper_only_repository_are_absent_parts(tmp_path):
 
 def test_the_paper_key_may_be_left_out_too(tmp_path):
     root = _paper_only(tmp_path, 'slug = "ppr"\n')
-    assert config.load(root).absent == {"blueprint", "lean"}
+    assert config.load(root).absent == {"draft", "blueprint", "lean"}
 
 
 def test_a_repository_at_its_draft_has_no_paper_and_no_lean(article):
@@ -61,7 +61,7 @@ def test_a_repository_at_its_draft_has_no_paper_and_no_lean(article):
     shutil.rmtree(article.root / "Formalization")
     article.file("linkage.toml", 'slug = "test"\n')   # the blueprint at its defaults
     cfg = config.load(article.root)
-    assert cfg.absent == {"paper", "lean"}
+    assert cfg.absent == {"draft", "paper", "lean"}
     assert cfg.papers == ()
 
 
@@ -100,7 +100,7 @@ def test_the_companions_of_a_present_blueprint_are_still_required(article):
 def test_check_passes_in_a_paper_only_repository_and_says_what_it_skipped(tmp_path):
     rc, out, err = _check(_paper_only(tmp_path))
     assert rc == 0, out + err
-    assert "Parts: paper; absent: blueprint, lean" in out
+    assert "Parts: paper; absent: blueprint, draft, lean" in out
     assert "Blueprint:" not in out and "Dependency closure:" not in out
     # every statement of a paper-only repository has no node here by design (rule 12)
     assert "[unshared]" not in out
@@ -160,4 +160,4 @@ def test_check_passes_on_a_blueprint_with_no_lean_yet(article):
     article.blueprint(statement(label="thm:x"))
     rc, out, err = _check(article.root)
     assert rc == 0, out + err
-    assert "absent: lean" in out and "Blueprint: 1 statement nodes" in out
+    assert "absent: draft, lean" in out and "Blueprint: 1 statement nodes" in out

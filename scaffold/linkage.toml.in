@@ -11,6 +11,18 @@ slug = "@@SLUG@@"
 #
 #   library_article = "line"
 
+# What this repository is (ADR-0002; docs/LINKAGE.md, "Parts and phase"). `parts` lists the
+# parts it will ever have: a paper-only repository lists ["paper"] and drops the other paths
+# below. `phase` is docs/PROCESS.md's, moved on with `linkage phase --advance`. `site` is the
+# repository's slug on the research site (the hub's `site.slug`); leave it out for one that
+# is not on the site, and set `anonymous = true` while the paper is under double-blind review.
+[article]
+parts     = ["draft", "blueprint", "lean", "paper"]
+phase     = "draft"
+anonymous = false
+# site    = "<site-slug>"
+# cites   = ["<slug>@<tag>"]   # articles whose blueprint this one's statements are taken from
+
 [paths]
 blueprint = "blueprint/src/content.tex"
 axioms    = "blueprint/AXIOMS.md"

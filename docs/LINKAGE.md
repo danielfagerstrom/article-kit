@@ -951,6 +951,84 @@ that cannot work without a part (`--emit-manifest`, `manifest`, `closure`, `axio
 `release export`) stops with a config error naming it. `linkage init --sync` skips the files of an
 absent part, by the same reading.
 
+This inference is the fallback for a repository without an `[article]` table. One that has the
+table declares its parts instead (next section), and `linkage check` advises every other repository
+to declare.
+
+### Parts and phase
+
+The `[article]` table says what the repository is ([ADR-0002](../adr/0002-an-article-declares-its-parts-and-its-phase.md)):
+
+```toml
+[article]
+parts     = ["draft", "blueprint", "lean", "paper"]   # the parts it will ever have
+phase     = "proving"                                # PROCESS.md's phase
+anonymous = false                                    # under double-blind review
+site      = "hemigroup-image-pyramids"               # its site slug; absent: not on the site
+cites     = ["hcs@v1.0.0"]                           # whose blueprint its statements are from
+identity  = ["myaccount", "mydomain\\.org"]           # anonymous only: more identifying patterns
+```
+
+**Parts.** `draft` (`paths.draft`, default `draft/`), `blueprint`, `lean` and `paper`, as above. A
+part not listed is never this repository's: its checks are skipped, `--sync` writes none of its
+files, and a directory of it at its default place (`draft/`, `blueprint/`, `Formalization/`,
+`paper/`) is an error, since nothing would read it. So is a `[paths]` key of an unlisted part. A
+listed part that is not on disk yet is pending: its paths may be written already, and its checks
+run once it exists.
+
+**Phase.** One of `draft`, `blueprint`, `skeleton`, `proving`, `fidelity`, `article`, `passes`,
+`external-review`, `released`, named after PROCESS.md §§ 2–10. A listed part must exist from the
+phase that needs it on: the draft from `draft`, the blueprint from `blueprint`, the Lean tree from
+`skeleton`, the paper from `article`; `released` also needs a `[[modules]]` table with a `tag`.
+`linkage check` fails (`[phase]`) on a part the phase requires and does not find. A repository
+whose modules stand at different phases writes `phase` on each `[[modules]]` table instead, and
+then needs the parts of its most advanced module; a module may give its own `site` likewise.
+
+**Anonymous.** On `anonymous = true`, `linkage check` scans the paper's `.tex` and `.bib` files
+(`[anonymity]`, fatal). It flags the creators' family names (`[release] creators`, as written and
+accent-folded), the patterns of `identity`, a `github.com` URL, an e-mail address, `\thanks`,
+`\email`, `\institute`, and first-person self-citation ("our previous paper"). The argument of a
+`\cite` is blanked first, since a citekey never renders, and a `.bib` may name the author. A line
+carrying `anonymity-ok` is exempt. An anonymous repository names no `site`, and the CI deploys
+nothing from it.
+
+**`linkage phase`** prints the phase, the next one, and what the next one still lacks: the parts
+it requires, `linkage check` clean, and the gate PROCESS.md names there. Before `proving` that is
+the author's approval of the reviewed skeleton (§ 4), given as a file with `--record PATH`. Before
+`article`, if the repository has a Lean tree, it is the fidelity review's
+`blueprint/REVIEW-fidelity.md` (§ 6). Before `released`, it is a tagged module. `--advance`
+rewrites `phase` in `linkage.toml`, keeping its comments, and runs `--sync`, but only when nothing
+is lacking. A repository whose modules carry the phase advances them by hand.
+
+**The projection.** `linkage parts --json` prints the declaration as the CI, the hub and the
+research site read it. `manifest.yml` writes it into the hub as `article-<slug>.json`, adding
+`source_commit`:
+
+```json
+{
+  "projection_version": 1,
+  "slug": "pyr",
+  "declared": true,
+  "parts": ["blueprint", "draft", "lean", "paper"],
+  "present": ["draft", "blueprint", "lean"],
+  "phase": "proving",
+  "modules": [{"name": "pyr", "phase": null, "site": null, "tag": null}],
+  "anonymous": false,
+  "site": "hemigroup-image-pyramids",
+  "sites": ["hemigroup-image-pyramids"],
+  "cites": [],
+  "jobs": {"docs": true, "deploy": true, "blueprint_manifest": true, "lean": true}
+}
+```
+
+`parts` is the declared list (sorted), or, undeclared, the parts present. `sites` gathers
+`site` and the modules' `site`s. `jobs` is what the CI runs:
+
+- `docs`: something to build, meaning a draft, a blueprint or a paper exists.
+- `deploy`: a site is named and the repository is not anonymous.
+- `blueprint_manifest`: a blueprint exists.
+- `lean`: a Lean tree exists and the phase has reached `skeleton`, or no phase is known.
+
 ## The cross-repo channel — manifest out, demand in
 
 The reference edges above are pointers; the **workflow** with the wiki is two-way and runs over two

@@ -69,6 +69,15 @@ entry that `wiki queue harvest` raises for a reading note left without one (hub 
 
 Each phase lists its entry condition, what runs it, and what it leaves.
 
+A repository records its phase and its parts in `linkage.toml`'s `[article]` table, and the
+checks, the CI and the research site follow that record ([ADR-0002](../adr/0002-an-article-declares-its-parts-and-its-phase.md);
+[`LINKAGE.md`](LINKAGE.md), "Parts and phase"). The `phase` values are the section names below:
+`draft` (§ 2), `blueprint` (§ 3), `skeleton` (§ 4), `proving` (§ 5), `fidelity` (§ 6), `article`
+(§ 7), `passes` (§ 8), `external-review` (§ 9), `released` (§§ 10–11). `linkage phase` says what
+the next phase still lacks, and `linkage phase --advance` moves the repository there in a pull
+request once nothing does. A repository that will never have a part leaves it out of `parts`:
+a paper-only version of a longer paper lists only `paper`, and goes from `article` on.
+
 ### 0. Idea development — in the hub
 
 The idea is developed in the wiki (`$WIKI_VAULT`): a thread page, concept notes, sources through the
@@ -79,8 +88,9 @@ librarian. **Leaves** enough material for a draft, and the decision to start a r
 Run from the hub or anywhere, once:
 
 1. `gh repo create danielfagerstrom/<slug-name> --private`, clone to `C:\Users\danie\dev\<repo>`.
-2. `linkage init --slug <slug> --title "<title>"`: the blueprint scaffolding, `linkage.toml`, the
-   session rules, `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `notes/HANDOFF.md`, `adr/README.md`,
+2. `linkage init --slug <slug> --title "<title>"`: the blueprint scaffolding, `linkage.toml` (its
+   `[article]` table at `phase = "draft"`: set `parts`, and `site` once the hub gives the article
+   a site slug), `draft/`, the session rules, `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `notes/HANDOFF.md`, `adr/README.md`,
    `.claude/settings.json` and `cloud-setup.sh`.
 3. Fill `CLAUDE.md`'s header (what the article is, where it sits) and nothing else yet.
 4. The Lean project, when the blueprint has its first nodes: `Formalization/` with a
