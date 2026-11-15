@@ -8,4 +8,4 @@ The stages are deliberately separable — `parse_latex` turns one blueprint dial
 is a second parser, not a rewrite.
 """
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
