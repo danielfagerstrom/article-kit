@@ -7,6 +7,10 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+## v0.7.1 — 2026-11-15 — notes on the drafts page
+
+A patch: one workflow addition, no input changed, nothing that passed fails. To adopt: move the `docs.yml` pin to `v0.7.1` (the other pins and `linkage_ref` may move with it).
+
 - **`docs.yml` puts `notes/` on the drafts page.** For a repository with an `[article]` table,
   each `notes/**/*.md` is rendered with the pinned pandoc to `notes/<path>.html` and listed under
   "Notes" on the landing page, titled by its first heading; other files under `notes/` are

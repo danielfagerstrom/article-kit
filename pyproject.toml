@@ -1,6 +1,6 @@
 [project]
 name = "linkage"
-version = "0.7.0"
+version = "0.7.1"
 description = "Blueprint <-> Lean <-> ledger <-> paper linkage checks and the hub manifest, shared by every article repo"
 readme = "README.md"
 requires-python = ">=3.11"
