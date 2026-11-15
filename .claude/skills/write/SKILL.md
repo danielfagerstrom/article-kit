@@ -267,8 +267,8 @@ decisions, so each article's `adr/` records its own; this standard records that 
   by, and synced from, the `linkage` repo, so the macro is that repo's item, not an article's or this
   one's to add here. Until it exists, a transcribed statement's citation is rewritten by hand to a
   real reference wherever it reaches a paper.
-- **Every compression is ledgered** where one article compresses another (the conference
-  extraction): each statement names what it compresses, what was dropped, and why it is still
+- **Every compression is ledgered** where one article compresses another:
+  each statement names what it compresses, what was dropped, and why it is still
   faithful, with a hash, so that a late page-fitting trim cannot pass silently.
 
 ---

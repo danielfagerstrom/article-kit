@@ -26,8 +26,8 @@ Steps 1, 2, 4 and 5 of [ADR-0001](adr/0001-article-kit-owns-the-article-process.
 `shape` advisories; and `linkage release export|zenodo` and `linkage prose register`, parameterized
 per module from `linkage.toml`, 2026-09-25). Open:
 
-- **Step 3, the cleanup, beyond the pilot.** `hemigroup-causal-scale-space-kernels`,
-  `hemigroup-kernels-ssvm` and `scale-space-foundations`: `linkage init --sync` for the rules; each
+- **Step 3, the cleanup, beyond the pilot.** `hemigroup-causal-scale-space-kernels`
+  and `scale-space-foundations`: `linkage init --sync` for the rules; each
   `CLAUDE.md` to its article's standing rules; each `README.md` to one state section; finished
   prompts, plans and running records deleted or moved to `records/`; the general rules in their
   per-project memories moved into the rules and the memories deleted. `linkage shape` is the

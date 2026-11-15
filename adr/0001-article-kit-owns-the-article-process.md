@@ -14,7 +14,7 @@ An article goes from idea development in the wiki hub to its own repository, and
 draft, a blueprint, a Lean formalization and the article. The later stages are run from the article
 repository. The author found that an article session could not do its work without being told the
 process from scratch, and an assessment on 2026-09-21 of article-kit, the hub and the four article
-repositories (`hemigroup-causal-scale-space-kernels`, `hemigroup-kernels-ssvm`,
+repositories (`hemigroup-causal-scale-space-kernels`, one private repository,
 `spatial-hemigroup-scale-space`, `scale-space-foundations`) found four causes.
 
 1. **No file described the process.** article-kit held the checkable machinery (the linkage spec,
@@ -37,7 +37,7 @@ repositories (`hemigroup-causal-scale-space-kernels`, `hemigroup-kernels-ssvm`,
    failure on a wiki page and fixed it (hub ADR-0014 and the `wiki lint` shape check); the fix
    never reached the article repositories.
 4. **Lessons had no way back.** A rule learned in one article (the verbatim transcription beside
-   every ledger paraphrase, learned at the Paper I SSVM extraction) did not reach the next, which
+   every ledger paraphrase, learned on Paper I) did not reach the next, which
    admitted a false axiom for want of it.
 
 ## Decision
