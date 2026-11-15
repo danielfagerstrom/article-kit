@@ -18,6 +18,12 @@ name: Manifest projection (reusable)
 # and skips the commit when the projected content is unchanged — no noise commits on
 # Lean-only refactors or paper pushes.
 #
+# It also writes the repository's declaration (ADR-0002) into the hub as
+# `article-<slug>.json`: `linkage parts --json` plus the source commit, which the hub's
+# `wiki lint` and the research site's routes read. That one is written for every repository,
+# a blueprint or not; the blueprint manifest only where there is a blueprint to project. A
+# repository with no blueprint still runs `linkage check`.
+#
 # On pull requests the caller should pass dry_run: true — emit + a self-test of the
 # diff-guard semantics, never touching the hub. The cross-repo push needs
 # `secrets.NOTES_WIKI_TOKEN` (a fine-grained PAT scoped to notes-wiki with Contents
@@ -82,6 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MANIFEST_NAME: blueprint-manifest-${{ inputs.slug }}.json
+      ARTICLE_NAME: article-${{ inputs.slug }}.json
     steps:
       - name: Checkout the article
         uses: actions/checkout@v4
@@ -129,6 +136,23 @@ jobs:
           linkage --help > /dev/null
           echo "linkage installed from article-kit@${{ inputs.linkage_ref }}"
 
+      # The declaration (ADR-0002): the projection the hub and the site read, and whether
+      # there is a blueprint to project. Written to $RUNNER_TEMP for the same reason as the
+      # manifest below: nothing untracked may land in the article tree.
+      - name: Read the declaration
+        id: decl
+        run: |
+          linkage parts --json > "$RUNNER_TEMP/parts.json"
+          python3 - "$RUNNER_TEMP/parts.json" "$RUNNER_TEMP/$ARTICLE_NAME" <<'EOF' | tee -a "$GITHUB_OUTPUT"
+          import json, subprocess, sys
+          doc = json.load(open(sys.argv[1], encoding="utf-8"))
+          doc["source_commit"] = subprocess.run(
+              ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
+              check=True).stdout.strip()
+          json.dump(doc, open(sys.argv[2], "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+          print(f"blueprint={str(doc['jobs']['blueprint_manifest']).lower()}")
+          EOF
+
       # This job is deliberately toolchain-free — no elan, no lake — because the manifest is
       # a projection of source text. But an article may point `\lean{}` tags at a shared Lake
       # package, and check 1 has to resolve them. `linkage packages` reports the url + resolved
@@ -160,10 +184,16 @@ jobs:
       # (or with any label failing to render) must never reach the hub — CI is its single
       # writer, so a silent degrade here would strand the hub on prose-only entries.
       - name: Emit the manifest (and run the linkage check)
+        if: steps.decl.outputs.blueprint == 'true'
         run: |
           linkage check --require-render \
             ${{ inputs.strict_shared && '--strict-shared' || '' }} \
             --emit-manifest "$RUNNER_TEMP/$MANIFEST_NAME"
+
+      - name: Run the linkage check (no blueprint to project)
+        if: steps.decl.outputs.blueprint != 'true'
+        run: |
+          linkage check ${{ inputs.strict_shared && '--strict-shared' || '' }}
 
       # The swallowed-prose gate (scripts/check-swallowed-prose.py, delivered by `linkage init
       # --sync`) compares the changed .tex files with a base revision, so it only means
@@ -185,7 +215,7 @@ jobs:
 
       # ---- dry-run half: prove the guard's semantics, touch nothing ----
       - name: "Dry run: self-test the diff-guard semantics"
-        if: inputs.dry_run
+        if: inputs.dry_run && steps.decl.outputs.blueprint == 'true'
         run: |
           python3 - "$RUNNER_TEMP/$MANIFEST_NAME" <<'EOF'
           import copy, json, sys
@@ -234,35 +264,44 @@ jobs:
         id: diff
         if: ${{ !inputs.dry_run }}
         run: |
-          python3 - "$RUNNER_TEMP/$MANIFEST_NAME" "hub/$MANIFEST_NAME" >> "$GITHUB_OUTPUT" <<'EOF'
+          python3 - "$RUNNER_TEMP" hub "$MANIFEST_NAME" "$ARTICLE_NAME" >> "$GITHUB_OUTPUT" <<'EOF'
           import json, sys
+          from pathlib import Path
           # source_dirty is semantic, not stamp — see the dry-run step's comment
           STAMP = {"generated_at", "source_commit"}
           def strip(m): return {k: v for k, v in m.items() if k not in STAMP}
-          fresh = json.load(open(sys.argv[1], encoding="utf-8"))
-          try:
-              hub = json.load(open(sys.argv[2], encoding="utf-8"))
-          except (FileNotFoundError, json.JSONDecodeError):
-              hub = None  # missing or unreadable hub copy -> seed it
-          changed = hub is None or strip(fresh) != strip(hub)
+          tmp, hub = Path(sys.argv[1]), Path(sys.argv[2])
+          changed = []
+          for name in sys.argv[3:]:
+              if not (tmp / name).is_file():
+                  continue  # no blueprint: no manifest to project
+              fresh = json.loads((tmp / name).read_text(encoding="utf-8"))
+              try:
+                  old = json.loads((hub / name).read_text(encoding="utf-8"))
+              except (FileNotFoundError, json.JSONDecodeError):
+                  old = None  # missing or unreadable hub copy -> seed it
+              if old is None or strip(fresh) != strip(old):
+                  changed.append(name)
           print(f"comparing without stamp fields {sorted(STAMP)}: "
-                f"{'CHANGED' if changed else 'unchanged'}", file=sys.stderr)
-          print(f"changed={str(changed).lower()}")
+                f"{', '.join(changed) or 'unchanged'}", file=sys.stderr)
+          print(f"changed={str(bool(changed)).lower()}")
+          print(f"files={' '.join(changed)}")
           EOF
 
       - name: Commit and push the projection
         if: ${{ !inputs.dry_run && steps.diff.outputs.changed == 'true' }}
         working-directory: hub
         run: |
-          cp "$RUNNER_TEMP/$MANIFEST_NAME" "$MANIFEST_NAME"
+          FILES="${{ steps.diff.outputs.files }}"
+          for f in $FILES; do cp "$RUNNER_TEMP/$f" "$f"; done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$MANIFEST_NAME"
-          git commit -m "$MANIFEST_NAME: project from ${{ inputs.slug }}@${GITHUB_SHA::7}"
+          git add $FILES
+          git commit -m "${FILES// /, }: project from ${{ inputs.slug }}@${GITHUB_SHA::7}"
           # If a concurrent hub commit raced us, rebase once and retry. Two satellites
           # projecting at once touch different files, so a rebase always resolves.
           git push origin HEAD:main || { git pull --rebase origin main && git push origin HEAD:main; }
 
       - name: No content change — skipping commit
         if: ${{ !inputs.dry_run && steps.diff.outputs.changed == 'false' }}
-        run: echo "Manifest content identical to the hub's copy (stamp fields excluded); no commit."
+        run: echo "Manifest and declaration identical to the hub's copies (stamp fields excluded); no commit."

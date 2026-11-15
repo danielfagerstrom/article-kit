@@ -7,6 +7,24 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The reusable workflows follow the `[article]` table (ADR-0002).**
+  - **`docs.yml`.** A first step reads `linkage.toml`. A repository without the table builds and
+    deploys exactly as before. One with it:
+    - builds the listed parts that exist, the markdown draft among them (`draft/*.md`, pinned
+      pandoc, MathJax);
+    - lists only what was built on the landing page, and validates only that;
+    - deploys when at least one part built and none failed, so a repository at its draft or
+      blueprint phase has its drafts page without a workflow of its own;
+    - deploys only to a slug the table declares, and never for an anonymous repository.
+
+    No input changed.
+  - **`manifest.yml`.** It writes the declaration into the hub as `article-<slug>.json` (the
+    projection plus `source_commit`, under the same stamp-excluding diff guard). It emits the
+    blueprint manifest only where there is a blueprint, and runs `linkage check` either way.
+  - **`linkage init`.** It seeds `.github/workflows/article.yml`, one caller of all three,
+    pinned to the release that wrote it, with the Lean job started at `skeleton`.
+    `tests/test_docs_workflow.py` runs the new steps.
+
 - **An article declares its parts and its phase: the `[article]` table (ADR-0002, accepted).**
   `linkage.toml` gains `[article]`. It holds `parts` (draft, blueprint, lean, paper: the ones the
   repository will ever have), `phase` (PROCESS.md's, `draft` … `released`), `anonymous`, `site`,

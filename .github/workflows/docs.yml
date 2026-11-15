@@ -54,6 +54,14 @@ name: Docs CI (reusable)
 # decides which channels the site serves where. So an article cannot publish itself by
 # accident, and an unreleased module has no public URL at all.
 #
+# What it builds follows the repository's declaration (ADR-0002, docs/LINKAGE.md "Parts and
+# phase"), read by the first step from linkage.toml. A repository WITHOUT an `[article]` table
+# builds exactly as before: the paper, the blueprint unless `build_blueprint` is false, and a
+# deploy only when both built. One WITH the table builds the parts it lists that exist -- the
+# markdown draft (draft/*.md, rendered with pinned pandoc) among them -- and deploys when at
+# least one built and none failed, so a repository at its draft or blueprint phase has its
+# drafts page without a workflow of its own. An anonymous repository never deploys.
+#
 # On pull requests pass dry_run: true — assemble dist/ and validate it, never publish.
 # Otherwise it FAILS LOUDLY if the R2 secrets are missing (the build and artifacts steps stay
 # green).
@@ -241,6 +249,45 @@ jobs:
           # The token is handed to the artifacts push alone; see the note above the job.
           persist-credentials: false
 
+      # What the repository declares (ADR-0002): which parts exist to be built, and whether it
+      # is anonymous. Read with the runner's own Python (tomllib), not `linkage`, which this
+      # workflow does not install. Undeclared, the answers are the old behaviour's.
+      - name: Read the declaration
+        id: decl
+        env:
+          SLUG: ${{ inputs.slug }}
+        run: |
+          python3 - <<'PY' | tee -a "$GITHUB_OUTPUT"
+          import os, tomllib
+          from pathlib import Path
+          toml = Path("linkage.toml")
+          raw = tomllib.loads(toml.read_text(encoding="utf-8")) if toml.is_file() else {}
+          art, paths = raw.get("article"), raw.get("paths", {})
+          roots = os.environ.get("PAPER_TEX", "").split()
+          draft_dir = Path(paths.get("draft", "draft"))
+          drafts = ([p for p in sorted(draft_dir.glob("*.md")) if p.name != "README.md"]
+                    if draft_dir.is_dir() else [])
+          slug = os.environ.get("SLUG", "")
+          if not isinstance(art, dict):
+              out = {"declared": False, "paper": True, "blueprint": True, "draft": False,
+                     "anonymous": False, "site_ok": bool(slug)}
+          else:
+              parts = set(art.get("parts", []))
+              out = {"declared": True,
+                     "paper": "paper" in parts and bool(roots) and Path(roots[0]).is_file(),
+                     "blueprint": ("blueprint" in parts
+                                   and Path(os.environ["BLUEPRINT_TEX"]).is_file()),
+                     "draft": "draft" in parts and bool(drafts),
+                     "anonymous": art.get("anonymous", False) is True}
+              # the slug the caller deploys to must be one the repository declares
+              sites = {art.get("site")} | {m.get("site") for m in raw.get("modules", [])
+                                           if isinstance(m, dict)}
+              out["site_ok"] = bool(slug) and slug in sites and not out["anonymous"]
+          for k, v in out.items():
+              print(f"{k}={str(v).lower()}")
+          print(f"draft_dir={draft_dir.as_posix()}")
+          PY
+
       # Tectonic caches every package it fetches under ~/.cache/Tectonic; restoring it
       # turns the network fetches into no-ops. Keyed on the TeX sources of all three builds,
       # so the cache is re-saved when a new package enters any preamble.
@@ -345,6 +392,7 @@ jobs:
       # here, so the later steps never have to know the article's entry-point filenames.
       - name: Build the paper
         id: paper
+        if: steps.decl.outputs.paper == 'true'
         continue-on-error: true
         run: |
           . "$RUNNER_TEMP/papers.sh"
@@ -393,7 +441,7 @@ jobs:
       # macros.tex + content.tex, no graphviz/dot step.
       - name: Build the blueprint
         id: blueprint
-        if: inputs.build_blueprint
+        if: inputs.build_blueprint && steps.decl.outputs.blueprint == 'true'
         continue-on-error: true
         run: |
           tectonic "$BLUEPRINT_TEX"
@@ -416,8 +464,31 @@ jobs:
       # outright ("No file matched to [**/requirements.txt or **/pyproject.toml]") when the
       # article has neither -- and an article repo has no reason to. The requirements are
       # three small pure-Python packages named in an input, so there is little to cache.
+      # The markdown draft (PROCESS.md § 2), one HTML page per draft/*.md, for a repository
+      # whose `[article]` lists the draft. Pandoc pinned and fetched from its release (never
+      # `apt install pandoc`, whose version drifts); MathJax renders the mathematics.
+      - name: Render the draft
+        id: draft
+        if: steps.decl.outputs.draft == 'true'
+        continue-on-error: true
+        env:
+          PANDOC_VERSION: "3.10"
+          DRAFT_DIR: ${{ steps.decl.outputs.draft_dir }}
+        run: |
+          wget -q -O "$RUNNER_TEMP/pandoc.deb" \
+            "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb"
+          sudo dpkg -i "$RUNNER_TEMP/pandoc.deb" > /dev/null
+          mkdir -p draft-html
+          for f in "$DRAFT_DIR"/*.md; do
+            [ "$(basename "$f")" != README.md ] || continue
+            name="$(basename "${f%.md}")"
+            pandoc "$f" -f markdown -t html5 --standalone --mathjax \
+              --metadata title="${name} (draft)" -o "draft-html/${name}.html"
+          done
+          ls -l draft-html
+
       - name: Set up Python
-        if: ${{ inputs.build_web }}
+        if: ${{ inputs.build_web && steps.decl.outputs.blueprint == 'true' }}
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -437,14 +508,14 @@ jobs:
       #               node is missing. texlive-binaries is the small package that carries
       #               it; no TeX *formats* are needed, since nothing here is typeset.
       - name: Install Graphviz and kpsewhich
-        if: ${{ inputs.build_web }}
+        if: ${{ inputs.build_web && steps.decl.outputs.blueprint == 'true' }}
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends graphviz graphviz-dev texlive-base
           kpsewhich --version | head -1
 
       - name: Install plasTeX and the blueprint plugins
-        if: ${{ inputs.build_web }}
+        if: ${{ inputs.build_web && steps.decl.outputs.blueprint == 'true' }}
         run: pip install ${{ inputs.plastex_requirements }}
 
       # plastex.cfg's [files] directory= is relative to the config, so this must run from
@@ -452,7 +523,7 @@ jobs:
       # without them plasTeX probes for pdf2svg and dvisvgm and merely warns when both are
       # absent, which would leave a silent dependency on the runner image.
       - name: Build the web blueprint
-        if: ${{ inputs.build_web }}
+        if: ${{ inputs.build_web && steps.decl.outputs.blueprint == 'true' }}
         run: |
           cd "$WEB_DIR"
           # Fail here, with a sentence, rather than in plasTeX's traceback. A kpsewhich
@@ -474,7 +545,7 @@ jobs:
       # Counting DOT structure rather than grepping for `kind:name` label spellings keeps
       # this from being coupled to how the plugin happens to name things.
       - name: Validate the web build
-        if: ${{ inputs.build_web }}
+        if: ${{ inputs.build_web && steps.decl.outputs.blueprint == 'true' }}
         run: |
           for f in "$WEB_OUT/index.html" "$WEB_OUT/dep_graph_document.html"; do
             [ -s "$f" ] || { echo "::error::$f is missing or empty — plasTeX produced no web build"; exit 1; }
@@ -503,7 +574,7 @@ jobs:
           echo "web blueprint OK: $nodes nodes in the dependency graph"
 
       - name: Upload the web blueprint (per-run artifact)
-        if: ${{ inputs.build_web }}
+        if: ${{ inputs.build_web && steps.decl.outputs.blueprint == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: blueprint-web
@@ -521,17 +592,21 @@ jobs:
       # the header note).
       - name: Assemble and force-push the orphan artifacts branch
         id: push
-        if: ${{ !cancelled() && !inputs.dry_run && inputs.push_artifacts && steps.paper.outcome == 'success' && steps.blueprint.outcome == 'success' && steps.extra.outcome != 'failure' }}
+        if: ${{ !cancelled() && !inputs.dry_run && inputs.push_artifacts && steps.paper.outcome != 'failure' && steps.blueprint.outcome != 'failure' && steps.extra.outcome != 'failure' && ((steps.decl.outputs.declared == 'true' && (steps.paper.outcome == 'success' || steps.blueprint.outcome == 'success')) || (steps.paper.outcome == 'success' && steps.blueprint.outcome == 'success')) }}
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           . "$RUNNER_TEMP/papers.sh"
           mkdir publish
-          cp paper-pdf/*.pdf blueprint.pdf publish/
+          [ ! -d paper-pdf ] || cp paper-pdf/*.pdf publish/
+          [ ! -f blueprint.pdf ] || cp blueprint.pdf publish/
           [ ! -d extra-papers ] || cp extra-papers/*.pdf publish/
           cd publish
           PAPER_MAIN="$(first_root paper)"
+          PAPER_LINE=""; BLUEPRINT_LINE=""
+          [ ! -d ../paper-pdf ] || PAPER_LINE="- [paper.pdf](./paper.pdf) — built from \`${PAPER_MAIN}\`"
+          [ ! -f ../blueprint.pdf ] || BLUEPRINT_LINE="- [blueprint.pdf](./blueprint.pdf) — built from \`${{ inputs.blueprint_tex }}\`"
           # one markdown list item per extra paper, from the JSON input (jq is on the runner)
           EXTRA_LINES="$(echo "$EXTRA_PAPERS" | jq -r '.[] | "- [\(.name).pdf](./\(.name).pdf) — \(.title) (built from `\(.tex | if type == "array" then .[0] else . end)`)"')"
           # one per further root of a paper (a supplement), after the papers
@@ -542,10 +617,10 @@ jobs:
           Built from \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA} on $(date -u +%F) by the shared
           \`linkage\` docs workflow.
 
-          - [paper.pdf](./paper.pdf) — built from \`${PAPER_MAIN}\`
+          ${PAPER_LINE}
           ${EXTRA_LINES}
           ${FURTHER_LINES}
-          - [blueprint.pdf](./blueprint.pdf) — built from \`${{ inputs.blueprint_tex }}\`
+          ${BLUEPRINT_LINE}
 
           This orphan branch is recreated (single commit, no history) on every docs
           build of \`main\`. Do not commit to it by hand.
@@ -572,18 +647,31 @@ jobs:
       # extra list passes. With `build_blueprint: false` nothing deploys, as before.
       - name: Every build succeeded — assemble the site
         id: deploy
-        if: ${{ success() && steps.paper.outcome == 'success' && steps.blueprint.outcome == 'success' && steps.extra.outcome != 'failure' }}
-        run: echo "paper, blueprint, extra papers and web blueprint are in place."
+        if: ${{ success() && steps.paper.outcome != 'failure' && steps.blueprint.outcome != 'failure' && steps.extra.outcome != 'failure' && steps.draft.outcome != 'failure' && steps.decl.outputs.anonymous != 'true' && steps.decl.outputs.site_ok == 'true' && ((steps.decl.outputs.declared == 'true' && (steps.paper.outcome == 'success' || steps.blueprint.outcome == 'success' || steps.draft.outcome == 'success')) || (steps.paper.outcome == 'success' && steps.blueprint.outcome == 'success')) }}
+        run: echo "every part that exists is built; assembling the site."
+
+      - name: Anonymous — not deploying
+        if: ${{ steps.decl.outputs.anonymous == 'true' }}
+        run: echo "::notice::linkage.toml declares this repository anonymous (ADR-0002) -- nothing is published to the research site."
+
+      - name: Undeclared site slug — not deploying
+        if: ${{ steps.decl.outputs.anonymous != 'true' && steps.decl.outputs.site_ok != 'true' }}
+        run: echo "::notice::the slug '${{ inputs.slug }}' is not a site linkage.toml's [article] (or a [[modules]] table) declares -- nothing is published; set `site` there (ADR-0002)."
 
       - name: Assemble dist/ (PDFs + web blueprint + index.html)
         if: steps.deploy.outcome == 'success'
         env:
-          BUILD_WEB: ${{ inputs.build_web }}
+          BUILD_WEB: ${{ inputs.build_web && steps.decl.outputs.blueprint == 'true' }}
           CHANNEL_INPUT: ${{ inputs.channel }}
         run: |
           . "$RUNNER_TEMP/papers.sh"
           mkdir dist
-          cp paper-pdf/*.pdf blueprint.pdf dist/
+          [ ! -d paper-pdf ] || cp paper-pdf/*.pdf dist/
+          [ ! -f blueprint.pdf ] || cp blueprint.pdf dist/
+          if [ -d draft-html ]; then
+            mkdir dist/draft
+            cp draft-html/*.html dist/draft/
+          fi
           [ ! -d extra-papers ] || cp extra-papers/*.pdf dist/
           # The web build is a tree with its own index.html, which flat in dist/ would collide
           # with the one assembled below; it goes under blueprint/.
@@ -614,6 +702,15 @@ jobs:
           # one list item per further root of a paper (a supplement), after the papers
           FURTHER_LINKS="$(further_roots | awk -F'\t' '{ printf "<li><a href=\"%s\">%s</a> — with %s.pdf, of which it is a further root (<code>%s</code>)</li>\n", $2, $2, $1, $3 }')"
           PAPER_MAIN="$(first_root paper)"
+          # one list item per part that was built, so the page never links a 404
+          PAPER_LI=""; BLUEPRINT_LI=""; DRAFT_LIS=""
+          [ ! -f paper.pdf ] || PAPER_LI="<li><a href=\"paper.pdf\">paper.pdf</a> — the article (<code>${PAPER_MAIN}</code>)</li>"
+          [ ! -f blueprint.pdf ] || BLUEPRINT_LI="<li><a href=\"blueprint.pdf\">blueprint.pdf</a> — the blueprint (<code>${{ inputs.blueprint_tex }}</code>)</li>"
+          if [ -d draft ]; then
+            for f in draft/*.html; do
+              DRAFT_LIS="${DRAFT_LIS}<li><a href=\"${f}\">$(basename "$f" .html)</a> — the draft, the text of record until the first release</li>"
+            done
+          fi
           cat > index.html <<EOF
           <!doctype html>
           <html lang="en">
@@ -626,12 +723,13 @@ jobs:
           </head>
           <body>
           <h1>${GITHUB_REPOSITORY##*/}</h1>
-          <p>CI-built PDFs, latest <code>${GITHUB_REF_NAME}</code>:</p>
+          <p>CI-built documents, latest <code>${GITHUB_REF_NAME}</code>:</p>
           <ul>
-          <li><a href="paper.pdf">paper.pdf</a> — the article (<code>${PAPER_MAIN}</code>)</li>
+          ${DRAFT_LIS}
+          ${PAPER_LI}
           ${EXTRA_LINKS}
           ${FURTHER_LINKS}
-          <li><a href="blueprint.pdf">blueprint.pdf</a> — the blueprint (<code>${{ inputs.blueprint_tex }}</code>)</li>
+          ${BLUEPRINT_LI}
           ${WEB_LINKS}
           </ul>
           <footer>Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA} on ${BUILD_DATE} UTC by the shared linkage docs workflow.</footer>
@@ -642,16 +740,25 @@ jobs:
       - name: Validate dist/
         if: steps.deploy.outcome == 'success'
         env:
-          BUILD_WEB: ${{ inputs.build_web }}
+          BUILD_WEB: ${{ inputs.build_web && steps.decl.outputs.blueprint == 'true' }}
         run: |
-          for f in dist/paper.pdf dist/blueprint.pdf dist/index.html; do
-            [ -s "$f" ] || { echo "::error::$f is missing or empty"; exit 1; }
+          [ -s dist/index.html ] || { echo "::error::dist/index.html is missing or empty"; exit 1; }
+          # each part that was built must have arrived, be what it says, and be linked
+          built=""
+          [ ! -d paper-pdf ] || built="paper.pdf"
+          [ ! -f blueprint.pdf ] || built="$built blueprint.pdf"
+          for pdf in $built; do
+            [ -s "dist/$pdf" ] || { echo "::error::dist/$pdf is missing or empty"; exit 1; }
+            head -c 5 "dist/$pdf" | grep -q "%PDF-" || { echo "::error::dist/$pdf does not start with %PDF- — not a PDF"; exit 1; }
+            grep -q "href=\"$pdf\"" dist/index.html || { echo "::error::index.html lacks the $pdf link"; exit 1; }
           done
-          for f in dist/paper.pdf dist/blueprint.pdf; do
-            head -c 5 "$f" | grep -q "%PDF-" || { echo "::error::$f does not start with %PDF- — not a PDF"; exit 1; }
-          done
-          grep -q 'href="paper.pdf"' dist/index.html || { echo "::error::index.html lacks the paper.pdf link"; exit 1; }
-          grep -q 'href="blueprint.pdf"' dist/index.html || { echo "::error::index.html lacks the blueprint.pdf link"; exit 1; }
+          if [ -d draft-html ]; then
+            for f in draft-html/*.html; do
+              n="draft/$(basename "$f")"
+              [ -s "dist/$n" ] || { echo "::error::dist/$n is missing or empty"; exit 1; }
+              grep -q "href=\"$n\"" dist/index.html || { echo "::error::index.html lacks the $n link"; exit 1; }
+            done
+          fi
           # every extra paper must have arrived, be a PDF, and be linked
           for n in $(echo "$EXTRA_PAPERS" | jq -r '.[].name'); do
             [ -s "dist/$n.pdf" ] || { echo "::error::dist/$n.pdf is missing or empty — the extra paper '$n' did not reach dist/"; exit 1; }
@@ -756,9 +863,9 @@ jobs:
       # The steps marked `continue-on-error` above end green whatever happened, so that the
       # builds after them still run. This is where a failure among them fails the run.
       - name: Fail the run if a build or the artifacts push failed
-        if: ${{ !cancelled() && (steps.paper.outcome == 'failure' || steps.extra.outcome == 'failure' || steps.blueprint.outcome == 'failure' || steps.push.outcome == 'failure') }}
+        if: ${{ !cancelled() && (steps.paper.outcome == 'failure' || steps.extra.outcome == 'failure' || steps.blueprint.outcome == 'failure' || steps.draft.outcome == 'failure' || steps.push.outcome == 'failure') }}
         env:
-          OUTCOMES: "paper=${{ steps.paper.outcome }} extra_papers=${{ steps.extra.outcome }} blueprint=${{ steps.blueprint.outcome }} artifacts_push=${{ steps.push.outcome }}"
+          OUTCOMES: "paper=${{ steps.paper.outcome }} extra_papers=${{ steps.extra.outcome }} blueprint=${{ steps.blueprint.outcome }} draft=${{ steps.draft.outcome }} artifacts_push=${{ steps.push.outcome }}"
         run: |
           echo "::error::a step failed: $OUTCOMES"
           exit 1

@@ -78,6 +78,9 @@ TEMPLATES = {
     "repo/README.md.in": "README.md",
     "repo/CHANGELOG.md.in": "CHANGELOG.md",
     "repo/HANDOFF.md.in": "notes/HANDOFF.md",
+    # the one caller of the reusable workflows, following the [article] table (ADR-0002);
+    # pinned to the article-kit release that wrote it
+    "repo/article.yml.in": ".github/workflows/article.yml",
 }
 
 
@@ -88,6 +91,15 @@ def scaffold_dir() -> Path:
         if cand.is_dir():
             return cand
     raise RuntimeError(f"scaffold tree not found next to {here}")
+
+
+def kit_tag() -> str:
+    """The article-kit release this package is, as the tag the seeded workflows pin."""
+    from importlib.metadata import PackageNotFoundError, version
+    try:
+        return "v" + version("linkage")
+    except PackageNotFoundError:
+        return "v0.0.0"
 
 
 def sha(text: str) -> str:
@@ -139,7 +151,8 @@ def init(root: Path, slug: str, subs: dict[str, str] | None = None,
          sync: bool = False) -> int:
     """Write the scaffolding into `root`. Existing seeded/template files are left alone."""
     src = scaffold_dir()
-    subs = {"SLUG": slug, "TITLE": slug, "HOME": "", "GITHUB": "", "DOCHOME": "", **(subs or {})}
+    subs = {"SLUG": slug, "TITLE": slug, "HOME": "", "GITHUB": "", "DOCHOME": "",
+            "KIT_TAG": kit_tag(), **(subs or {})}
     stamp: dict[str, str] = {}
     wrote, kept = [], []
     absent = _absent_artifacts(root) if sync else set()
