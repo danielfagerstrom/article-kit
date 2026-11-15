@@ -60,7 +60,8 @@ name: Docs CI (reusable)
 # deploy only when both built. One WITH the table builds the parts it lists that exist -- the
 # markdown draft (draft/*.md, rendered with pinned pandoc) among them -- and deploys when at
 # least one built and none failed, so a repository at its draft or blueprint phase has its
-# drafts page without a workflow of its own. An anonymous repository never deploys.
+# drafts page without a workflow of its own. It also mirrors notes/ onto the drafts page (the
+# development head only, never a release). An anonymous repository never deploys.
 #
 # On pull requests pass dry_run: true — assemble dist/ and validate it, never publish.
 # Otherwise it FAILS LOUDLY if the R2 secrets are missing (the build and artifacts steps stay
@@ -237,6 +238,9 @@ jobs:
       WEB_DIR: ${{ inputs.blueprint_web_dir }}
       WEB_OUT: ${{ inputs.blueprint_web_out }}
       EXTRA_PAPERS: ${{ inputs.extra_papers }}
+      # The pandoc of the draft and the notes, fetched from its release (never `apt install
+      # pandoc`, whose version drifts) by whichever of the two steps runs first.
+      PANDOC_VERSION: "3.10"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -256,6 +260,7 @@ jobs:
         id: decl
         env:
           SLUG: ${{ inputs.slug }}
+          CHANNEL_INPUT: ${{ inputs.channel }}
         run: |
           python3 - <<'PY' | tee -a "$GITHUB_OUTPUT"
           import os, tomllib
@@ -268,9 +273,14 @@ jobs:
           drafts = ([p for p in sorted(draft_dir.glob("*.md")) if p.name != "README.md"]
                     if draft_dir.is_dir() else [])
           slug = os.environ.get("SLUG", "")
+          # The channel, derived as the publish step derives it. The notes go to the gated
+          # development head only, never into a release, which is public and write-once.
+          channel = os.environ.get("CHANNEL_INPUT") or (
+              "release" if os.environ.get("GITHUB_REF", "").startswith("refs/tags/") else "main")
+          notes = Path("notes")
           if not isinstance(art, dict):
               out = {"declared": False, "paper": True, "blueprint": True, "draft": False,
-                     "anonymous": False, "site_ok": bool(slug)}
+                     "notes": False, "anonymous": False, "site_ok": bool(slug)}
           else:
               parts = set(art.get("parts", []))
               out = {"declared": True,
@@ -278,6 +288,8 @@ jobs:
                      "blueprint": ("blueprint" in parts
                                    and Path(os.environ["BLUEPRINT_TEX"]).is_file()),
                      "draft": "draft" in parts and bool(drafts),
+                     "notes": (channel == "main" and notes.is_dir()
+                               and any(notes.rglob("*.md"))),
                      "anonymous": art.get("anonymous", False) is True}
               # the slug the caller deploys to must be one the repository declares
               sites = {art.get("site")} | {m.get("site") for m in raw.get("modules", [])
@@ -472,12 +484,12 @@ jobs:
         if: steps.decl.outputs.draft == 'true'
         continue-on-error: true
         env:
-          PANDOC_VERSION: "3.10"
           DRAFT_DIR: ${{ steps.decl.outputs.draft_dir }}
         run: |
-          wget -q -O "$RUNNER_TEMP/pandoc.deb" \
-            "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb"
-          sudo dpkg -i "$RUNNER_TEMP/pandoc.deb" > /dev/null
+          [ -f "$RUNNER_TEMP/pandoc.deb" ] || {
+            wget -q -O "$RUNNER_TEMP/pandoc.deb" \
+              "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb"
+            sudo dpkg -i "$RUNNER_TEMP/pandoc.deb" > /dev/null; }
           mkdir -p draft-html
           for f in "$DRAFT_DIR"/*.md; do
             [ "$(basename "$f")" != README.md ] || continue
@@ -486,6 +498,38 @@ jobs:
               --metadata title="${name} (draft)" -o "draft-html/${name}.html"
           done
           ls -l draft-html
+
+      # The repository's notes/ (plans, hand-overs, side results) on the drafts page, for a
+      # repository with an `[article]` table, on the development head only: the declaration
+      # step sets `notes` false on a release channel, which is public and write-once. Each
+      # notes/**/*.md becomes notes-html/<same path>.html, titled by its first heading; every
+      # other file is copied as it is, so a script a note names sits beside it.
+      - name: Render the notes
+        id: notes
+        if: steps.decl.outputs.notes == 'true'
+        continue-on-error: true
+        run: |
+          [ -f "$RUNNER_TEMP/pandoc.deb" ] || {
+            wget -q -O "$RUNNER_TEMP/pandoc.deb" \
+              "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb"
+            sudo dpkg -i "$RUNNER_TEMP/pandoc.deb" > /dev/null; }
+          printf '%s\n' '<meta name="robots" content="noindex">' \
+            '<style>body{font-family:system-ui,sans-serif;max-width:48rem;margin:2rem auto;padding:0 1rem;line-height:1.6}</style>' \
+            > "$RUNNER_TEMP/notes-header.html"
+          while IFS= read -r -d '' f; do
+            rel="${f#notes/}"
+            out="notes-html/${rel%.md}.html"
+            mkdir -p "$(dirname "$out")"
+            title="$(sed -n '/^#/{s/^#\+ *//p;q}' "$f")"
+            pandoc "$f" -f markdown -t html5 --standalone --mathjax \
+              --metadata pagetitle="${title:-${rel%.md}}" \
+              --include-in-header="$RUNNER_TEMP/notes-header.html" -o "$out"
+          done < <(find notes -type f -name '*.md' ! -path '*/.*' -print0 | sort -z)
+          while IFS= read -r -d '' f; do
+            mkdir -p "$(dirname "notes-html/${f#notes/}")"
+            cp "$f" "notes-html/${f#notes/}"
+          done < <(find notes -type f ! -name '*.md' ! -path '*/.*' -print0)
+          find notes-html -type f | sort
 
       - name: Set up Python
         if: ${{ inputs.build_web && steps.decl.outputs.blueprint == 'true' }}
@@ -647,7 +691,7 @@ jobs:
       # extra list passes. With `build_blueprint: false` nothing deploys, as before.
       - name: Every build succeeded — assemble the site
         id: deploy
-        if: ${{ success() && steps.paper.outcome != 'failure' && steps.blueprint.outcome != 'failure' && steps.extra.outcome != 'failure' && steps.draft.outcome != 'failure' && steps.decl.outputs.anonymous != 'true' && steps.decl.outputs.site_ok == 'true' && ((steps.decl.outputs.declared == 'true' && (steps.paper.outcome == 'success' || steps.blueprint.outcome == 'success' || steps.draft.outcome == 'success')) || (steps.paper.outcome == 'success' && steps.blueprint.outcome == 'success')) }}
+        if: ${{ success() && steps.paper.outcome != 'failure' && steps.blueprint.outcome != 'failure' && steps.extra.outcome != 'failure' && steps.draft.outcome != 'failure' && steps.notes.outcome != 'failure' && steps.decl.outputs.anonymous != 'true' && steps.decl.outputs.site_ok == 'true' && ((steps.decl.outputs.declared == 'true' && (steps.paper.outcome == 'success' || steps.blueprint.outcome == 'success' || steps.draft.outcome == 'success')) || (steps.paper.outcome == 'success' && steps.blueprint.outcome == 'success')) }}
         run: echo "every part that exists is built; assembling the site."
 
       - name: Anonymous — not deploying
@@ -673,6 +717,10 @@ jobs:
             cp draft-html/*.html dist/draft/
           fi
           [ ! -d extra-papers ] || cp extra-papers/*.pdf dist/
+          if [ -d notes-html ]; then
+            mkdir dist/notes
+            cp -r notes-html/. dist/notes/
+          fi
           # The web build is a tree with its own index.html, which flat in dist/ would collide
           # with the one assembled below; it goes under blueprint/.
           if [ "$BUILD_WEB" = "true" ]; then
@@ -711,6 +759,18 @@ jobs:
               DRAFT_LIS="${DRAFT_LIS}<li><a href=\"${f}\">$(basename "$f" .html)</a> — the draft, the text of record until the first release</li>"
             done
           fi
+          # the notes, one list item per rendered page, titled as pandoc titled it (already
+          # HTML-escaped there), in a section of their own after the documents
+          NOTES_SECTION=""
+          if [ -d notes ]; then
+            NOTES_LIS=""
+            while IFS= read -r f; do
+              # read as one line: pandoc wraps a long <title> over two
+              t="$(tr '\n' ' ' < "$f" | sed -n 's:.*<title>\([^<]*\)</title>.*:\1:p')"
+              NOTES_LIS="${NOTES_LIS}<li><a href=\"${f}\">${t:-${f#notes/}}</a></li>"
+            done < <(find notes -type f -name '*.html' | LC_ALL=C sort)
+            NOTES_SECTION="<h2>Notes</h2><ul>${NOTES_LIS}</ul>"
+          fi
           cat > index.html <<EOF
           <!doctype html>
           <html lang="en">
@@ -732,6 +792,7 @@ jobs:
           ${BLUEPRINT_LI}
           ${WEB_LINKS}
           </ul>
+          ${NOTES_SECTION}
           <footer>Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA} on ${BUILD_DATE} UTC by the shared linkage docs workflow.</footer>
           </body>
           </html>
@@ -758,6 +819,16 @@ jobs:
               [ -s "dist/$n" ] || { echo "::error::dist/$n is missing or empty"; exit 1; }
               grep -q "href=\"$n\"" dist/index.html || { echo "::error::index.html lacks the $n link"; exit 1; }
             done
+          fi
+          # every rendered note, and every file copied beside them
+          if [ -d notes-html ]; then
+            while IFS= read -r f; do
+              n="notes/${f#notes-html/}"
+              [ -e "dist/$n" ] || { echo "::error::dist/$n is missing"; exit 1; }
+              case "$n" in
+                *.html) grep -qF "href=\"$n\"" dist/index.html || { echo "::error::index.html lacks the $n link"; exit 1; } ;;
+              esac
+            done < <(find notes-html -type f)
           fi
           # every extra paper must have arrived, be a PDF, and be linked
           for n in $(echo "$EXTRA_PAPERS" | jq -r '.[].name'); do
@@ -863,9 +934,9 @@ jobs:
       # The steps marked `continue-on-error` above end green whatever happened, so that the
       # builds after them still run. This is where a failure among them fails the run.
       - name: Fail the run if a build or the artifacts push failed
-        if: ${{ !cancelled() && (steps.paper.outcome == 'failure' || steps.extra.outcome == 'failure' || steps.blueprint.outcome == 'failure' || steps.draft.outcome == 'failure' || steps.push.outcome == 'failure') }}
+        if: ${{ !cancelled() && (steps.paper.outcome == 'failure' || steps.extra.outcome == 'failure' || steps.blueprint.outcome == 'failure' || steps.draft.outcome == 'failure' || steps.notes.outcome == 'failure' || steps.push.outcome == 'failure') }}
         env:
-          OUTCOMES: "paper=${{ steps.paper.outcome }} extra_papers=${{ steps.extra.outcome }} blueprint=${{ steps.blueprint.outcome }} draft=${{ steps.draft.outcome }} artifacts_push=${{ steps.push.outcome }}"
+          OUTCOMES: "paper=${{ steps.paper.outcome }} extra_papers=${{ steps.extra.outcome }} blueprint=${{ steps.blueprint.outcome }} draft=${{ steps.draft.outcome }} notes=${{ steps.notes.outcome }} artifacts_push=${{ steps.push.outcome }}"
         run: |
           echo "::error::a step failed: $OUTCOMES"
           exit 1

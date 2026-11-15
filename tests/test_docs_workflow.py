@@ -53,15 +53,16 @@ def test_the_interface_is_unchanged():
 def test_a_failed_build_still_fails_the_run_and_blocks_the_deploy():
     text = DOCS.read_text(encoding="utf-8")
     # the PDF builds continue on error so the others still run, and the closing step fails
-    # paper, extra, blueprint, draft, artifacts push
-    assert text.count("continue-on-error: true") == 5
+    # paper, extra, blueprint, draft, notes, artifacts push
+    assert text.count("continue-on-error: true") == 6
     assert "Fail the run if a build or the artifacts push failed" in text
     deploy = re.search(r"id: deploy\n\s+if: (.*)", text)
     assert deploy
     for need in ("success()", "steps.paper.outcome == 'success'",
                  "steps.blueprint.outcome == 'success'", "steps.extra.outcome != 'failure'"):
         assert need in deploy.group(1)
-    for need in ("steps.draft.outcome != 'failure'", "steps.decl.outputs.anonymous != 'true'"):
+    for need in ("steps.draft.outcome != 'failure'", "steps.notes.outcome != 'failure'",
+                 "steps.decl.outputs.anonymous != 'true'"):
         assert need in deploy.group(1)
 
 
@@ -285,7 +286,8 @@ def test_the_site_lists_and_validates_every_root(tmp_path, real_run):
 
 
 def _declaration(tmp_path: Path, real_run, toml: str | None, files=(),
-                 slug: str = "") -> dict[str, str]:
+                 slug: str = "", ref: str = "refs/heads/main",
+                 channel: str = "") -> dict[str, str]:
     """Run the `Read the declaration` step's Python in tmp_path; its key=value outputs."""
     m = re.search(r"python3 - <<'PY' \| tee -a \"\$GITHUB_OUTPUT\"\n(.*?)\n\s*PY\n",
                   DOCS.read_text(encoding="utf-8"), re.S)
@@ -298,7 +300,8 @@ def _declaration(tmp_path: Path, real_run, toml: str | None, files=(),
     import sys
     out = real_run([sys.executable, "-c", textwrap.dedent(m.group(1))], cwd=tmp_path,
                    env={**os.environ, "PAPER_TEX": "paper/main.tex",
-                        "BLUEPRINT_TEX": "blueprint/src/print.tex", "SLUG": slug},
+                        "BLUEPRINT_TEX": "blueprint/src/print.tex", "SLUG": slug,
+                        "GITHUB_REF": ref, "CHANNEL_INPUT": channel},
                    capture_output=True, text=True, check=True)
     return dict(line.split("=", 1) for line in out.stdout.splitlines())
 
@@ -306,7 +309,8 @@ def _declaration(tmp_path: Path, real_run, toml: str | None, files=(),
 def test_an_undeclared_repository_builds_as_before(tmp_path, real_run):
     got = _declaration(tmp_path, real_run, 'slug = "x"\n')
     assert got == {"declared": "false", "paper": "true", "blueprint": "true", "draft": "false",
-                   "anonymous": "false", "site_ok": "false", "draft_dir": "draft"}
+                   "notes": "false", "anonymous": "false", "site_ok": "false",
+                   "draft_dir": "draft"}
 
 
 def test_a_declared_repository_builds_what_exists(tmp_path, real_run):
@@ -385,3 +389,102 @@ DECLARED = '[article]\nparts = ["draft"]\nphase = "draft"\n'
 ])
 def test_the_deploy_goes_only_to_a_declared_site(tmp_path, real_run, toml, slug, ok):
     assert _declaration(tmp_path, real_run, toml, slug=slug)["site_ok"] == ok
+
+
+# --- the notes (a declared repository's notes/ on its drafts page) ------------------------
+
+NOTED = DECLARED + 'site = "s"\n'
+
+
+@pytest.mark.parametrize("toml, files, ref, channel, notes", [
+    (NOTED, ("notes/HANDOFF.md",), "refs/heads/main", "", "true"),
+    (NOTED, ("notes/sub/plan.md",), "refs/pull/3/merge", "", "true"),     # a dry run of a PR
+    (NOTED, ("notes/HANDOFF.md",), "refs/tags/v1.0.0", "", "false"),      # a release: public
+    (NOTED, ("notes/HANDOFF.md",), "refs/heads/main", "v1.0.0", "false"),  # a release, named
+    (NOTED, ("notes/HANDOFF.md",), "refs/tags/v1.0.0", "main", "true"),
+    (NOTED, ("notes/script.py",), "refs/heads/main", "", "false"),        # no note to render
+    (NOTED, (), "refs/heads/main", "", "false"),
+    ('slug = "x"\n', ("notes/HANDOFF.md",), "refs/heads/main", "", "false"),  # undeclared
+])
+def test_the_notes_are_mirrored_on_the_development_head_of_a_declared_repository(
+        tmp_path, real_run, toml, files, ref, channel, notes):
+    got = _declaration(tmp_path, real_run, toml, files=files, slug="s", ref=ref,
+                       channel=channel)
+    assert got["notes"] == notes
+
+
+# Writes the page pandoc would, from its -o and --metadata pagetitle= arguments.
+FAKE_PANDOC = r"""out=""; title=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o) out="$2"; shift ;;
+    --metadata) case "$2" in pagetitle=*) title="${2#pagetitle=}" ;; esac; shift ;;
+  esac
+  shift
+done
+printf '<html><head><title>%s</title></head><body>note</body></html>\n' "$title" > "$out"
+"""
+
+
+@needs_shell
+def test_the_notes_are_rendered_listed_and_validated(tmp_path, real_run):
+    """Render notes/ (pandoc faked), then assemble a draft-only site with them and validate
+    it; then lose one note."""
+    notes = tmp_path / "notes"
+    (notes / "sub").mkdir(parents=True)
+    (notes / "HANDOFF.md").write_text("# Hand-over\n\ntext\n", encoding="utf-8")
+    (notes / "long.md").write_text("# A long title\n", encoding="utf-8")
+    (notes / "sub" / "plan.md").write_text("no heading\n", encoding="utf-8")
+    (notes / "levy.py").write_text("print(1)\n", encoding="utf-8")
+    (tmp_path / "pandoc.deb").write_text("", encoding="utf-8")   # pandoc counts as installed
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    _script(bindir / "pandoc", "#!/usr/bin/env bash\n" + FAKE_PANDOC).chmod(0o755)
+    (tmp_path / "draft-html").mkdir()
+    (tmp_path / "draft-html" / "pyr.html").write_text("<html>draft</html>", encoding="utf-8")
+    github = {"RUNNER_TEMP": tmp_path.as_posix(), "BUILD_WEB": "false", "CHANNEL_INPUT": "",
+              "GITHUB_REF": "refs/heads/main", "GITHUB_REF_NAME": "main",
+              "GITHUB_SHA": "abc1234", "GITHUB_REPOSITORY": "o/r"}
+
+    def step(name: str) -> subprocess.CompletedProcess[str]:
+        return _run(real_run, tmp_path, f'"$BASH" -eo pipefail "{_step(tmp_path, name).as_posix()}"',
+                    "paper/main.tex", "[]", bindir=bindir, **github)
+
+    out = step("Render the notes")
+    assert out.returncode == 0, out.stdout + out.stderr
+    built = sorted(p.relative_to(tmp_path / "notes-html").as_posix()
+                   for p in (tmp_path / "notes-html").rglob("*") if p.is_file())
+    assert built == ["HANDOFF.html", "levy.py", "long.html", "sub/plan.html"]
+    # pandoc wraps a long title over two lines; the landing page reads it whole
+    long = tmp_path / "notes-html" / "long.html"
+    long.write_text(long.read_text(encoding="utf-8").replace("A long ", "A long\n"),
+                    encoding="utf-8", newline="\n")
+    assert "<title>Hand-over</title>" in (tmp_path / "notes-html" / "HANDOFF.html").read_text(
+        encoding="utf-8")
+    out = step("Assemble dist/ (PDFs + web blueprint + index.html)")
+    assert out.returncode == 0, out.stdout + out.stderr
+    index = (tmp_path / "dist" / "index.html").read_text(encoding="utf-8")
+    assert '<a href="notes/HANDOFF.html">Hand-over</a>' in index
+    assert '<a href="notes/sub/plan.html">sub/plan</a>' in index   # no heading: its path
+    assert '<a href="notes/long.html">A long title</a>' in index
+    assert 'href="draft/pyr.html"' in index
+    assert (tmp_path / "dist" / "notes" / "levy.py").is_file()
+    out = step("Validate dist/")
+    assert out.returncode == 0, out.stdout + out.stderr
+    (tmp_path / "dist" / "notes" / "sub" / "plan.html").unlink()
+    out = step("Validate dist/")
+    assert out.returncode != 0 and "dist/notes/sub/plan.html is missing" in out.stdout
+
+
+@needs_shell
+def test_a_site_without_notes_has_no_notes_section(tmp_path, real_run):
+    (tmp_path / "draft-html").mkdir()
+    (tmp_path / "draft-html" / "pyr.html").write_text("<html>draft</html>", encoding="utf-8")
+    github = {"RUNNER_TEMP": tmp_path.as_posix(), "BUILD_WEB": "false", "CHANNEL_INPUT": "",
+              "GITHUB_REF": "refs/heads/main", "GITHUB_REF_NAME": "main",
+              "GITHUB_SHA": "abc1234", "GITHUB_REPOSITORY": "o/r"}
+    out = _run(real_run, tmp_path,
+               f'"$BASH" -eo pipefail "{_step(tmp_path, "Assemble dist/ (PDFs + web blueprint + index.html)").as_posix()}"',
+               "paper/main.tex", "[]", **github)
+    assert out.returncode == 0, out.stdout + out.stderr
+    assert "Notes" not in (tmp_path / "dist" / "index.html").read_text(encoding="utf-8")
