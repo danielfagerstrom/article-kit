@@ -7,6 +7,29 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **An article declares its parts and its phase: the `[article]` table (ADR-0002, accepted).**
+  `linkage.toml` gains `[article]`. It holds `parts` (draft, blueprint, lean, paper: the ones the
+  repository will ever have), `phase` (PROCESS.md's, `draft` … `released`), `anonymous`, `site`,
+  `cites`, and for an anonymous repository `identity`. `[[modules]]` may carry `phase` and `site`
+  instead. What `linkage check` now does with it:
+  - It fails on a part the phase requires and does not find (`[phase]`).
+  - It fails on a directory or `[paths]` key of an unlisted part (`[parts]`).
+  - On an anonymous repository it scans the paper for identifying text (`[anonymity]`). The
+    patterns come from the repository's own `linkage.toml`, never from the framework.
+  - A repository without the table gets one advisory to declare. Its parts are still inferred,
+    as in the previous entry.
+
+  New commands:
+  - `linkage parts [--json]` prints the projection that the CI, the hub (`article-<slug>.json`)
+    and the research site read.
+  - `linkage phase [--advance] [--record PATH]` says what the next phase lacks and moves there
+    once nothing is lacking.
+
+  `linkage init` writes the table at `phase = "draft"` and a `draft/README.md`. The draft is now a
+  part (`paths.draft`, default `draft/`). `docs/LINKAGE.md`, "Parts and phase"; PROCESS.md, "The
+  phases"; `tests/test_article_table.py`. Nothing that passed fails; every undeclared repository
+  gains the one advisory.
+
 - **`linkage check` reads a part that `linkage.toml` leaves out as absent, not as missing.** A
   paper-only repository (a conference version whose blueprint and Lean are the long paper's)
   leaves the blueprint and Lean paths out on purpose, and `config.load` filled them with their

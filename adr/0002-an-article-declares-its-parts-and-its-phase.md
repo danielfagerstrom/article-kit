@@ -1,13 +1,15 @@
 # ADR-0002 — An article declares its parts and its phase, and the checks, CI and the site follow
 
-- **Status:** Proposed
-- **Mechanism (once accepted):** the `[article]` table of `linkage.toml` (`linkage/config.py`), the
-  commands `linkage parts` and `linkage phase` (`linkage/cli.py`), and the phase gates in
-  `linkage check`; the scaffolded caller workflow `.github/workflows/article.yml`, and in the reusable
-  workflows a `draft` input and a deploy no longer gated on the paper (`docs.yml`) and the
-  declaration's projection (`manifest.yml`); [`docs/PROCESS.md`](../docs/PROCESS.md) § 1 and the
-  phase headings, [`docs/LINKAGE.md`](../docs/LINKAGE.md), "Absent parts". Outside article-kit: the
-  hub's `constellation.json` and `wiki lint`, and the research site's `scripts/build-routes.mjs`.
+- **Status:** Accepted 2026-11-15
+- **Mechanism:** the `[article]` table of `linkage.toml` (`linkage/config.py`); the commands
+  `linkage parts` and `linkage phase` and the phase checks of `linkage check` (`linkage/article.py`,
+  `linkage/cli.py`); the anonymity scan (`linkage/anonymity.py`); in the reusable workflows, which
+  read the declaration themselves, a draft build and a deploy no longer gated on the paper
+  (`docs.yml`) and the declaration's projection (`manifest.yml`), with the seeded caller
+  `.github/workflows/article.yml` for a new repository; [`docs/PROCESS.md`](../docs/PROCESS.md)
+  § 1 and the phase headings, [`docs/LINKAGE.md`](../docs/LINKAGE.md), "Parts and phase". Outside
+  article-kit: the hub's `constellation.json` and `wiki lint`, and the research site's
+  `scripts/build-routes.mjs`.
 
 ## Context
 
@@ -87,13 +89,14 @@ Phases 0 and 1 happen before `linkage.toml` exists, so a new repository starts a
 that is not listed is skipped in the right-hand column. A paper-only repository has
 `parts = ["paper"]` and goes from `article` to `released`. A repository that publishes several
 modules (a line paper and its modules) writes `phase` on each `[[modules]]` table instead. The
-repository then needs the parts that its least advanced unreleased module needs. A part may exist
+repository then needs the parts that its most advanced module needs. A part may exist
 before its phase requires it. A blueprint started during the draft is normal.
 
 **Anonymous.** `anonymous = true` means the work is under double-blind review. Nothing about it
 leaves the repository except to the private hub. It has no site area, and no deploy step runs even
-if a caller workflow asks for one. The framework-owned anonymity guard
-(`scripts/check-anonymity.py`, which moves into the scaffold) runs on its paper. Anonymity is set
+if a caller workflow asks for one. `linkage check` scans its paper for identifying text. The
+patterns are the creators' names and the repository's own `identity` list, both read from its
+private `linkage.toml`, so the public framework never carries them. Anonymity is set
 and cleared by hand, with the review timetable. Repository **visibility** stays where it is, in the
 hub's `constellation.json`, because it is a GitHub setting and the hub audits it. The only rule
 connecting the two is that an anonymous repository is private.
@@ -117,13 +120,13 @@ a later step. That step generalises the conference version's own statement-ledge
   missing is fatal, and the message names the phase and the PROCESS.md section. The check
   introduced in article-kit#92 stays as the fallback. A repository without an `[article]` table is
   read as today, absence inferred from the tree, with one advisory asking it to declare.
-- **`linkage init`** writes the `draft` part and the repository files only. **`linkage init
-  --sync`** writes the framework files of the listed parts, so a paper-only repository never gets
-  `blueprint/`'s build files. The decision of what to skip moves from `scaffold._absent_artifacts`'s
-  reading of the tree to the declaration.
-- **The CI.** `linkage init` scaffolds one framework-owned caller, `.github/workflows/article.yml`.
-  Its first job runs `linkage parts --json`, which prints the declaration and which parts exist, and
-  the other jobs are conditioned on that output:
+- **`linkage init`** writes the `[article]` table at `phase = "draft"` and the `draft/` directory,
+  besides what it writes today. **`linkage init --sync`** writes the framework files of the listed
+  parts that exist, so a paper-only repository never gets `blueprint/`'s build files.
+- **The CI.** Each reusable workflow runs `linkage parts --json` in the repository it checked out.
+  That prints the declaration and which parts exist, and the workflow does only what the output
+  allows. An existing caller therefore needs only its pin moved. `linkage init` seeds
+  `.github/workflows/article.yml`, one caller of all three, for a new repository.
   - `docs.yml` builds whatever exists: the draft (pandoc, a new `draft` input, the step pyramids
     wrote), the blueprint PDF and web blueprint, the paper. It writes a landing page listing what
     it built, and deploys when at least one of them built, no longer only when the paper did. It

@@ -57,6 +57,8 @@ SEEDED = {
     "blueprint/render-allowlist.txt": "blueprint/render-allowlist.txt",
     "repo/adr-README.md": "adr/README.md",
     "repo/records-README.md": "records/README.md",
+    # the draft part's directory, which `[article] phase = "draft"` requires (ADR-0002)
+    "repo/draft-README.md": "draft/README.md",
 }
 
 # the licence texts the Lean headers and the README name; written by `init` only, never by
@@ -124,6 +126,8 @@ def _absent_artifacts(root: Path) -> set[str]:
                  "claude/rules/blueprint.md", "claude/rules/ledger.md"}
     if not cfg.has("lean") or not cfg.lean.exists():
         gone.add("claude/rules/lean.md")
+    if not cfg.listed("draft"):
+        gone.add("repo/draft-README.md")
     return gone
 
 

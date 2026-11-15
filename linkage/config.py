@@ -50,11 +50,51 @@ class ConfigError(RuntimeError):
 # (a draft, no blueprint yet) says so by not naming the paths, and is not reported as
 # broken for it. A key that IS written is a declaration, and a declared path that does not
 # exist is still an error. `docs/LINKAGE.md`, "Absent parts".
+#
+# With an `[article]` table (ADR-0002) the parts are declared instead: see `Article`.
 PARTS: dict[str, tuple[str, ...]] = {
+    "draft": ("draft",),
     "blueprint": ("blueprint", "axioms", "macros", "allowlist"),
     "lean": ("lean",),
     "paper": ("paper",),
 }
+PART_DEFAULTS = {"draft": "draft", "blueprint": "blueprint/src/content.tex",
+                 "lean": "Formalization", "paper": "paper"}
+
+# The phases of docs/PROCESS.md a repository can be in, in order (ADR-0002). Phases 0 and 1
+# come before `linkage.toml` exists, so a new repository starts at `draft`.
+PHASES = ("draft", "blueprint", "skeleton", "proving", "fidelity", "article", "passes",
+          "external-review", "released")
+# The first phase at which each part must exist, where the repository lists it.
+REQUIRED_FROM = {"draft": "draft", "blueprint": "blueprint", "lean": "skeleton",
+                 "paper": "article"}
+_CITE_RE = re.compile(r"^[a-z][\w-]*@[\w.+-]+$")
+
+
+def phase_index(phase: str) -> int:
+    return PHASES.index(phase)
+
+
+@dataclass(frozen=True)
+class Article:
+    """The `[article]` table (ADR-0002): what this repository is, declared rather than read
+    off the tree. Absent, `declared` is False and the parts are inferred as before."""
+    declared: bool = False
+    parts: frozenset[str] = frozenset(PARTS)
+    """The parts this repository will ever have. A part not listed is never this
+    repository's: its checks, scaffold files and CI jobs do not exist for it."""
+    phase: str | None = None
+    """The repository's phase, or None where its `[[modules]]` tables carry one each."""
+    anonymous: bool = False
+    """Under double-blind review: no site area, no deploy, the anonymity scan on the paper."""
+    site: str | None = None
+    """The slug of this repository's area on the research site; None: not on the site."""
+    cites: tuple[str, ...] = ()
+    """`<slug>@<tag>`: the articles whose blueprint this one's statements are taken from."""
+    identity: tuple[str, ...] = ()
+    """Extra case-insensitive patterns the anonymity scan treats as identifying, beyond the
+    creators' names (an account, a domain, a project subdomain). Kept in the private
+    repository's own `linkage.toml`, never in the framework."""
 
 
 @dataclass(frozen=True)
@@ -163,6 +203,11 @@ class Module:
     prospective and its asserted form (docs/WRITING.md § 4), gated by the release gate
     (`release.release_gate`) the same way the date line is. Empty — the default — leaves the
     module unchecked, as every module was before this field existed."""
+    phase: str | None = None
+    """This module's phase (ADR-0002), where a repository's modules stand at different
+    phases; `[article] phase` is then left out."""
+    site: str | None = None
+    """This module's site slug, where each module has its own area on the research site."""
     supplement: str | None = None
     r"""The root name of a supplement built in the paper directory beside `main.tex`
     (`supplement` for `supplement.tex` and `supplement.pdf`). The export carries its PDF as
@@ -271,6 +316,9 @@ class Config:
     `ScaleSpaceCore` declares `ScaleSpace.*` — which is why this is its own key."""
     modules: tuple[Module, ...] = ()
     release: Release = field(default_factory=Release)
+    article: Article = field(default_factory=Article)
+    draft: Path | None = None
+    """The draft directory (`paths.draft`, default `draft/`): PROCESS.md § 2."""
     absent: frozenset[str] = frozenset()
     """The parts (`PARTS`) this repository does not have: `linkage.toml` leaves the part's
     anchor key out and its default path does not exist. Their paths keep their defaults, so
@@ -325,8 +373,35 @@ class Config:
         return hits[0]
 
     def has(self, part: str) -> bool:
-        """Whether this repository has the part (`PARTS`)."""
+        """Whether this repository has the part (`PARTS`) now: listed, where `[article]` is
+        declared, and on disk."""
         return part not in self.absent
+
+    def listed(self, part: str) -> bool:
+        """Whether the part is this repository's at all: listed in `[article] parts`, or,
+        with no `[article]` table, present (LINKAGE.md, "Absent parts")."""
+        return part in self.article.parts if self.article.declared else self.has(part)
+
+    def phase(self) -> str | None:
+        """The repository's phase: `[article] phase`, or the most advanced of its modules'
+        phases, since a repository needs the parts its most advanced module needs."""
+        if self.article.phase:
+            return self.article.phase
+        phases = [m.phase for m in self.modules if m.phase]
+        return max(phases, key=phase_index) if phases else None
+
+    def required(self) -> frozenset[str]:
+        """The listed parts the phase requires to exist (`REQUIRED_FROM`)."""
+        ph = self.phase()
+        if ph is None:
+            return frozenset()
+        return frozenset(p for p, first in REQUIRED_FROM.items()
+                         if self.listed(p) and phase_index(ph) >= phase_index(first))
+
+    def sites(self) -> tuple[str, ...]:
+        """Every site slug this repository declares: its own and its modules'."""
+        own = (self.article.site,) if self.article.site else ()
+        return own + tuple(m.site for m in self.modules if m.site)
 
     def require(self, *parts: str, what: str) -> None:
         """Stop with a `ConfigError` naming `what` when one of `parts` is absent."""
@@ -353,6 +428,66 @@ class Config:
             )
             if self.has(part_of(name)) and not p.exists()
         ]
+
+
+def _phase(value, where: str) -> str | None:
+    if value is None:
+        return None
+    if value not in PHASES:
+        raise ConfigError(
+            f"{CONFIG_NAME}: {where}: `phase` is one of {', '.join(PHASES)} "
+            f"(docs/PROCESS.md's phases), not {value!r}")
+    return value
+
+
+def _article(raw: dict, paths: dict) -> Article:
+    """The `[article]` table, validated (ADR-0002)."""
+    t = raw.get("article")
+    if t is None:
+        return Article()
+    if not isinstance(t, dict):
+        raise ConfigError(f"{CONFIG_NAME}: `[article]` must be a table")
+    if unknown := set(t) - {"parts", "phase", "anonymous", "site", "cites", "identity"}:
+        raise ConfigError(
+            f"{CONFIG_NAME}: `[article]` has no key(s) {', '.join(sorted(unknown))}")
+    parts = t.get("parts")
+    if (not isinstance(parts, list) or not parts
+            or not all(isinstance(p, str) and p in PARTS for p in parts)):
+        raise ConfigError(
+            f"{CONFIG_NAME}: `[article] parts` lists the parts this repository will ever "
+            f"have, a non-empty list of {', '.join(PARTS)}; not {parts!r}")
+    for part in PARTS:
+        if part not in parts and (given := [k for k in PARTS[part] if k in paths]):
+            raise ConfigError(
+                f"{CONFIG_NAME}: `[article] parts` does not list {part}, but `paths` names "
+                f"{', '.join(given)} -- list the part, or remove the path")
+    anonymous = t.get("anonymous", False)
+    if not isinstance(anonymous, bool):
+        raise ConfigError(f"{CONFIG_NAME}: `[article] anonymous` is true or false")
+    site = t.get("site")
+    if site is not None and not isinstance(site, str):
+        raise ConfigError(f"{CONFIG_NAME}: `[article] site` is the site slug, a string")
+    if anonymous and site:
+        raise ConfigError(
+            f"{CONFIG_NAME}: `[article]` is anonymous and names a site area ({site!r}) -- "
+            f"an anonymous repository has none until its anonymity is lifted")
+    cites = t.get("cites", [])
+    if not isinstance(cites, list) or not all(
+            isinstance(c, str) and _CITE_RE.match(c) for c in cites):
+        raise ConfigError(
+            f"{CONFIG_NAME}: `[article] cites` is a list of `<slug>@<tag>`, not {cites!r}")
+    identity = t.get("identity", [])
+    if not isinstance(identity, list) or not all(isinstance(s, str) and s for s in identity):
+        raise ConfigError(f"{CONFIG_NAME}: `[article] identity` is a list of patterns")
+    return Article(
+        declared=True,
+        parts=frozenset(parts),
+        phase=_phase(t.get("phase"), "[article]"),
+        anonymous=anonymous,
+        site=site,
+        cites=tuple(cites),
+        identity=tuple(identity),
+    )
 
 
 def find_root(start: Path | None = None) -> Path:
@@ -493,6 +628,8 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
                 releases={str(k): dict(v) for k, v in releases.items()},
                 deposit_sentences={str(k): str(v) for k, v in deposit.items()},
                 supplement=r.get("supplement"),
+                phase=_phase(r.get("phase"), f"module {name!r}"),
+                site=r.get("site"),
             ))
         return tuple(out)
 
@@ -552,22 +689,35 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
         raise ConfigError(f"{CONFIG_NAME}: `slug` is required — it is the satellite id the "
                           f"hub keys claim refs and the manifest filename on")
 
+    art = _article(raw, paths)
+
+    def exists(part: str) -> bool:
+        v = paths.get(part, PART_DEFAULTS[part])
+        return any((root / d).exists() for d in ([v] if isinstance(v, str) else v))
+
     def absent_parts() -> frozenset[str]:
-        """The parts `linkage.toml` leaves out and the tree does not have (`PARTS`)."""
-        defaults = {"blueprint": "blueprint/src/content.tex", "lean": "Formalization",
-                    "paper": "paper"}
-        return frozenset(part for part, anchor in defaults.items()
-                         if part not in paths and not (root / anchor).exists())
+        """The parts this repository does not have now (`PARTS`).
+
+        Declared (`[article]`): the parts it does not list, and the listed parts not on disk
+        yet, which `linkage check` requires from the phase that needs them on. Undeclared:
+        the parts `linkage.toml` leaves out and the tree does not have (LINKAGE.md, "Absent
+        parts")."""
+        if art.declared:
+            return frozenset(p for p in PARTS if p not in art.parts or not exists(p))
+        return frozenset(part for part in PARTS
+                         if part not in paths and not (root / PART_DEFAULTS[part]).exists())
 
     absent = absent_parts()
-    if "blueprint" in absent and (given := [k for k in PARTS["blueprint"] if k in paths]):
+    if not art.declared and "blueprint" in absent and (
+            given := [k for k in PARTS["blueprint"] if k in paths]):
         # A ledger, macros file or allowlist with no blueprint to serve is a half-declared
         # part; reported rather than guessed at, because either half may be the mistake.
         raise ConfigError(
             f"{CONFIG_NAME}: `paths` names {', '.join(given)} but no `blueprint`, and "
             f"blueprint/src/content.tex does not exist -- name the blueprint too, or leave "
             f"the blueprint's paths out altogether for a repository without one")
-    if "lean" in absent and paths.get("lean_packages"):
+    no_lean = ("lean" not in art.parts) if art.declared else ("lean" in absent)
+    if no_lean and paths.get("lean_packages"):
         raise ConfigError(
             f"{CONFIG_NAME}: `paths.lean_packages` names shared packages, but there is no "
             f"Lean part (no `paths.lean` and no Formalization/) to require them")
@@ -602,8 +752,16 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
                                           paths.get("lean_packages", ()))),
         modules=modules_table(),
         release=release_table(),
+        article=art,
+        draft=p("draft", "draft"),
         absent=absent,
     )
+    if art.phase and any(m.phase for m in cfg.modules):
+        raise ConfigError(
+            f"{CONFIG_NAME}: the phase is given both in `[article]` and on `[[modules]]` -- "
+            f"one or the other: per module where the modules stand at different phases")
+    if art.anonymous and any(m.site for m in cfg.modules):
+        raise ConfigError(f"{CONFIG_NAME}: an anonymous repository's modules name no site")
     if validate and (missing := cfg.missing()):
         raise ConfigError(
             f"{CONFIG_NAME} points at paths that do not exist: {'; '.join(missing)}"
