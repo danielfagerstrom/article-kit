@@ -43,6 +43,20 @@ class ConfigError(RuntimeError):
     pass
 
 
+# The parts an article repository can have, each anchored on one `[paths]` key, with the
+# keys whose files belong to it. A part is ABSENT when `linkage.toml` leaves its anchor key
+# out and the default path does not exist: a paper-only repository (a conference version
+# whose blueprint and Lean live in the long paper's repository) or one in an early phase
+# (a draft, no blueprint yet) says so by not naming the paths, and is not reported as
+# broken for it. A key that IS written is a declaration, and a declared path that does not
+# exist is still an error. `docs/LINKAGE.md`, "Absent parts".
+PARTS: dict[str, tuple[str, ...]] = {
+    "blueprint": ("blueprint", "axioms", "macros", "allowlist"),
+    "lean": ("lean",),
+    "paper": ("paper",),
+}
+
+
 @dataclass(frozen=True)
 class Boundary:
     r"""The `[boundary]` table: the boundary harness's manifest (`linkage boundary`).
@@ -257,6 +271,12 @@ class Config:
     `ScaleSpaceCore` declares `ScaleSpace.*` — which is why this is its own key."""
     modules: tuple[Module, ...] = ()
     release: Release = field(default_factory=Release)
+    absent: frozenset[str] = frozenset()
+    """The parts (`PARTS`) this repository does not have: `linkage.toml` leaves the part's
+    anchor key out and its default path does not exist. Their paths keep their defaults, so
+    that a message can still name where the part would be, but nothing reads them: a check
+    over an absent part has nothing to check and is skipped, and a command that needs one
+    stops on `require`."""
 
     _label_re: re.Pattern = field(init=False, repr=False)
 
@@ -304,8 +324,25 @@ class Config:
                 f"Give the module a `tag` in its `[[modules]]` table")
         return hits[0]
 
+    def has(self, part: str) -> bool:
+        """Whether this repository has the part (`PARTS`)."""
+        return part not in self.absent
+
+    def require(self, *parts: str, what: str) -> None:
+        """Stop with a `ConfigError` naming `what` when one of `parts` is absent."""
+        if gone := [p for p in parts if not self.has(p)]:
+            raise ConfigError(
+                f"{what} needs the {' and '.join(gone)} part(s), which {CONFIG_NAME} leaves "
+                f"out (no `paths.{gone[0]}` and no {gone[0]} at the default path) -- "
+                f"this repository has none, so there is nothing for it to read")
+
     def missing(self) -> list[str]:
-        """Configured paths that do not exist — reported together, not one at a time."""
+        """Configured paths that do not exist — reported together, not one at a time.
+
+        The paths of an absent part are not configured, so they are not missing."""
+        def part_of(name: str) -> str:
+            return next(part for part, keys in PARTS.items() if name in keys)
+
         return [
             f"{name} = {p.relative_to(self.root).as_posix()}"
             for name, p in (
@@ -314,7 +351,7 @@ class Config:
                 ("lean", self.lean),
                 *(("paper", d) for d in self.papers),
             )
-            if not p.exists()
+            if self.has(part_of(name)) and not p.exists()
         ]
 
 
@@ -515,6 +552,26 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
         raise ConfigError(f"{CONFIG_NAME}: `slug` is required — it is the satellite id the "
                           f"hub keys claim refs and the manifest filename on")
 
+    def absent_parts() -> frozenset[str]:
+        """The parts `linkage.toml` leaves out and the tree does not have (`PARTS`)."""
+        defaults = {"blueprint": "blueprint/src/content.tex", "lean": "Formalization",
+                    "paper": "paper"}
+        return frozenset(part for part, anchor in defaults.items()
+                         if part not in paths and not (root / anchor).exists())
+
+    absent = absent_parts()
+    if "blueprint" in absent and (given := [k for k in PARTS["blueprint"] if k in paths]):
+        # A ledger, macros file or allowlist with no blueprint to serve is a half-declared
+        # part; reported rather than guessed at, because either half may be the mistake.
+        raise ConfigError(
+            f"{CONFIG_NAME}: `paths` names {', '.join(given)} but no `blueprint`, and "
+            f"blueprint/src/content.tex does not exist -- name the blueprint too, or leave "
+            f"the blueprint's paths out altogether for a repository without one")
+    if "lean" in absent and paths.get("lean_packages"):
+        raise ConfigError(
+            f"{CONFIG_NAME}: `paths.lean_packages` names shared packages, but there is no "
+            f"Lean part (no `paths.lean` and no Formalization/) to require them")
+
     cfg = Config(
         root=root,
         slug=slug,
@@ -523,13 +580,14 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
         macros=p("macros", "blueprint/src/macros.tex"),
         allowlist=p("allowlist", "blueprint/render-allowlist.txt"),
         lean=p("lean", "Formalization"),
-        papers=paper_dirs(),
+        papers=() if "paper" in absent else paper_dirs(),
         axioms_verbatim=p("axioms_verbatim", "blueprint/AXIOMS-verbatim.md"),
         # Defaulted *inside the Lean directory* rather than at a fixed path: it is written by
         # a Lean meta program alongside the sources it describes, and `paths.lean` is
         # configurable, so a hard-coded "Formalization/…" would miss it in any article that
         # names its Lean project something else.
-        lean_uses=p("lean_uses", f"{paths.get('lean', 'Formalization')}/lean-uses.json"),
+        lean_uses=None if "lean" in absent else p(
+            "lean_uses", f"{paths.get('lean', 'Formalization')}/lean-uses.json"),
         lean_packages=tuple(paths.get("lean_packages", ())),
         library_article=raw.get("library_article"),
         boundary=boundary(),
@@ -544,6 +602,7 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
                                           paths.get("lean_packages", ()))),
         modules=modules_table(),
         release=release_table(),
+        absent=absent,
     )
     if validate and (missing := cfg.missing()):
         raise ConfigError(

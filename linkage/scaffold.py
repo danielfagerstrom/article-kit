@@ -114,11 +114,15 @@ def _absent_artifacts(root: Path) -> set[str]:
         cfg = config.load(root, validate=False)
     except config.ConfigError:
         return set()
+    # By the parts `config.load` found absent, the same reading `linkage check` uses, so a
+    # repository's sync and its check never disagree about what it has (LINKAGE.md, "Absent
+    # parts"). A declared path that does not exist yet still skips here: `--sync` runs
+    # mid-adoption, before the files are written.
     gone = set()
-    if not cfg.blueprint.exists():
+    if not cfg.has("blueprint") or not cfg.blueprint.exists():
         gone |= {"blueprint", "scripts/build-blueprint.sh",
                  "claude/rules/blueprint.md", "claude/rules/ledger.md"}
-    if not cfg.lean.exists():
+    if not cfg.has("lean") or not cfg.lean.exists():
         gone.add("claude/rules/lean.md")
     return gone
 

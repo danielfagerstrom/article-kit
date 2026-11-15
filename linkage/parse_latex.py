@@ -338,7 +338,12 @@ def notes_slugs(tex: str) -> set[str]:
 
 
 def parse(cfg: Config) -> Blueprint:
-    """Read and parse the article's blueprint into the format-independent model."""
+    """Read and parse the article's blueprint into the format-independent model.
+
+    A repository without a blueprint part (`Config.absent`) has an empty one: no nodes, so
+    every blueprint-side check has nothing to check."""
+    if not cfg.has("blueprint"):
+        return Blueprint(nodes=[], ledger_refs=set(), notes_slugs=set())
     tex = read_blueprint(cfg.blueprint)
     return Blueprint(
         nodes=blueprint_nodes(tex, cfg),

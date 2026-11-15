@@ -43,6 +43,7 @@ def _load(root: Path | None):
 
 
 def _emit_manifest(cfg, bp, dest: Path, require_render: bool) -> int:
+    cfg.require("blueprint", what="the manifest (a projection of the blueprint)")
     lean_names = artifacts.lean_declared_names(cfg)
     ledger = artifacts.ledger_entries(cfg)
     try:
@@ -122,6 +123,35 @@ def cmd_check(args) -> int:
         return 0
 
     s = f.stats
+    if cfg.absent:
+        # Said first, so that a reader of a paper-only (or early-phase) repository's output
+        # knows why the blueprint and closure lines are not there (LINKAGE.md, "Absent parts").
+        have = [p for p in config.PARTS if cfg.has(p)]
+        print(f"Parts: {', '.join(have) or 'none'}; absent: {', '.join(sorted(cfg.absent))} "
+              f"({config.CONFIG_NAME} leaves them out) -- their checks are skipped.")
+    _print_blueprint_stats(cfg, s)
+    # The instruction budget's one number, printed under budget too: a dispatched session
+    # runs `linkage check`, not `linkage shape` (PROCESS.md, 'Where each kind of text lives').
+    print(shape.resident_summary(cfg.root))
+    if cfg.has("blueprint"):
+        _print_closure_stats(cfg, s)
+    for a in f.advisory:
+        print("  advisory " + a)
+    if f.fatal:
+        print(f"\nLINKAGE CHECK FAILED: {len(f.fatal)} problem(s)\n")
+        for p in f.fatal:
+            print("  FAIL " + p)
+        return 1
+    print("\nLINKAGE CHECK OK: all in-repo Lean / ledger / paper edges are consistent.")
+    return 0
+
+
+def _print_blueprint_stats(cfg, s) -> None:
+    if not cfg.has("blueprint"):
+        if s["paper_shared"]:
+            print(f"Paper: {s['paper_shared']} shared-statement marker(s) with no blueprint "
+                  "to share with.")
+        return
     drift, verb = s.get("shared_drift", 0), s.get("shared_verbatim", 0)
     trk, noenv = s.get("shared_tracked", 0), s.get("shared_no_env", 0)
     # Both flags, because leanblueprint colours the graph from both and they can
@@ -132,9 +162,9 @@ def cmd_check(args) -> int:
           f"{s['ledger_refs']} ledger refs, {s['paper_shared']} paper shared-statements "
           f"({verb} verbatim, {trk} tracked by sha, {drift} needing attention"
           + (f", {noenv} on prose" if noenv else "") + ").")
-    # The instruction budget's one number, printed under budget too: a dispatched session
-    # runs `linkage check`, not `linkage shape` (PROCESS.md, 'Where each kind of text lives').
-    print(shape.resident_summary(cfg.root))
+
+
+def _print_closure_stats(cfg, s) -> None:
     unmatched = s.get("proof_unmatched", 0)
     if (pv := s.get("proof_verbatim", 0) + s.get("proof_tracked", 0)
             + s.get("proof_drift", 0)) or unmatched:
@@ -165,15 +195,6 @@ def cmd_check(args) -> int:
         print(line)
     for note in s.get("homes_notes", ()):
         print(f"Library homes: {note} (LINKAGE.md rule 15).")
-    for a in f.advisory:
-        print("  advisory " + a)
-    if f.fatal:
-        print(f"\nLINKAGE CHECK FAILED: {len(f.fatal)} problem(s)\n")
-        for p in f.fatal:
-            print("  FAIL " + p)
-        return 1
-    print("\nLINKAGE CHECK OK: all in-repo Lean / ledger / paper edges are consistent.")
-    return 0
 
 
 def cmd_paper(args) -> int:
@@ -222,6 +243,7 @@ def cmd_closure(args) -> int:
     answer at all (an unreadable export).
     """
     cfg, bp = _load(args.root)
+    cfg.require("blueprint", "lean", what="`linkage closure`")
     if args.stamp_export:
         path = closure.stamp_export(cfg, args.export)
         print(f"Stamped {path.name} with the digest of the Lean sources under "
@@ -263,6 +285,7 @@ def cmd_axioms(args) -> int:
     """Print the trust-boundary allowlist; verify each entry is grounded in the ledger."""
     from . import trust
     cfg = config.load(args.root)
+    cfg.require("blueprint", "lean", what="`linkage axioms`")
     names = trust.declared(cfg)
     if not names and not trust.trust_file(cfg).is_file():
         print(f"no {trust.trust_file(cfg).name} — the trust-boundary guard has nothing to "
@@ -477,6 +500,7 @@ def cmd_prose_register(args) -> int:
 def cmd_release_export(args) -> int:
     from . import release
     cfg = config.load(args.root)
+    cfg.require("blueprint", "lean", what="the verification export")
     if not args.dry_run and not args.out:
         print("EXPORT ERROR: --out is required unless --dry-run", file=sys.stderr)
         return 2

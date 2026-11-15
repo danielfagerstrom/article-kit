@@ -80,6 +80,7 @@ def join(demands: list[dict], labels: dict[str, Node]) -> tuple[list[dict], list
 
 def main(args) -> int:
     cfg = config.load(getattr(args, "root", None))
+    cfg.require("blueprint", what="`linkage demand`")
     bp = parse_latex.parse(cfg)
 
     data = fetch_demands(resolve_vault(args.wiki))
