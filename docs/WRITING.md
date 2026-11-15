@@ -272,8 +272,8 @@ decisions, so each article's `adr/` records its own; this standard records that 
   by, and synced from, the `linkage` repo, so the macro is that repo's item, not an article's or this
   one's to add here. Until it exists, a transcribed statement's citation is rewritten by hand to a
   real reference wherever it reaches a paper.
-- **Every compression is ledgered** where one article compresses another (the conference
-  extraction): each statement names what it compresses, what was dropped, and why it is still
+- **Every compression is ledgered** where one article compresses another:
+  each statement names what it compresses, what was dropped, and why it is still
   faithful, with a hash, so that a late page-fitting trim cannot pass silently.
 
 ---
@@ -322,11 +322,10 @@ what a reader wants from a paper that discloses heavy AI assistance.
   header comment as well as its text: it records why an earlier framing understated the AI
   involvement, why the trust-boundary paragraph was removed rather than repeated, and that its
   figures must be re-derived rather than restated.
-- **The scoping rule for a submission** is the SSVM paper's `notes/AI-USE.md` (decided 2026-09-04):
-  a disclosure attaches to *this* submission (its text, its compression decisions) and not to a
-  cited work's production. It **points rather than restates**; pointing is the same relation any
-  paper has to a source's provenance, and a reader who wants the full account reaches it in one
-  citation. **No storytelling**: where a monograph has room to say something interesting about the
+- **The scoping rule for a submission** (decided 2026-09-04): a disclosure attaches to *this*
+  submission (its text, its compression decisions) and not to a cited work's production. It
+  **points rather than restates**; pointing is the same relation any paper has to a source's
+  provenance, and a reader who wants the full account reaches it in one citation. **No storytelling**: where a monograph has room to say something interesting about the
   process, a submission needs transparency, and transparency is six lines.
 
 Four rules govern any new statement:

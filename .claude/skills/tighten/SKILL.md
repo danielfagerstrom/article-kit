@@ -246,7 +246,7 @@ characters. LaTeX, a fixed-column word-processor template, any two-column procee
 
 ## Provenance
 
-Developed on the `hcs` SSVM submission, September 2026. Seventy-five edits across eight files
-took the predicted prose from 278 to 241 typeset lines, about 0.8 of a page, and the build
-from over the limit to 11.96 of 12. The reserve list drawn up for the same overrun went
+Developed on a page-limited paper, autumn 2026. Seventy-five edits across eight files took
+the predicted prose from 278 to 241 typeset lines, about 0.8 of a page, and the build from over
+the limit to just under it. The reserve list drawn up for the same overrun went
 unspent.

@@ -121,7 +121,7 @@ The plugin does not replace the old paths until the old paths are removed, and w
    `~/.claude/agents/mathematician.md`. The script's "installed but no table row claims it" warning
    is what will tell you if the file is still there. *(The hub's change, and the author's.)*
 4. **Existing article repos** (`spatial-hemigroup-scale-space`, `spatial-hemigroup-affine`,
-   `spatial-hemigroup-pyramids`, `hemigroup-kernels-ssvm`, …): `.claude/settings.json` is *seeded*,
+   `spatial-hemigroup-pyramids`, …): `.claude/settings.json` is *seeded*,
    not framework-owned, so `linkage init --sync` will not touch it. Merge the two keys above into
    each by hand. A repo scaffolded before Q-0121 also lacks `.claude/sync-agents-hook.sh`; copy it
    from `scaffold/claude/` if the hook line is wanted (see below).
@@ -237,7 +237,7 @@ with this repository attached, `claude plugin marketplace add danielfagerstrom/a
 the `github` source through the proxy (no fallback needed), and a headless session started in
 `spatial-hemigroup-affine` listed `article-kit:fidelity-review`, `:tighten`, `:write`, `:release`,
 `:gate` and the agent `article-kit:mathematician`. `linkage check` prints no `[plugin]` advisory in
-affine, line, pyramids, the causal-kernels monograph or its SSVM extraction.
+affine, line, pyramids or the causal-kernels monograph.
 
 Not verified: whether a fresh session installs the plugin from the project settings alone. On the
 laptop it did not, and the cloud check above installed it explicitly. If a fresh cloud session
