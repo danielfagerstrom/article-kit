@@ -1029,6 +1029,17 @@ research site read it. `manifest.yml` writes it into the hub as `article-<slug>.
 - `blueprint_manifest`: a blueprint exists.
 - `lean`: a Lean tree exists and the phase has reached `skeleton`, or no phase is known.
 
+The reusable workflows read the declaration themselves, so a caller passes nothing about
+it. `docs.yml` reads `linkage.toml` with the runner's Python. A repository without the table
+builds exactly as before. One with it builds the listed parts that exist: the markdown drafts
+(`draft/*.md` except `README.md`, through pinned pandoc, to `draft/<name>.html` on the drafts
+page), the blueprint and the paper. It deploys when at least one of them built and none failed.
+It deploys only to a slug the table declares (`site`, or a module's), and never for an anonymous
+repository. `manifest.yml` writes the projection into the hub as `article-<slug>.json` on every
+run that is not a dry run. It emits the blueprint manifest only where there is a blueprint, and
+runs `linkage check` either way. The seeded `article.yml` starts `lean.yml` only when `jobs.lean`
+holds.
+
 ## The cross-repo channel — manifest out, demand in
 
 The reference edges above are pointers; the **workflow** with the wiki is two-way and runs over two

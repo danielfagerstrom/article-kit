@@ -1,0 +1,90 @@
+name: Article CI
+
+# The caller of article-kit's three reusable workflows, seeded by `linkage init` and then this
+# repository's own (ADR-0002). What runs follows linkage.toml's `[article]` table: the first
+# job reads it, the docs build and deploy whatever parts exist (the deploy only to the
+# declared `site`, never for an anonymous repository), the manifest job writes the
+# declaration into the hub and projects the blueprint once there is one, and the Lean job runs
+# once the phase has reached `skeleton` and Formalization/ exists. Move the three `@` pins
+# and `linkage_ref` together when article-kit releases (`linkage pins` checks them).
+#
+# The paths filter guards private-repository Actions minutes; widen it if the article grows a
+# second paper directory.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths: ["draft/**", "blueprint/**", "Formalization/**", "paper/**", "linkage.toml",
+            ".github/workflows/article.yml"]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: ["draft/**", "blueprint/**", "Formalization/**", "paper/**", "linkage.toml",
+            ".github/workflows/article.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  parts:
+    # A draft pull request is unfinished work; marking it ready runs this.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    outputs:
+      site: ${{ steps.read.outputs.site }}
+      lean: ${{ steps.read.outputs.lean }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read the declaration
+        id: read
+        run: |
+          python3 - <<'PY' | tee -a "$GITHUB_OUTPUT"
+          import tomllib
+          from pathlib import Path
+          raw = tomllib.loads(Path("linkage.toml").read_text(encoding="utf-8"))
+          art = raw.get("article", {})
+          phases = ["draft", "blueprint", "skeleton", "proving", "fidelity", "article",
+                    "passes", "external-review", "released"]
+          phase = art.get("phase") or max(
+              (m["phase"] for m in raw.get("modules", []) if m.get("phase")),
+              key=phases.index, default="released")
+          lean_dir = Path(raw.get("paths", {}).get("lean", "Formalization"))
+          lean = ("lean" in art.get("parts", []) and lean_dir.is_dir()
+                  and phases.index(phase) >= phases.index("skeleton"))
+          site = "" if art.get("anonymous") else (art.get("site") or "")
+          print(f"site={site}")
+          print(f"lean={str(lean).lower()}")
+          PY
+
+  docs:
+    needs: parts
+    uses: danielfagerstrom/article-kit/.github/workflows/docs.yml@@@KIT_TAG@@
+    with:
+      slug: ${{ needs.parts.outputs.site }}
+      dry_run: ${{ github.event_name == 'pull_request' }}
+    secrets:
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  manifest:
+    needs: parts
+    uses: danielfagerstrom/article-kit/.github/workflows/manifest.yml@@@KIT_TAG@@
+    with:
+      slug: @@SLUG@@
+      dry_run: ${{ github.event_name == 'pull_request' }}
+      linkage_ref: @@KIT_TAG@@
+    secrets:
+      NOTES_WIKI_TOKEN: ${{ secrets.NOTES_WIKI_TOKEN }}
+      ARTICLE_KIT_TOKEN: ${{ secrets.ARTICLE_KIT_TOKEN }}
+
+  lean:
+    needs: parts
+    if: needs.parts.outputs.lean == 'true'
+    permissions:
+      contents: read
+    uses: danielfagerstrom/article-kit/.github/workflows/lean.yml@@@KIT_TAG@@
+    with:
+      lean_dir: Formalization
+      linkage_ref: @@KIT_TAG@@

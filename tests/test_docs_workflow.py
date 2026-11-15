@@ -53,12 +53,15 @@ def test_the_interface_is_unchanged():
 def test_a_failed_build_still_fails_the_run_and_blocks_the_deploy():
     text = DOCS.read_text(encoding="utf-8")
     # the PDF builds continue on error so the others still run, and the closing step fails
-    assert text.count("continue-on-error: true") == 4  # paper, extra, blueprint, artifacts push
+    # paper, extra, blueprint, draft, artifacts push
+    assert text.count("continue-on-error: true") == 5
     assert "Fail the run if a build or the artifacts push failed" in text
     deploy = re.search(r"id: deploy\n\s+if: (.*)", text)
     assert deploy
     for need in ("success()", "steps.paper.outcome == 'success'",
                  "steps.blueprint.outcome == 'success'", "steps.extra.outcome != 'failure'"):
+        assert need in deploy.group(1)
+    for need in ("steps.draft.outcome != 'failure'", "steps.decl.outputs.anonymous != 'true'"):
         assert need in deploy.group(1)
 
 
@@ -276,3 +279,109 @@ def test_the_site_lists_and_validates_every_root(tmp_path, real_run):
     out = step("Validate dist/")
     assert out.returncode != 0
     assert "dist/iso.supplement.pdf is missing" in out.stdout
+
+
+# --- the declaration (ADR-0002) -----------------------------------------------------------
+
+
+def _declaration(tmp_path: Path, real_run, toml: str | None, files=(),
+                 slug: str = "") -> dict[str, str]:
+    """Run the `Read the declaration` step's Python in tmp_path; its key=value outputs."""
+    m = re.search(r"python3 - <<'PY' \| tee -a \"\$GITHUB_OUTPUT\"\n(.*?)\n\s*PY\n",
+                  DOCS.read_text(encoding="utf-8"), re.S)
+    assert m, "docs.yml no longer reads the declaration with an inline Python"
+    if toml is not None:
+        (tmp_path / "linkage.toml").write_text(toml, encoding="utf-8")
+    for f in files:
+        (tmp_path / f).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / f).write_text("x", encoding="utf-8")
+    import sys
+    out = real_run([sys.executable, "-c", textwrap.dedent(m.group(1))], cwd=tmp_path,
+                   env={**os.environ, "PAPER_TEX": "paper/main.tex",
+                        "BLUEPRINT_TEX": "blueprint/src/print.tex", "SLUG": slug},
+                   capture_output=True, text=True, check=True)
+    return dict(line.split("=", 1) for line in out.stdout.splitlines())
+
+
+def test_an_undeclared_repository_builds_as_before(tmp_path, real_run):
+    got = _declaration(tmp_path, real_run, 'slug = "x"\n')
+    assert got == {"declared": "false", "paper": "true", "blueprint": "true", "draft": "false",
+                   "anonymous": "false", "site_ok": "false", "draft_dir": "draft"}
+
+
+def test_a_declared_repository_builds_what_exists(tmp_path, real_run):
+    got = _declaration(tmp_path, real_run,
+                       'slug = "x"\n[article]\nparts = ["draft", "blueprint", "paper"]\n'
+                       'phase = "blueprint"\n',
+                       files=("draft/x.md", "draft/README.md", "blueprint/src/print.tex"))
+    assert (got["declared"], got["draft"], got["blueprint"], got["paper"]) == \
+        ("true", "true", "true", "false")
+
+
+def test_a_draft_dir_with_only_its_readme_has_nothing_to_render(tmp_path, real_run):
+    got = _declaration(tmp_path, real_run,
+                       'slug = "x"\n[article]\nparts = ["draft"]\nphase = "draft"\n',
+                       files=("draft/README.md",))
+    assert got["draft"] == "false"
+
+
+def test_an_anonymous_repository_is_read_as_one(tmp_path, real_run):
+    got = _declaration(tmp_path, real_run,
+                       'slug = "x"\n[article]\nparts = ["paper"]\nphase = "passes"\n'
+                       'anonymous = true\n', files=("paper/main.tex",))
+    assert (got["paper"], got["blueprint"], got["anonymous"]) == ("true", "false", "true")
+
+
+@needs_shell
+def test_a_draft_only_site_lists_and_validates_the_draft(tmp_path, real_run):
+    """A repository at its draft phase: no paper, no blueprint, one rendered draft."""
+    (tmp_path / "draft-html").mkdir()
+    (tmp_path / "draft-html" / "pyr.html").write_text("<html>draft</html>", encoding="utf-8")
+    github = {"RUNNER_TEMP": tmp_path.as_posix(), "BUILD_WEB": "false", "CHANNEL_INPUT": "",
+              "GITHUB_REF": "refs/heads/main", "GITHUB_REF_NAME": "main",
+              "GITHUB_SHA": "abc1234", "GITHUB_REPOSITORY": "o/r"}
+
+    def step(name: str) -> subprocess.CompletedProcess[str]:
+        return _run(real_run, tmp_path, f'"$BASH" -eo pipefail "{_step(tmp_path, name).as_posix()}"',
+                    "paper/main.tex", "[]", **github)
+
+    out = step("Assemble dist/ (PDFs + web blueprint + index.html)")
+    assert out.returncode == 0, out.stdout + out.stderr
+    index = (tmp_path / "dist" / "index.html").read_text(encoding="utf-8")
+    assert 'href="draft/pyr.html"' in index
+    assert 'href="paper.pdf"' not in index and 'href="blueprint.pdf"' not in index
+    out = step("Validate dist/")
+    assert out.returncode == 0, out.stdout + out.stderr
+    (tmp_path / "dist" / "draft" / "pyr.html").unlink()
+    out = step("Validate dist/")
+    assert out.returncode != 0 and "dist/draft/pyr.html is missing" in out.stdout
+
+
+def test_the_seeded_caller_pins_one_release_and_follows_the_declaration(tmp_path):
+    from linkage import scaffold
+    root = tmp_path / "fresh"
+    root.mkdir()
+    scaffold.init(root, slug="fresh")
+    text = (root / ".github" / "workflows" / "article.yml").read_text(encoding="utf-8")
+    tag = scaffold.kit_tag()
+    for wf in ("docs.yml", "manifest.yml", "lean.yml"):
+        assert f"article-kit/.github/workflows/{wf}@{tag}\n" in text
+    assert "linkage_ref: " + tag in text and "slug: fresh\n" in text
+    assert "@@" not in text
+    from linkage import pins
+    assert pins.check(root) == []   # every call at a release, as `linkage pins` requires
+
+
+DECLARED = '[article]\nparts = ["draft"]\nphase = "draft"\n'
+
+
+@pytest.mark.parametrize("toml, slug, ok", [
+    (DECLARED + 'site = "s"\n', "s", "true"),
+    (DECLARED + 'site = "s"\n', "other", "false"),
+    (DECLARED, "s", "false"),                                             # no site declared
+    (DECLARED + '\n[[modules]]\nname = "m"\nsite = "m-site"\n', "m-site", "true"),
+    ('slug = "x"\n', "s", "true"),                                        # undeclared
+    ('slug = "x"\n', "", "false"),
+])
+def test_the_deploy_goes_only_to_a_declared_site(tmp_path, real_run, toml, slug, ok):
+    assert _declaration(tmp_path, real_run, toml, slug=slug)["site_ok"] == ok
