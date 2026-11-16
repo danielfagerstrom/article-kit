@@ -386,6 +386,33 @@ refusal also sends the author back to `upload` or the draft page for nothing.
 
 ---
 
+## The fidelity review's `f7sweep.py` sees two fifths of the `\leanok` nodes
+
+From the pyramids fidelity review (2026-11-16, its ledger R70). The F7 sweep of
+`.claude/skills/fidelity-review/scripts/f7sweep.py` found 67 of the 160 `\leanok` nodes of the
+pyramids blueprint. Two causes. (1) Its regex wants `\lean{…}` directly followed by `\leanok`, and
+misses a node where a newline or a `%` comment sits between them, as in most nodes there. (2) It
+looks for the proof's `\uses{…}` in the 400 characters after the statement, unanchored, so it
+takes another node's `\uses` or misses a long statement's proof. An extended copy (match the
+environment from `\begin` to `\end`, read `\lean` and `\leanok` anywhere in it, take the proof by
+its `% proof of` marker or the next `proof` environment) covered all 160; the review's record is
+`records/pyramids/FIDELITY-sweeps.md`, § F7, in spatial-hemigroup-pyramids. **Suggested shape:**
+take the node and proof pairing from `linkage`'s own parser rather than a regex, with a test whose
+fixture puts a comment line between `\lean` and `\leanok`.
+
+## `linkage check` does not read an `inductive` head, so a `\lean{}` tag cannot name one
+
+From the pyramids fidelity review (2026-11-16, its ledger R16). A definition node whose Lean object
+is an `inductive` type (`Pyramids.PlaneStencil`, the stencil choice of `def:subsampling-setting`)
+cannot carry it in `\lean{…}`: `linkage check` reports `\lean{Pyramids.PlaneStencil} not declared`.
+The declaration regex at `linkage/artifacts.py:21` reads `theorem|lemma|def|abbrev|structure|
+instance|axiom` and neither `inductive` nor `class` (`release.py:114` has `class` and `opaque`). The
+node names the type in a comment instead, which the graph and the manifest do not see. **Suggested
+shape:** one list of declaration heads shared by `artifacts.py`, `boundary.py`, `closure.py` and
+`release.py`, with `inductive`, `class` and `opaque` in it, and a test.
+
+---
+
 *No other open requests.*
 
 ---
