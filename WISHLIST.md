@@ -411,6 +411,66 @@ node names the type in a comment instead, which the graph and the manifest do no
 shape:** one list of declaration heads shared by `artifacts.py`, `boundary.py`, `closure.py` and
 `release.py`, with `inductive`, `class` and `opaque` in it, and a test.
 
+## process: a printed proof may compress a checked step, with the checked route kept on record
+
+**Wanted by** the pyramids theory paper (Paper VI), its length take, question (b), 2026-11-16.
+
+`WRITING.md` § 4 ("proofs of record follow the machine-checked route") makes the paper print the
+Lean route step for step. A wording pass over seven of the paper's longest proofs, with route and
+steps unchanged, cut 981 lines to 919 (6%; words 8%). Of what remains, about 110 lines are steps the
+formalization needs and a printed proof would not take, and 50-60 more re-derive facts that sit
+inside other proofs but not in their statements. Evidence, by kind:
+
+- *Transport between encodings.* `prop:grid-pyramids-infinitely-divisible` reads the line in
+  $\mathbb{R}^1$ through $x \mapsto xe_1$ and a symmetric lift of folded measures in every clause
+  (25-30 lines), and rebuilds on the line a family that `prop:ladder-knot-kernel`(2) already gives in
+  $\mathbb{R}^d$ (about 20). A printed proof ("apply Proposition X at $d = 1$") would be 70-80 lines
+  against 149.
+- *Library facts re-derived with their hypotheses.* `prop:sampled-laplace-exact`: Poisson summation
+  with explicit decay bounds, uniqueness of Fourier coefficients, linear independence of geometric
+  sequences by induction, monotonicity of $\sinh u/u$ (about 30 lines). `prop:creation-plane`:
+  Plancherel through tempered distributions, Faà di Bruno's bound for a Schwartz function (about 20).
+- *Measure bookkeeping.* Equality of Lévy measures set by set, null-set identification of a polar
+  profile (`prop:ladder-knot-kernel`, about 25).
+- *Re-derivation of what another proof contains.* `prop:exact-masks` re-proves the symmetric data of
+  an infinitely divisible law, Khintchine's null-array step and the knot data of
+  `prop:ladder-knot-kernel`(1) (about 30), because those statements do not say what is reused.
+
+**Suggested shape**, in two parts. (1) *Factor first*: a step that re-derives what another node's
+proof contains is a defect of that node's statement, fixed by stating it there and citing it; an
+advisory could flag a proof that repeats a display of another node's proof. (2) *A print form for
+named devices*: the blueprint keeps the checked route as the proof of record and may mark a
+contiguous step as a checked device with a print form, say `\checkedstep{<checked>}{<print>}`,
+whose print text is a citation of a library theorem or a transport sentence. The blueprint renders
+the checked text, the paper the print text, and `linkage check` compares the paper with the print
+rendering and requires the node to be `\leanok`. The devices are a closed list in § 4 (encoding
+transports, library facts with their hypothesis checks, measurability and null-set bookkeeping); a
+step that carries an idea of the argument is never one. The trust-base subsection says once that
+printed proofs compress these devices. Estimated saving on the seven proofs: 15-20% beyond
+wording. Records: the pyramids repository, `notes/HANDOFF.md` and `CHANGELOG.md` of 2026-11-16.
+
+## `linkage paper` reads a macro parameter inside `\ref{…}` as a label
+
+From the pyramids theory paper (2026-11-16). A paper macro that prints a cited fact by reference,
+`\newcommand{\ledger}[1]{Theorem~\ref{thm:cited-#1}}`, fails `linkage paper` with
+"`\ref{thm:cited-#1}` names no `\label`", and every `thm:cited-*` it reaches is reported an orphan.
+The paper works around it with `\csname ref\endcsname{...}`, which hides the reference from the lint
+altogether. **Suggested shape:** skip a `\ref` argument containing `#` in a macro definition, and
+expand the module's own `\ledger` (or any macro the config names) when counting references.
+
+## process: a "beyond the default" row for the pyramids theory paper, and the skill budget
+
+From the drafting gate on the pyramids theory paper (2026-11-16, item 5 in every section).
+`WRITING.md` § 0 says a module adds a row to the "beyond the default" table for what it uses beyond
+the default list. The theory paper uses: semi-selfdecomposable laws and their residuals;
+Khintchine's theorem on null arrays and the triplet of a linear image of an infinitely divisible
+law; the modified Bessel function $K_\nu$ and its integral representation; relative entropy and
+Haar measure on a circle group (phase entropy, in its supplement). The row was not added: one more
+row puts the generated `write` skill at about 4,885 tokens, over its 4,800 budget
+(`python -m linkage.skills` exits 1). **Suggested shape:** move the per-module rows out of § 0 into
+a file the skill does not carry (each article's `CLAUDE.md`, or a `docs/AUDIENCE.md` table that §
+0 names), keeping in § 0 only the rule and the default list.
+
 ---
 
 *No other open requests.*
