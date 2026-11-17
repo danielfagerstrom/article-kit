@@ -249,7 +249,11 @@ under `records/<module>/`; `notes/HANDOFF.md` rewritten for the next module.
 ## Opening and closing a session
 
 **Open**: read `notes/HANDOFF.md`, then what it names. The rules in `.claude/rules/article-kit/`
-are already loaded. `git status` first after any crash.
+are already loaded. `git status` first after any crash. Then what the hub's queue holds for this
+repository, `wiki queue list --repo <slug>` (the member's slug in the hub's `constellation.json`;
+`--vault` or `$WIKI_VAULT` names the hub): an entry whose work this session does is named in its
+pull request, `Settles Q-NNNN`, and closes when that merges; one this session makes moot is the
+author's to drop, said in the pull request.
 
 **Close**, in this order:
 
@@ -257,7 +261,13 @@ are already loaded. `git status` first after any crash.
 2. A decision taken: one file in `adr/`, and its line on the hub's thread page.
 3. `README.md`'s state section, if the state changed: rewritten, not appended to.
 4. `notes/HANDOFF.md`: rewritten for the next session. It says what to read, what is open and
-   what waits on the author, as of now. It does not say what this session did.
+   what waits on the author, as of now. It does not say what this session did. Its line
+   `**The queue:**` says whether the queue's night runs may work here meanwhile: `held — <why>`
+   while the next step is the author's or a session's and a run would collide with it (the
+   author's section review, a drafting pass, a Lean wave in flight), `open` otherwise. Work that
+   belongs to a later phase goes under a heading that says so ("Open, and not this phase"), which
+   the queue does not take up. The hub reads the handoff from this session's open pull request,
+   before the author merges it (hub ADR-0034).
 5. A general lesson: a `process` item in article-kit's `WISHLIST.md`.
 6. A source read this session: its wiki source page, written in the hub (see "Where each kind of
    text lives" above) — if the session does not close it, `wiki queue harvest` picks it up.
