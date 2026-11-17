@@ -288,6 +288,12 @@ def blueprint_nodes(tex: str, cfg: Config) -> list[Node]:
             for u in um.group(1).split(",")
             if u.strip()
         ]
+        proof_uses = [
+            u.strip()
+            for um in re.finditer(r"\\uses\{([^}]+)\}", pm.group(1) if pm else "")
+            for u in um.group(1).split(",")
+            if u.strip()
+        ]
         nodes.append(
             Node(
                 env=m.group(1),
@@ -295,6 +301,7 @@ def blueprint_nodes(tex: str, cfg: Config) -> list[Node]:
                 label=lab.group(1) if lab else None,
                 lean=decls,
                 uses=uses,
+                proof_uses=proof_uses,
                 leanok=r"\leanok" in body,
                 # Read off the proof environment, not the statement: leanblueprint
                 # colours the graph from two independent flags -- the statement's

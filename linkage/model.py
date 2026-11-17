@@ -41,6 +41,10 @@ class Node:
     leanok: bool = False
     """The node asserts it is proved in Lean."""
 
+    proof_uses: list[str] = field(default_factory=list)
+    r"""Labels the trailing *proof* environment `\uses{}` (the statement's are `uses`). Read by
+    the F7 sweep; not projected to the manifest and not part of any sha."""
+
     notready: bool = False
     """The node asserts it is not ready to formalise."""
 
