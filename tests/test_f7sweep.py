@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from fixtures.article import statement
+
 SCRIPT = (Path(__file__).resolve().parents[1]
           / ".claude/skills/fidelity-review/scripts/f7sweep.py")
 
@@ -62,8 +63,6 @@ def test_a_long_statement_keeps_its_own_proofs_uses(article):
     assert got["lem:b"].proof_uses == [] and got["lem:b"].uses == ["lem:c"]
 
 
-@pytest.mark.skipif("parse_latex" not in SCRIPT.read_text(encoding="utf-8"),
-                    reason="the sweep script still carries its own regexes")
 def test_the_sweep_counts_every_leanok_node_and_reads_the_proofs_uses(
         article, monkeypatch, capsys):
     article.blueprint(SPLIT_LEAN + LONG_STATEMENT)
