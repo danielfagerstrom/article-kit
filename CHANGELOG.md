@@ -7,6 +7,15 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **A session and the hub's queue see each other** (hub ADR-0034). `PROCESS.md`, "Opening and
+  closing a session": at the opening, `wiki queue list --repo <slug>` shows what the queue holds
+  for this repository, and a pull request that does an entry's work says `Settles Q-NNNN`, which
+  closes it at the hub's next `sync`; at the close, the handoff's `**The queue:**` line says
+  `held — <why>` while the next step is the author's or a session's, which stops the night's runs
+  here, or `open`; later work goes under a heading that says so ("Open, and not this phase"). The
+  scaffold's `HANDOFF.md.in` carries the line, `open`. Why: the queue read only `main` and filed
+  work a session's open pull request had done (pyramids, 2026-11-17).
+
 ## v0.7.1 — 2026-11-15 — notes on the drafts page
 
 A patch: one workflow addition, no input changed, nothing that passed fails. To adopt: move the `docs.yml` pin to `v0.7.1` (the other pins and `linkage_ref` may move with it).
