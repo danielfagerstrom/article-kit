@@ -9,11 +9,16 @@ route the blueprint proof does not cite — which is either one of the two delib
 `[T]`-refinement pattern, or a finding. Also reports used nodes that carry no `\\lean` tag at all.
 
 Run from anywhere inside the article repo:  python f7sweep.py [--root <repo>]
-Reads `linkage.toml` `[paths].blueprint` (a `.tex` under `blueprint/src/`; the parts are the
-`.tex` files in its directory's `parts/`) and `[paths].lean` (the Lean project dir; every
-`*.lean` under it except `.lake/` and `Skeleton/` is scanned).
+The nodes and their proofs come from `linkage`'s own blueprint parser (`linkage.parse_latex`), so
+the sweep reads the blueprint the way `linkage check` does: the environment from `\\begin` to
+`\\end`, `\\lean` and `\\leanok` anywhere in it (a newline or a `%` comment between them is fine),
+the proof the next `proof` environment past any comments. `linkage.toml` `[paths].lean` (the Lean
+project dir) says where Lean is: every `*.lean` under it except `.lake/` and `Skeleton/` is scanned.
+Needs `linkage` importable (`uv run` in article-kit, or an installed `linkage`); failing that it
+looks for the article-kit checkout this script sits in.
 """
-import argparse, collections, glob, io, os, re, sys, tomllib
+import argparse, glob, io, os, re, sys, tomllib
+from pathlib import Path
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--root', default=None)
@@ -29,36 +34,22 @@ def find_root(start):
             sys.exit('no linkage.toml found above ' + start)
         p = q
 
+try:
+    from linkage import config as linkage_config, parse_latex
+except ImportError:
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), *['..'] * 4)))
+    from linkage import config as linkage_config, parse_latex
+
 ROOT = find_root(args.root or os.getcwd())
 cfg = tomllib.loads(io.open(os.path.join(ROOT, 'linkage.toml'), encoding='utf-8').read())
 paths = cfg.get('paths', {})
-bp = os.path.join(ROOT, paths.get('blueprint', 'blueprint/src/content.tex'))
-parts_dir = os.path.join(os.path.dirname(bp), 'parts')
 lean_dir = os.path.join(ROOT, paths.get('lean', 'Formalization'))
 
-parts = sorted(glob.glob(os.path.join(parts_dir, '*.tex')))
-env_re = re.compile(r'\\begin\{(theorem|lemma|proposition|corollary|definition|remark|example)\}(?:\[[^\]]*\])?\s*\\label\{([^}]+)\}')
 nodes = {}
-for p in parts:
-    txt = io.open(p, encoding='utf-8').read()
-    for m in env_re.finditer(txt):
-        env, label = m.group(1), m.group(2)
-        end = txt.find('\\end{' + env + '}', m.end())
-        block = txt[m.end():end]
-        n = {'lean': [], 'leanok': False, 'uses': [], 'file': os.path.basename(p)}
-        lm = re.search(r'\\lean\{([^}]+)\}(\\leanok)?', block)
-        if lm:
-            n['lean'] = [d.strip() for d in lm.group(1).split(',')]
-            n['leanok'] = bool(lm.group(2))
-        for um in re.finditer(r'\\uses\{([^}]+)\}', block):
-            n['uses'] += [u.strip() for u in um.group(1).split(',')]
-        pm = re.search(r'\\end\{' + env + r'\}\s*(?:%[^\n]*\n\s*)*\\begin\{proof\}', txt[end:end + 400])
-        if pm:
-            pstart = end + pm.end()
-            pblock = txt[pstart:txt.find('\\end{proof}', pstart)]
-            for um in re.finditer(r'\\uses\{([^}]+)\}', pblock):
-                n['uses'] += [u.strip() for u in um.group(1).split(',')]
-        nodes[label] = n
+for node in parse_latex.parse(linkage_config.load(Path(ROOT), validate=False)).nodes:
+    if node.label:
+        nodes[node.label] = {'lean': node.lean, 'leanok': node.leanok,
+                             'uses': node.uses + node.proof_uses}
 
 lean_files = [f for f in glob.glob(os.path.join(lean_dir, '**', '*.lean'), recursive=True)
               if '.lake' not in f.replace('\\', '/').split('/') and 'Skeleton' not in f.replace('\\', '/').split('/')]
