@@ -14,11 +14,16 @@ from .config import Config
 from .model import ControlChar, LedgerEntry, PaperMarker
 from .parse_latex import expand_inputs
 
+# The declaration heads every reader of Lean source recognises (`boundary`, `closure` and
+# `release` import this list; an `example` is the one head they add, and it has no name).
+DECL_HEADS = ("theorem", "lemma", "def", "abbrev", "structure", "inductive", "class",
+              "instance", "axiom", "opaque")
+
 # a Lean declaration keyword, allowing leading attributes / modifiers
 DECL_RE = re.compile(
     r"(?m)^\s*(?:@\[[^\]]*\]\s*)?"
     r"(?:(?:private|protected|noncomputable|scoped|local|partial|unsafe)\s+)*"
-    r"(?:theorem|lemma|def|abbrev|structure|instance|axiom)\s+([A-Za-z_][\w']*)"
+    r"(?:" + "|".join(DECL_HEADS) + r")\s+([A-Za-z_][\w']*)"
 )
 
 

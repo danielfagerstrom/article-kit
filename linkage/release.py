@@ -49,6 +49,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from .artifacts import DECL_HEADS
 from .config import Config, Module
 
 # The blueprint files the export needs in order to BUILD, not merely to be read: print.tex is
@@ -111,7 +112,7 @@ def strip_comments(text: str) -> str:
 def decl_pattern(short: str) -> re.Pattern[str]:
     return re.compile(
         r"^\s*(?:@\[[^\]]*\]\s*)?(?:noncomputable\s+)?(?:protected\s+)?(?:private\s+)?"
-        r"(?:theorem|lemma|def|abbrev|structure|class|axiom|instance|opaque)\s+"
+        r"(?:" + "|".join(DECL_HEADS) + r")\s+"
         # Not `\b`: a Lean name may end in a prime, and there is no word boundary between `'`
         # and the space after it, so `sonine_conservation'` was never found; and `\b` let
         # `foo` match a declaration of `foo'`.
