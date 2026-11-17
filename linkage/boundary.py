@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import trust
+from .artifacts import DECL_HEADS
 from .config import Config
 
 # --- reading Lean source ------------------------------------------------------
@@ -42,7 +43,7 @@ from .config import Config
 DECL_RE = re.compile(
     r"(?m)^(?:@\[[^\]]*\]\s*)?"
     r"(?:(?:private|protected|noncomputable|scoped|local|partial|unsafe)\s+)*"
-    r"(?P<kind>theorem|lemma|def|abbrev|structure|instance|axiom|example)"
+    r"(?P<kind>" + "|".join(DECL_HEADS + ("example",)) + r")"
     r"(?:\s+(?P<name>[A-Za-z_][\w'.]*))?\b"
 )
 
