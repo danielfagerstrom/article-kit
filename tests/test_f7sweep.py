@@ -12,8 +12,6 @@ import runpy
 import sys
 from pathlib import Path
 
-import pytest
-
 from fixtures.article import statement
 
 SCRIPT = (Path(__file__).resolve().parents[1]

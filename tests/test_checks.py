@@ -45,6 +45,17 @@ def test_rule1_silent_when_the_declaration_exists(article):
     assert only(article.check(), "lean") == []
 
 
+def test_rule1_accepts_an_inductive_class_or_opaque_head(article):
+    """A definition node's Lean object may be a type, not only a def or a theorem."""
+    article.blueprint(
+        statement(label="def:a", lean="Pyr.PlaneStencil", leanok=True)
+        + statement(label="def:b", lean="Pyr.AClass", leanok=True)
+        + statement(label="def:c", lean="Pyr.an_opaque", leanok=True))
+    article.lean("inductive PlaneStencil where\n  | a\nclass AClass (α : Type) where\n"
+                 "opaque an_opaque : Nat\n")
+    assert only(article.check(), "lean") == []
+
+
 def test_rule1_matches_on_the_final_component_only(article):
     """`\\lean{A.b.c}` resolves against `c` — namespaces are not reconstructed."""
     article.blueprint(statement(label="thm:x", lean="Whatever.Namespace.smooth", leanok=True))

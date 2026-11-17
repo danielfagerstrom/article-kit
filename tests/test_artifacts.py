@@ -33,6 +33,17 @@ axiom an_axiom : True
     }
 
 
+def test_inductive_class_and_opaque_heads_are_declarations(article):
+    article.lean("""
+inductive PlaneStencil where
+  | a
+  | b
+class AClass (α : Type) where
+opaque an_opaque : Nat
+""")
+    assert artifacts.lean_declared_names(article.cfg) == {"PlaneStencil", "AClass", "an_opaque"}
+
+
 def test_declarations_are_collected_from_every_file_but_not_from_build_output(article):
     article.lean("theorem one : True := trivial\n", name="One.lean")
     article.lean("theorem two : True := trivial\n", name="Sub/Two.lean")

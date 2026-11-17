@@ -60,6 +60,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .artifacts import DECL_HEADS
 from .checks import uses_paths
 from .config import Config
 from .model import Blueprint, Node
@@ -71,8 +72,7 @@ from .model import Blueprint, Node
 _ID = r"[A-Za-z_Ͱ-Ͽᴀ-ᶿ][\w'Ͱ-Ͽ₀-₉]*"
 TOKEN_RE = re.compile(rf"{_ID}(?:\.{_ID})*")
 
-DECL_KEYWORDS = ("theorem", "lemma", "def", "abbrev", "structure", "instance", "axiom",
-                 "example")
+DECL_KEYWORDS = DECL_HEADS + ("example",)
 # A declaration head, as `artifacts.DECL_RE` matches it, but line-anchored and keeping the
 # keyword: the scan needs to know where one declaration's body ends, not only that a name
 # was declared.
