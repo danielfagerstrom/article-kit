@@ -287,6 +287,46 @@ The author on the abstract, § 1 and § 1.1 of the same paper, after its rewrite
 
 ---
 
+## process: an introduction that motivates, and the axiomatic register (Paper VI, pass 6)
+
+The author's comments on the pyramid theory paper's abstract and introduction (2026-11-18,
+`PROCESS.md` § 8 pass 6), after passes 1–3, two scope audits and a blind register review had
+passed it. The introduction already followed "questions before answers" (the Paper VII item above,
+now in `PUBLICATION-TEMPLATE.md` § B.2) and was still found "close to unreadable". Each comment is a
+general rule:
+
+1. **"Require", not "ask", for what an axiom system or a definition demands.** The drafts said
+   "covariance under every dilation asks more than a pyramid needs", "Burt and Adelson ask it to be
+   separable", "(A8) asked at one dilation", several hundred times across the paper, the blueprint and the
+   computation paper. The author: in an axiomatic paper one speaks of the requirements of the axiom
+   system, and "ask" sounds as if the paper were trying to be informal, which is not the intent. The
+   question sense ("this section asks which stencils …") is fine. Suggested: a `WRITING.md` § 3 line
+   and a `linkage prose` register count of `ask(s|ed)` followed by a requirement.
+2. **No announced enumeration of questions.** "It asks two questions. What does … allow, and what
+   singles out a member? And which masks …, and what do those pyramids give up?" The author: an AI
+   tic, sometimes apt, overused, clumsy here; the "two" questions are four; and a bare question is a
+   weak reason to read a hundred pages. Suggested: a named tic in the hub's `wiki/ai-prose-patterns.md`
+   § 1 (announced count, then the items as rhetorical questions) and a register-reviewer tag.
+3. **The questions are consequences of the context, each with why its answer matters.** Posing the
+   questions before the answers is not enough: each question follows from the setting the opening
+   paragraphs establish, and the introduction says why an answer would be worth having (what it
+   changes for a pyramid designer, what fails without it). The fix here: three paragraphs, one per
+   question, each motivated from the scale-space reading of a pyramid.
+4. **The answers and the contributions are told, not compressed.** Two answer paragraphs introduced
+   some ten concepts in a dozen lines, and the contribution list read as "an enumeration of fragments
+   of the results with no context or motivation", legible only to a reader who already knows the old
+   pyramid literature and the probability theory. Each contribution item now introduces what it
+   uses, in sentences of the budget, and points to its statements. Suggested: a
+   `PUBLICATION-TEMPLATE.md` § B.2 contract line ("the introduction tells a story and guides the
+   reader; a summary that only a specialist can parse fails it") and an LLM check: "count the terms
+   each introduction paragraph uses before they are explained".
+5. **An abstract uses no term the paper defines later.** "Call a grid pyramid exact when a family …
+   carries its ladder": "carries" is defined in a Section 6 definition, and in the abstract it read
+   as an image internal to the article. Suggested: the abstract contract in § B.1 ("parseable by a
+   non-specialist mathematician") made checkable by listing the abstract's defined terms.
+
+---
+
 ## process: the swallowed-prose gate is in the scaffold, but `linkage init` never copies it
 ## `linkage check` pairs a proof with the statement above it before reading its `% proof of` marker
 
