@@ -56,19 +56,11 @@ tradition: the JMIV and SSVM readership, in the lineage of Koenderink, Lindeberg
   generalized gamma convolutions, type G laws, the stable and Matérn families, Pólya frequency
   functions, total positivity and the variation-diminishing property.
 
-  **Beyond the default, per module, only where a module genuinely goes beyond it:**
-
-  | module | beyond the default |
-  |---|---|
-  | the infinitesimal theory (SSF, parked) | Lie-group and Lie-wedge/semigroup machinery, the covariance-bracket method, pseudodifferential symbol calculus |
-  | anything on the probabilistic route | self-similar Markov and Lévy processes (Lamperti, Dufresne) |
-  | the selection of the Gaussian (Paper V, module C) | the modified Bessel equation with its solution basis and behaviour at the origin; generalized axially symmetric potential theory, that is the half-plane Dirichlet problem for $z_{xx} + z_{yy} + (k/y)z_y = 0$ and its Poisson kernel |
-
-  A module checks the default list before drafting its first section and adds a line to the table
-  above only for what it uses that goes beyond it; most modules add nothing. A term below the floor
-  that neither the default list nor the module's "beyond the default" line covers is a defect, not
-  a shortcut: see the undischarged-referent audit in the hub's `wiki/ai-prose-patterns.md` § 3,
-  which is the machine-checkable form of this rule.
+  A module checks the default list before drafting its first section and adds a row to the
+  per-module table in `docs/AUDIENCE.md` only for what it uses that goes beyond it; most modules
+  add nothing. A term below the floor that neither the default list nor the module's row in that
+  table covers is a defect, not a shortcut: see the undischarged-referent audit in the hub's
+  `wiki/ai-prose-patterns.md` § 3, which is the machine-checkable form of this rule.
 
 A strong graduate student in mathematical imaging should be able to read the article linearly,
 fetching none of the original papers. **A module that follows another restates what it uses of

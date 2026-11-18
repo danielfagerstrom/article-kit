@@ -424,19 +424,6 @@ step that carries an idea of the argument is never one. The trust-base subsectio
 printed proofs compress these devices. Estimated saving on the seven proofs: 15-20% beyond
 wording. Records: the pyramids repository, `notes/HANDOFF.md` and `CHANGELOG.md` of 2026-11-16.
 
-## process: a "beyond the default" row for the pyramids theory paper, and the skill budget
-
-From the drafting gate on the pyramids theory paper (2026-11-16, item 5 in every section).
-`WRITING.md` § 0 says a module adds a row to the "beyond the default" table for what it uses beyond
-the default list. The theory paper uses: semi-selfdecomposable laws and their residuals;
-Khintchine's theorem on null arrays and the triplet of a linear image of an infinitely divisible
-law; the modified Bessel function $K_\nu$ and its integral representation; relative entropy and
-Haar measure on a circle group (phase entropy, in its supplement). The row was not added: one more
-row puts the generated `write` skill at about 4,885 tokens, over its 4,800 budget
-(`python -m linkage.skills` exits 1). **Suggested shape:** move the per-module rows out of § 0 into
-a file the skill does not carry (each article's `CLAUDE.md`, or a `docs/AUDIENCE.md` table that §
-0 names), keeping in § 0 only the rule and the default list.
-
 ---
 
 *No other open requests.*

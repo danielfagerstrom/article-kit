@@ -7,6 +7,11 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The per-module "beyond the default" rows move to `docs/AUDIENCE.md`** (hub Q-0841). `WRITING.md`
+  § 0 keeps the rule and the default list and names the file; the drafting gate (item 5) and the
+  scaffold's `rules/writing.md` point at it. The pyramids theory paper's row is added; `AUDIENCE.md` is the only place a module's row lives. Why: one
+  more row took the generated `write` skill over its 4,800-token budget.
+
 - **`linkage paper` reads a macro that prints a reference.** A `\ref` argument containing `#` (a
   macro parameter in a definition, `\newcommand{\ledger}[1]{Theorem~\ref{thm:cited-#1}}`) is no
   longer reported as a label that does not exist; the macro's call sites are expanded instead, so
