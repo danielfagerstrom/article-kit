@@ -472,3 +472,47 @@ def test_the_declarations_and_abstract_come_from_the_fixture_builder():
     """A guard on the builder itself: its abstract is in range and it declares all four."""
     assert paper.word_count(ABSTRACT) == paper.ABSTRACT_MIN
     assert all(re.search(pat, DECLARATIONS, re.I) for _, pat in paper.DECLARATIONS)
+
+
+# --- reference macros: a `#` in a definition, and the call sites -----------------------
+
+LEDGER_DEF = r"\newcommand{\ledger}[1]{Theorem~\ref{thm:cited-#1}}" + "\n"
+
+
+def cited(label: str) -> str:
+    return (f"\\begin{{theorem}}\n  \\label{{thm:cited-{label}}}\n  A cited fact.\n"
+            "\\end{theorem}\n")
+
+
+def test_a_macro_parameter_in_a_ref_is_not_a_label(article):
+    f = lint(article, LEDGER_DEF + cited("x") + r"We use \ledger{x}.")
+    assert f.fatal == []
+    assert tagged(f.advisory, "orphan") == []
+
+
+def test_a_cited_result_no_call_site_reaches_is_still_an_orphan(article):
+    f = lint(article, LEDGER_DEF + cited("x") + cited("y") + r"We use \ledger{x}.")
+    assert f.fatal == []
+    (msg,) = tagged(f.advisory, "orphan")
+    assert "thm:cited-y" in msg
+
+
+def test_a_call_site_naming_no_label_fails(article):
+    f = lint(article, LEDGER_DEF + cited("x") + r"We use \ledger{z}.")
+    (msg,) = tagged(f.fatal, "ref")
+    assert "thm:cited-z" in msg
+
+
+def test_a_plain_missing_label_still_fails_beside_the_macro(article):
+    f = lint(article, LEDGER_DEF + cited("x") + r"See \ledger{x} and Lemma~\ref{lem:gone}.")
+    (msg,) = tagged(f.fatal, "ref")
+    assert "lem:gone" in msg
+
+
+def test_a_macro_the_config_names_is_expanded(article):
+    toml = article.root.joinpath("linkage.toml").read_text(encoding="utf-8")
+    article.file("linkage.toml", toml + '\n[paper]\nref_macros = ["cited"]\n')
+    body = (r"\newcommand{\cited}[1]{Lemma~\ref{lem:#1}}" + "\n"
+            + r"\begin{lemma}\label{lem:a} A. \end{lemma}" + "\n" + r"Use \cited{a}.")
+    f = lint(article, body)
+    assert f.fatal == [] and tagged(f.advisory, "orphan") == []

@@ -35,6 +35,7 @@ DEFAULT_LABEL_PREFIXES = ("thm", "prop", "def", "lem", "cor")
 # Of those, the ones that are *claims* — definitions are vocabulary, exempt from check 8.
 DEFAULT_STATEMENT_KINDS = ("thm", "prop", "lem", "cor")
 DEFAULT_LEDGER_KEY = r"A\d+"
+DEFAULT_REF_MACROS = ("ledger",)
 DEFAULT_PANDOC_PIN = "3.10"
 DEFAULT_PANDOC_TARGET = "commonmark+tex_math_dollars"
 
@@ -301,6 +302,10 @@ class Config:
     label_prefixes: tuple[str, ...] = DEFAULT_LABEL_PREFIXES
     statement_kinds: tuple[str, ...] = DEFAULT_STATEMENT_KINDS
     ledger_key: str = DEFAULT_LEDGER_KEY
+    ref_macros: tuple[str, ...] = DEFAULT_REF_MACROS
+    r"""Paper macros that print a reference (`\newcommand{\ledger}[1]{Theorem~\ref{thm:cited-#1}}`):
+    `linkage paper` expands each at its call sites, so `\ledger{x}` counts as a reference to
+    `thm:cited-x`. `[paper] ref_macros` in `linkage.toml`."""
 
     pandoc_pin: str = DEFAULT_PANDOC_PIN
     pandoc_target: str = DEFAULT_PANDOC_TARGET
@@ -745,6 +750,7 @@ def load(root: Path | None = None, *, validate: bool = True) -> Config:
         label_prefixes=tuple(bp.get("statement_label_prefixes", DEFAULT_LABEL_PREFIXES)),
         statement_kinds=tuple(bp.get("statement_kinds", DEFAULT_STATEMENT_KINDS)),
         ledger_key=bp.get("ledger_key", DEFAULT_LEDGER_KEY),
+        ref_macros=tuple(raw.get("paper", {}).get("ref_macros", DEFAULT_REF_MACROS)),
         pandoc_pin=rd.get("pandoc_pin", DEFAULT_PANDOC_PIN),
         pandoc_target=rd.get("pandoc_target", DEFAULT_PANDOC_TARGET),
         lean_libraries=tuple(paths.get("lean_libraries", ())),
