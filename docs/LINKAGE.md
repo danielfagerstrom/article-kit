@@ -268,6 +268,14 @@ the PDF, so private wiki slugs never leak into the public (Zenodo) build.
    against *that* blueprint node — the blueprint itself never duplicates a label (rule 1) — using the
    statement text immediately following that same marker in that same file, never a label looked up
    in a cross-module map. Only `linkage paper`'s pointer checks needed the fix.
+
+   **A macro that prints a reference** (Q-0840). A `\ref` argument containing `#` is a macro
+   parameter in a definition, not a label, and `linkage paper` skips it. The check instead expands
+   the module's `\ledger` (or any one-argument macro that `linkage.toml` names:
+   `[paper] ref_macros = ["ledger", …]`, default `["ledger"]`) at its call sites. With
+   `\newcommand{\ledger}[1]{Theorem~\ref{thm:cited-#1}}`, `\ledger{x}` is a reference to
+   `thm:cited-x`: fatal when that `\label` is missing, and it keeps the result out of the orphan
+   list otherwise. A paper without such a macro reads as before.
 5. **The trust boundary is the ledger.** Every `[A]` fact is one `AXIOMS.md` entry grounded in a named
    theorem + page; `#print axioms` on any `[T]` theorem must reduce to Lean core + those axioms. (That is
    the `AXIOMS.md` contract, verified by Lean, not re-checked by this script — so this rule alone has no

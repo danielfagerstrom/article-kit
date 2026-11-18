@@ -88,6 +88,9 @@ REF_RE = re.compile(
 # Any command whose name contains "cite" — `\cite`, `\citep`, `\citet`, and an article's
 # own wrapper (`\sscite` in Paper I). Optional `[...]` pre/post-notes are skipped.
 CITE_RE = re.compile(r"\\[A-Za-z]*[Cc]ite[A-Za-z]*\*?(?:\[[^\]]*\])*\{([^}]*)\}")
+# The head of a one-argument macro definition (`{name}` filled in); the body is brace-matched.
+MACRO_DEF = (r"\\(?:re|provide)?newcommand\*?\s*\{?\s*\\NAME\s*\}?\s*\[1\]\s*"
+             r"(?:\[[^\]]*\]\s*)?\{")
 LABEL_RE = re.compile(r"\\label\{([^}]+)\}")
 TAG_RE = re.compile(r"\\tag\*?\{([^}]*)\}")
 # `\section{...}` (numbered only — a starred heading takes no number), `\appendix`, and
@@ -344,12 +347,61 @@ def _read_bib(src: Sources) -> None:
 # --- the checks -------------------------------------------------------------------
 
 
+def _braced(text: str, start: int) -> str:
+    """The text of the group whose opening brace sits just before `start`."""
+    depth = 1
+    i = start
+    while i < len(text):
+        c = text[i]
+        if c == "\\":
+            i += 2
+            continue
+        depth += (c == "{") - (c == "}")
+        if depth == 0:
+            return text[start:i]
+        i += 1
+    return text[start:]
+
+
+def _macro_templates(src: Sources) -> dict[str, list[str]]:
+    r"""`macro -> label templates` for each configured one-argument reference macro: the
+    `\ref` arguments of its body that contain `#1`, as in `thm:cited-#1`."""
+    out: dict[str, list[str]] = {}
+    for name in src.cfg.ref_macros:
+        pat = re.compile(MACRO_DEF.replace("NAME", re.escape(name)))
+        for s in src.files:
+            for d in pat.finditer(s.text):
+                for m in REF_RE.finditer(_braced(s.text, d.end())):
+                    if "#1" in m.group(1):
+                        out.setdefault(name, []).append(m.group(1).strip())
+    return out
+
+
 def _refs(src: Sources, f: Findings) -> tuple[set[str], int]:
-    """Check 1 — every reference resolves; return the referenced labels for the orphans."""
+    r"""Check 1 — every reference resolves; return the referenced labels for the orphans.
+
+    A `\ref` whose argument holds `#` is a macro parameter in a definition, not a label,
+    and is skipped; the call sites of the configured reference macros are expanded
+    instead, so `\ledger{x}` is a reference to `thm:cited-x`."""
     referenced: set[str] = set()
     total = 0
+    templates = _macro_templates(src)
     for s in src.files:
+        for name, tpls in templates.items():
+            call = re.compile(r"\\" + re.escape(name) + r"(?![A-Za-z])\s*\{([^{}#]*)\}")
+            for m in call.finditer(s.text):
+                for tpl in tpls:
+                    lab = tpl.replace("#1", m.group(1).strip())
+                    total += 1
+                    referenced.add(lab)
+                    if lab not in src.labels:
+                        f.fatal.append(
+                            f"[ref]    {s.rel}:{_line(s.text, m.start())}: "
+                            f"\\{name}{{{m.group(1)}}} expands to \\ref{{{lab}}}, which names "
+                            f"no \\label in the paper sources — it typesets as '??'")
         for m in REF_RE.finditer(s.text):
+            if "#" in m.group(1):
+                continue
             for lab in m.group(1).split(","):
                 lab = lab.strip()
                 if not lab:
@@ -431,7 +483,7 @@ def _items(src: Sources, f: Findings) -> None:
             module_by_label.setdefault(st.module, {}).setdefault(st.label, st)
     for s in src.files:
         for m in REF_RE.finditer(s.text):
-            if not m.group(2):
+            if not m.group(2) or "#" in m.group(1):
                 continue
             lab = m.group(1).strip()
             st = module_by_label.get(s.module, {}).get(lab) if s.module else None

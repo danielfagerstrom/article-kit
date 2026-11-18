@@ -424,15 +424,6 @@ step that carries an idea of the argument is never one. The trust-base subsectio
 printed proofs compress these devices. Estimated saving on the seven proofs: 15-20% beyond
 wording. Records: the pyramids repository, `notes/HANDOFF.md` and `CHANGELOG.md` of 2026-11-16.
 
-## `linkage paper` reads a macro parameter inside `\ref{…}` as a label
-
-From the pyramids theory paper (2026-11-16). A paper macro that prints a cited fact by reference,
-`\newcommand{\ledger}[1]{Theorem~\ref{thm:cited-#1}}`, fails `linkage paper` with
-"`\ref{thm:cited-#1}` names no `\label`", and every `thm:cited-*` it reaches is reported an orphan.
-The paper works around it with `\csname ref\endcsname{...}`, which hides the reference from the lint
-altogether. **Suggested shape:** skip a `\ref` argument containing `#` in a macro definition, and
-expand the module's own `\ledger` (or any macro the config names) when counting references.
-
 ## process: a "beyond the default" row for the pyramids theory paper, and the skill budget
 
 From the drafting gate on the pyramids theory paper (2026-11-16, item 5 in every section).
