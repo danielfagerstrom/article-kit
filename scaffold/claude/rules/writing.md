@@ -21,7 +21,7 @@ The rules that are broken most, as a reminder, not a substitute:
 - Each section opens with its aim; a long path gets a map. Motivation, then the statement, then the
   comments on it, then the proof.
 - Every term below the reader's floor (`WRITING.md` § 0's default list, plus this module's
-  row in `AUDIENCE.md`'s "beyond the default" table if it has one) is introduced at first use with
+  row in article-kit's `docs/AUDIENCE.md` table if it has one) is introduced at first use with
   its literature. Check the default list before drafting; add a row to that table only if this
   module goes beyond it.
 - No commentary on machine-checking in the body: the trust-base subsection owns it.
