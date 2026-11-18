@@ -9,9 +9,16 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 - **The per-module "beyond the default" rows move to `docs/AUDIENCE.md`** (hub Q-0841). `WRITING.md`
   § 0 keeps the rule and the default list and names the file; the drafting gate (item 5) and the
-  scaffold's `rules/writing.md` point at it. The pyramids theory paper's row is added. Why: one
+  scaffold's `rules/writing.md` point at it. The pyramids theory paper's row is added; `AUDIENCE.md` is the only place a module's row lives. Why: one
   more row took the generated `write` skill over its 4,800-token budget.
 
+- **`linkage paper` reads a macro that prints a reference.** A `\ref` argument containing `#` (a
+  macro parameter in a definition, `\newcommand{\ledger}[1]{Theorem~\ref{thm:cited-#1}}`) is no
+  longer reported as a label that does not exist; the macro's call sites are expanded instead, so
+  `\ledger{x}` counts as a reference to `thm:cited-x` (fatal when that label is missing, and the
+  result is no orphan). The macros are `[paper] ref_macros` in `linkage.toml`, default
+  `["ledger"]` (`docs/LINKAGE.md` rule 4). The pyramids theory paper can drop its
+  `\csname ref\endcsname` workaround; that is the pyramids repository's own pull request (Q-0840).
 - **A session and the hub's queue see each other** (hub ADR-0034). `PROCESS.md`, "Opening and
   closing a session": at the opening, `wiki queue list --repo <slug>` shows what the queue holds
   for this repository, and a pull request that does an entry's work says `Settles Q-NNNN`, which
