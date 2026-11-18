@@ -5,8 +5,8 @@ teaches at first use. This file holds the rows for what a single module uses **b
 only where a module genuinely goes beyond it. A module checks the default list before drafting its
 first section and adds a row here only for what it uses that goes beyond it; most modules add
 nothing. It is not carried by the `write` skill (the skill has a token budget); read it when
-checking a module against § 0 or item 5 of `DRAFTING-GATE.md`. An article may instead keep its row
-in its own `CLAUDE.md`; either place counts as the module's "beyond the default" row.
+checking a module against § 0 or item 5 of `DRAFTING-GATE.md`. This table is the only place a
+module's row lives, so the gate checks one file.
 
 | module | beyond the default |
 |---|---|
