@@ -48,6 +48,7 @@ manifest without transclusion fields a hard failure, so one can never reach the 
 | `docs/RELEASE.md` | the release rules, checklist and commands |
 | `docs/LINKAGE.md` | the spec the checks enforce, the ledger's format |
 | `docs/DRAFTING-GATE.md`, `docs/PUBLICATION-TEMPLATE.md`, `docs/REVIEWER-CONTRACT.md` | is a section ready to draft; the section contracts and exposition rubric; the reviewer's flag format |
+| `docs/AUDIENCE.md` | the per-module table of terms beyond the default audience floor |
 | `docs/REVIEW.md`, `docs/CLOUD.md` | the interactive Lean review tour; cloud sessions |
 | `docs/PLUGIN.md` | this repository as a Claude Code plugin: what it ships, what an article declares, the migration off the junctions and the hub's sync |
 | `docs/templates/` | the external review prompt; adopting the boundary harness (`boundary-harness.md`, with the pilot's worked example) |

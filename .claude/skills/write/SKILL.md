@@ -108,11 +108,10 @@ tradition: the JMIV and SSVM readership, in the lineage of Koenderink, Lindeberg
   functions, total positivity and the variation-diminishing property.
 
   A module checks the default list before drafting its first section and adds a row to the
-  per-module table in [`AUDIENCE.md`](AUDIENCE.md) only for what it uses that goes beyond it; most
-  modules add nothing. A term below the floor
-  that neither the default list nor the module's row in that table covers is a defect, not
-  a shortcut: see the undischarged-referent audit in the hub's `wiki/ai-prose-patterns.md` § 3,
-  which is the machine-checkable form of this rule.
+  per-module table in `docs/AUDIENCE.md` only for what it uses that goes beyond it; most modules
+  add nothing. A term below the floor that neither the default list nor the module's row in that
+  table covers is a defect, not a shortcut: see the undischarged-referent audit in the hub's
+  `wiki/ai-prose-patterns.md` § 3, which is the machine-checkable form of this rule.
 
 A strong graduate student in mathematical imaging should be able to read the article linearly,
 fetching none of the original papers. **A module that follows another restates what it uses of
