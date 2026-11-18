@@ -7,6 +7,11 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The per-module "beyond the default" rows move to `docs/AUDIENCE.md`** (hub Q-0841). `WRITING.md`
+  § 0 keeps the rule and the default list and names the file; the drafting gate (item 5) and the
+  scaffold's `rules/writing.md` point at it. The pyramids theory paper's row is added. Why: one
+  more row took the generated `write` skill over its 4,800-token budget.
+
 - **A session and the hub's queue see each other** (hub ADR-0034). `PROCESS.md`, "Opening and
   closing a session": at the opening, `wiki queue list --repo <slug>` shows what the queue holds
   for this repository, and a pull request that does an entry's work says `Settles Q-NNNN`, which
