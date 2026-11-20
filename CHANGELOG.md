@@ -7,6 +7,11 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage init --sync --check --rev <ref>` reads the article at a git revision** (hub Q-0862). The
+  article's framework-owned copies and its sync stamp come from `git show <ref>:<path>`, not the
+  working tree, so a checkout that has not been pulled no longer reports drift that origin already
+  synced. Output and exit codes are unchanged; an unknown ref exits 2. `drift`, `last_sync` and
+  `drift_directions` take an optional reader.
 - **Four writing-review rules from an evaluation of anti-AI-writing skills** (Weinmeister 2026, on
   Medium; the hub's source page `@weinmeister2026can`). The evaluation found three things that apply here:
   rules that fire on every sighting rewrite clean human prose, agents skip rules they are only

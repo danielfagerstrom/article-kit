@@ -652,11 +652,14 @@ def cmd_phase(args) -> int:
 def cmd_init(args) -> int:
     from . import scaffold
     root = args.root or Path.cwd()
+    if args.rev and not args.check:
+        print("linkage init: --rev needs --check", file=sys.stderr)
+        return 2
     if args.check:
         if not args.sync:
             print("linkage init: --check needs --sync", file=sys.stderr)
             return 2
-        return scaffold.check(root)   # before the config: a broken linkage.toml must not stop it
+        return scaffold.check(root, rev=args.rev)   # before the config: a broken linkage.toml must not stop it
     slug = args.slug
     if slug is None:
         # --sync inside an existing article: take the slug from its config
@@ -930,6 +933,9 @@ def build_parser() -> argparse.ArgumentParser:
     i.add_argument("--check", action="store_true",
                    help="with --sync: write nothing; list each framework-owned file that differs "
                         "from the scaffold and whose change it is; exit 1 on any difference")
+    i.add_argument("--rev", metavar="REF",
+                   help="with --sync --check: read the article's copies and sync stamp at this git "
+                        "revision (git show), not the working tree; exit 2 on an unreadable REF")
     i.add_argument("--title", help="document title for the rendered web/print templates")
     i.add_argument("--github", help="the article repo's URL")
     i.add_argument("--home", help="published site URL")
