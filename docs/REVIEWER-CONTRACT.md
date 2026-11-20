@@ -167,16 +167,45 @@ flag:
 | tag | the defect |
 |---|---|
 | `NOTATION` | one symbol, two objects |
+| `SYNONYM` | one object, two names: the converse of `NOTATION` |
 | `UNDEFINED` | a symbol or term used and never introduced anywhere |
 | `UNSOURCED` | a named author, class or family used with no citation of its own — not a bare symbol (that is `UNDEFINED`), a name that reads as established with nothing behind it |
 
 **Voice** — `MOTIVATION` (formalism before its reason), `PICTURE` (no intuition or figure where one is
-owed), `PROSE` (the argument is not followable from the text alone), plus the surface tags from
-`ai-prose-patterns.md` §1: `NEGPAR`, `PARTTAIL`, `PARALADDER`, `SALIENCE`, `SINCERITY`, `SIGNPOST`,
-`ADVERB`, `TRICOLON`, `ATTITUDE`.
+owed), `PROSE` (the argument is not followable from the text alone), and the prose-surface tags
+below.
 
 Policy is set **per tag**, not per instance — the point of a fixed vocabulary. Expect a small number of
 tags to carry most of the volume, and one rule each then replaces dozens of decisions.
+
+### The prose-surface tags
+
+They are defined here, so that a reviewer needs no other file; their causes are in the hub's
+`ai-prose-patterns.md` § 1. The **evidence** column says how much it takes to flag one. Several of
+these constructions are legitimate in a mathematical paper, and a rule that fires on every sighting
+rewrites clean prose: in a 2026 comparison of seven anti-AI-writing skills, the ones with
+zero-tolerance rules changed about a fifth of the wording of human-written passages and added new
+tells of their own (Weinmeister, *Can AI fix its own slop?*, Medium).
+
+| tag | the construction | evidence |
+|---|---|---|
+| `NEGPAR` | "it is not X, it is Y", "not X but Y", "rather than X, Y": a contrast with a claim no reader holds | one sighting, unless the negated half corrects a belief the text gave the reader reason to hold |
+| `PARTTAIL` | a trailing *-ing* clause that editorialises: "…, reflecting the deeper structure" | one sighting |
+| `SINCERITY` | a claim to frankness in place of frankness: "to be clear", "the honest assessment" | one sighting |
+| `ADVERB` | an anthropomorphic process adverb: the operator acts *silently*, *quietly*, *gracefully* | one sighting |
+| `SIGNPOST` | a recap, or a transition that announces itself: "having established X, we now turn to Y" | one sighting; a map before a long path is owed ([`WRITING.md`](WRITING.md) § 2) and is not this |
+| `SALIENCE` | "note that", "it is worth noting" | only where the clause it introduces is not noteworthy |
+| `TRICOLON` | a list of three whose third item pads or repeats the second | only when an item is padding; three real items are not a flag |
+| `PARALADDER` | one claim restated in stacked glosses: "in other words", "that is" | only where a rung adds nothing for the reader of `WRITING.md` § 0; the probe is *demote*, never *delete* |
+| `ATTITUDE` | *elegant*, *remarkable*, *striking*, *surprising* | density: a second one in the same section, or one the stated result does not bear out |
+
+Three rules hold across the table:
+
+- **Stacked signals are one flag.** Several surface tags on one phrase are one finding, filed under
+  the tag whose fix removes the others.
+- **A phrase quoted, named or discussed is not an instance** of itself.
+- **No surface flag is a result.** A section that carries none returns none; the review is not
+  obliged to find any.
 
 ### The tags that are not prose-surface, by example
 
@@ -237,6 +266,18 @@ that is never introduced at all; here it *is* introduced, twice.
 > normalization fixed in `def:normalization`.
 > *probe:* check every occurrence of `z_*` against `def:normalization` and rename one of the two.
 > *refs:* `def:normalization`, `def:standing-hypothesis`.
+
+**`SYNONYM` — one object, two names.** The converse of `NOTATION`. In a mathematical text a new word
+reads as a new object, so a reader who meets *the kernel family* in one paragraph and *the filter
+bank* in the next asks what changed. Not a flag where the text states the identification once, where
+the second name first appears (two literatures often name one object differently).
+
+> *anchor:* `the filter bank then satisfies the cascade property`
+> *claim:* `def:kernel-family` introduces the object as "the kernel family", and §§ 4 and 6 keep that
+> name; this paragraph and the next call it "the filter bank" and "the family of filters", and no
+> sentence says they are the same.
+> *probe:* use the defined name, or state the identification where the second name first appears.
+> *refs:* `def:kernel-family`.
 
 **`TRANSCLUSION` — upstream (blueprint) carries context this text dropped.** The blueprint node the
 paper shares is surrounded by a hypothesis list, a `\uses` set or a remark that the paper's rendering
