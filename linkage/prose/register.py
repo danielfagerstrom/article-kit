@@ -1,7 +1,7 @@
 r"""Restraint-budget counts by zone: `linkage prose register`.
 
-For each paper source file, count em-dashes (`---`) and semicolons, and find runs of three or
-more consecutive long sentences, separately in three zones:
+For each paper source file, count em-dashes (`---`), semicolons and "ask" used for a requirement,
+and find runs of three or more consecutive long sentences, separately in three zones:
 
   prose      paper-side connective text, remarks and captions -- the text the register pass edits
   statement  the blocks under a `% shared with blueprint` marker (byte-shared, never edited here)
@@ -10,6 +10,17 @@ more consecutive long sentences, separately in three zones:
 Comments, math displays and inline math are stripped before counting, so that a semicolon in a
 formula or in a `\cite` key list does not count. Sentences are split on `.` `!` `?` followed by a
 space; a "long" sentence has more than `--long-at` words.
+
+The `ask` column counts `ask(s|ed)` where an axiom system or a definition *requires* something
+("Burt and Adelson ask it to be separable", "(A8) asked at one dilation", "asks more than a pyramid
+needs"): `WRITING.md` § 3 says "require". The question sense ("this section asks which stencils")
+is not counted: a question word, `about`, `by` or "question" after the verb rules a match out, as
+does a person as its object ("ask all observers to report", "ask themselves whether"), and `ask(ed)
+to` counts only before `be` or a determiner ("asked to point out" is a request to a person).
+Tuned against the `prose-baseline.json` sources (2026-11-20): the author's four papers have no
+`ask(s|ed)?`; the genre's nine have fifteen, and the four counted are requirements ("ask that the
+analysis commutes", "ask for a reverse heat equation", "asks for", "the properties asked to the
+scale-space"). The tests carry each of the fifteen.
 
 Ported from `spatial-hemigroup-scale-space`'s `scripts/count-register.py` (ADR-0001 step 5): the
 paper directory it hard-coded is now the module's, read from `linkage.toml`.
@@ -25,6 +36,26 @@ import re
 from pathlib import Path
 
 DEFAULT_LONG = 30
+
+_DET = r"(?:the|a|an|every|each|all|its|their|this|these|those|one|two|no)"
+_QUESTION = r"(?:which|what|whether|if|how|why|when|where|who|whom|whose|about|by)"
+_PERSON = (r"(?:(?:all|the|a|every|each)\s+)?(?:observers?|readers?|persons?|people|authors?|"
+           r"subjects?|oneself|ourselves|themselves|himself|herself|us|you|me)")
+ASK_REQUIREMENT = re.compile(
+    r"\bask(?:s|ed)?\b"
+    rf"(?!\s+{_QUESTION}\b)"                            # the question sense
+    r"(?!\s+(?:[A-Za-z]+\s+){0,2}(?:questions?|problems?)\b)"
+    rf"(?!\s+{_PERSON}\b)"                              # a request to a person
+    rf"(?!\s+to\s+(?!be\b|{_DET}\b))"                   # "asked to point out"
+    r"(?=\s+(?:"
+    rf"to\s+(?:be|{_DET})\b"                            # "asked to be", "asked to the"
+    r"|(?:for|more|less|only|much|little|nothing|that|too|at|of|on|along|between|throughout)\b"
+    r"|X\b"                                             # inline maths: "asks $u(0) \le f(0)$"
+    r"|\([A-Z]+\d*\)"                                   # an axiom label: "asks (I4) at one"
+    rf"|(?:it|them|{_DET})\b"                           # an object: "asks it to", "asks every"
+    r"|[A-Za-z]+(?:\s+[A-Za-z]+)?\s+to\s"               # "asks the kernel to", "asks X to"
+    r"))",
+    re.I)
 
 ENV_END = re.compile(r"\\end\{(definition|proposition|lemma|theorem|corollary|remark)\}")
 ZONES = ("prose", "proof", "statement")
@@ -60,17 +91,31 @@ def strip_math(text: str) -> str:
     return text
 
 
+def asks(lines) -> list[tuple[str, int, str]]:
+    """(zone, line, matched text) for each "ask" of a requirement. The next line is read as
+    lookahead, so a verb at the end of a line still sees its object."""
+    zoned = [(zone, i, strip_math(line)) for zone, i, line in zones(lines)]
+    hits = []
+    for k, (zone, i, line) in enumerate(zoned):
+        text = line + " " + (zoned[k + 1][2] if k + 1 < len(zoned) else "")
+        for m in ASK_REQUIREMENT.finditer(text):
+            if m.start() < len(line):
+                hits.append((zone, i, " ".join(text[m.start():].split()[:5])))
+    return hits
+
+
 def analyse(path: Path, show_runs: bool = False, long_at: int = DEFAULT_LONG):
-    """({zone: (em-dashes, semicolons, words)}, [(first line, sentence lengths)])."""
+    """({zone: (em-dashes, semicolons, words, asks)}, [(first line, sentence lengths)])."""
     lines = Path(path).read_text(encoding="utf-8").splitlines()
     buf: dict[str, list[tuple[int, str]]] = {z: [] for z in ZONES}
     for zone, i, line in zones(lines):
         buf[zone].append((i, line))
+    ask_zones = [zone for zone, _, _ in asks(lines)]
     out = {}
     for zone, items in buf.items():
         text = strip_math("\n".join(ln for _, ln in items))
         out[zone] = (text.count("---"), text.count(";"),
-                     len(re.findall(r"[A-Za-z][A-Za-z'\-]*", text)))
+                     len(re.findall(r"[A-Za-z][A-Za-z'\-]*", text)), ask_zones.count(zone))
     # long-sentence runs, prose zone only, paragraph by paragraph
     runs: list[tuple[int | None, list[int]]] = []
     if show_runs:
@@ -96,21 +141,25 @@ def analyse(path: Path, show_runs: bool = False, long_at: int = DEFAULT_LONG):
     return out, runs
 
 
-def report(files: list[Path], show_runs: bool = False, long_at: int = DEFAULT_LONG) -> list[str]:
-    out = [f"{'file':24s} {'zone':10s} {'---':>5s} {'semi':>5s} {'words':>7s}"]
-    tot = {z: [0, 0, 0] for z in ZONES}
+def report(files: list[Path], show_runs: bool = False, long_at: int = DEFAULT_LONG,
+           show_asks: bool = False) -> list[str]:
+    out = [f"{'file':24s} {'zone':10s} {'---':>5s} {'semi':>5s} {'words':>7s} {'ask':>5s}"]
+    tot = {z: [0, 0, 0, 0] for z in ZONES}
     for f in files:
         counts, runs = analyse(f, show_runs, long_at)
         for zone in ZONES:
-            d, s, w = counts[zone]
-            out.append(f"{f.name:24s} {zone:10s} {d:5d} {s:5d} {w:7d}")
-            for k, v in enumerate((d, s, w)):
+            d, s, w, a = counts[zone]
+            out.append(f"{f.name:24s} {zone:10s} {d:5d} {s:5d} {w:7d} {a:5d}")
+            for k, v in enumerate((d, s, w, a)):
                 tot[zone][k] += v
         for start, lens in runs:
             out.append(f"    long-run at {f.name}:{start}  sentence lengths {lens}")
+        if show_asks:
+            for zone, i, text in asks(Path(f).read_text(encoding="utf-8").splitlines()):
+                out.append(f"    ask at {f.name}:{i} ({zone})  {text}")
     for zone in ZONES:
-        d, s, w = tot[zone]
-        out.append(f"{'TOTAL':24s} {zone:10s} {d:5d} {s:5d} {w:7d}")
+        d, s, w, a = tot[zone]
+        out.append(f"{'TOTAL':24s} {zone:10s} {d:5d} {s:5d} {w:7d} {a:5d}")
     return out
 
 

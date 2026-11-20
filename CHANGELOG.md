@@ -7,6 +7,16 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **An introduction that motivates, and "require", not "ask"** (hub Q-0861; the author on the
+  pyramids paper's introduction, 2026-11-18). `WRITING.md` § 3: what an axiom system or a definition
+  demands is "required", not "asked"; `linkage prose register` gains an `ask` column and `--asks`
+  to locate each one, tuned on `prose-baseline.json`'s sources so the question sense ("asks which
+  stencils") is not counted. `PUBLICATION-TEMPLATE.md` § B.2: each question follows from the setting
+  and says why its answer matters, no announced count of questions, the answers and contributions
+  told in sentences that introduce what they use, and an LLM check counting each paragraph's terms
+  used before they are explained; § B.1: the abstract uses no term the paper defines later, checked
+  by listing the abstract's defined terms. Why: passes 1–3 and a blind register review passed an
+  introduction the author found "close to unreadable".
 - **`linkage init --sync --check --rev <ref>` reads the article at a git revision** (hub Q-0862). The
   article's framework-owned copies and its sync stamp come from `git show <ref>:<path>`, not the
   working tree, so a checkout that has not been pulled no longer reports drift that origin already

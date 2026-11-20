@@ -287,44 +287,18 @@ The author on the abstract, § 1 and § 1.1 of the same paper, after its rewrite
 
 ---
 
-## process: an introduction that motivates, and the axiomatic register (Paper VI, pass 6)
+## process: section openings that motivate, and two rules left from the introduction item (Paper VI, pass 6)
 
-The author's comments on the pyramid theory paper's abstract and introduction (2026-11-18,
-`PROCESS.md` § 8 pass 6), after passes 1–3, two scope audits and a blind register review had
-passed it. The introduction already followed "questions before answers" (the Paper VII item above,
-now in `PUBLICATION-TEMPLATE.md` § B.2) and was still found "close to unreadable". Each comment is a
-general rule:
+Rules 1 and 3–5 of the author's pass-6 comments on the pyramid theory paper's introduction are done
+(`WRITING.md` § 3, `PUBLICATION-TEMPLATE.md` §§ B.1–B.2, `linkage prose register --asks`; hub Q-0861).
+Left:
 
-1. **"Require", not "ask", for what an axiom system or a definition demands.** The drafts said
-   "covariance under every dilation asks more than a pyramid needs", "Burt and Adelson ask it to be
-   separable", "(A8) asked at one dilation", several hundred times across the paper, the blueprint and the
-   computation paper. The author: in an axiomatic paper one speaks of the requirements of the axiom
-   system, and "ask" sounds as if the paper were trying to be informal, which is not the intent. The
-   question sense ("this section asks which stencils …") is fine. Suggested: a `WRITING.md` § 3 line
-   and a `linkage prose` register count of `ask(s|ed)` followed by a requirement.
-2. **No announced enumeration of questions.** "It asks two questions. What does … allow, and what
-   singles out a member? And which masks …, and what do those pyramids give up?" The author: an AI
-   tic, sometimes apt, overused, clumsy here; the "two" questions are four; and a bare question is a
-   weak reason to read a hundred pages. Suggested: a named tic in the hub's `wiki/ai-prose-patterns.md`
-   § 1 (announced count, then the items as rhetorical questions) and a register-reviewer tag.
-3. **The questions are consequences of the context, each with why its answer matters.** Posing the
-   questions before the answers is not enough: each question follows from the setting the opening
-   paragraphs establish, and the introduction says why an answer would be worth having (what it
-   changes for a pyramid designer, what fails without it). The fix here: three paragraphs, one per
-   question, each motivated from the scale-space reading of a pyramid.
-4. **The answers and the contributions are told, not compressed.** Two answer paragraphs introduced
-   some ten concepts in a dozen lines, and the contribution list read as "an enumeration of fragments
-   of the results with no context or motivation", legible only to a reader who already knows the old
-   pyramid literature and the probability theory. Each contribution item now introduces what it
-   uses, in sentences of the budget, and points to its statements. Suggested: a
-   `PUBLICATION-TEMPLATE.md` § B.2 contract line ("the introduction tells a story and guides the
-   reader; a summary that only a specialist can parse fails it") and an LLM check: "count the terms
-   each introduction paragraph uses before they are explained".
-5. **An abstract uses no term the paper defines later.** "Call a grid pyramid exact when a family …
-   carries its ladder": "carries" is defined in a Section 6 definition, and in the abstract it read
-   as an image internal to the article. Suggested: the abstract contract in § B.1 ("parseable by a
-   non-specialist mathematician") made checkable by listing the abstract's defined terms.
-6. **The same holds for every section opening and every passage between statements.** The author
+1. **No announced enumeration of questions** (rule 2). "It asks two questions. What does … allow, and
+   what singles out a member? …": an announced count, then the items as rhetorical questions, often
+   miscounted. `PUBLICATION-TEMPLATE.md` § B.2 now forbids it in the introduction; still wanted: a
+   register-reviewer tag that flags a sentence announcing a number of questions or points followed
+   by bare questions, and the named tic in the hub's `wiki/ai-prose-patterns.md` § 1.
+2. **The same holds for every section opening and every passage between statements.** The author
    on the first theory section (2026-11-19): its opening had "the same problems as the introduction,
    very dense, no storytelling or motivation and too much of a condensation of the content". So did
    its first subsection's opening and the text between statements. "Four results carry it." is the
@@ -333,7 +307,7 @@ general rule:
    `PROCESS.md` § 8 judges each section opening and its connective prose against the introduction's
    register (a motivated question, what follows, a list where the path is long), not only sentence
    length and clause counts. A blind reviewer gets the approved introduction as its calibration.
-7. **A class the paper names and uses throughout is a numbered definition.** The theory paper's three
+3. **A class the paper names and uses throughout is a numbered definition.** The theory paper's three
    strata were defined in a prose paragraph before the theorem that describes them. The author asked
    for a numbered definition. Suggested: a `WRITING.md` § 3 line, and a register check that flags an
    `\emph{...}` term defined in prose and referred to in three or more later statements.

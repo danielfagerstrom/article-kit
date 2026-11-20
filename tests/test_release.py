@@ -687,6 +687,61 @@ def test_the_zones_are_counted_apart(tmp_path: Path) -> None:
     assert counts["proof"][:2] == (1, 1)
 
 
+@pytest.mark.parametrize("text", [
+    "Burt and Adelson ask it to be separable.",
+    "The paper asks it to be separable.",
+    "Covariance under every dilation asks more than a pyramid needs.",
+    "Axiom (A8), asked at one dilation, suffices.",
+    "Burt and Adelson ask $w$ to be symmetric.",
+    "The definition asks\nthat the mask be normalized.",
+    "optional property, and asks (I4) at one dilation.",
+    "It asks (A8) at one dilation.",
+    # the four requirements among the genre baseline's fifteen (prose-baseline.json)
+    "Thus this multilocal method asks for rather sophisticated geometrical",
+    "Now we have seen that the properties asked to the scale-",
+    "then some images ask for a reverse heat equation.",
+    "Then, we shall ask that the\nanalysis commutes with such a rescaling",
+])
+def test_an_ask_of_a_requirement_is_counted(text: str) -> None:
+    assert len(register.asks(text.splitlines())) == 1, text
+
+
+@pytest.mark.parametrize("text", [
+    "This section asks which stencils give a pyramid.",
+    "It asks whether the ladder closes.",
+    "One then asks how fast the error decays.",
+    "The paper asks two questions.",
+    "This is the question it asks.",
+    "The reader may ask about the boundary.",
+    # the eleven questions and requests among the genre baseline's fifteen
+    "Most persons experience no difficulties when asked\nto point out \"the same\" features",
+    "Therefore one may ask: Is there a way to deter-",
+    "it may also be highly relevant to ask if, for ex-",
+    "and to ask\nwhen do we have",
+    "We ask all observers\nto report the time of occurrence",
+    "One might ask oneself whether they are really",
+    "we ask ourselves which principle",
+    "The authors ask themselves\nwhether this connection can be made",
+    "The authors ask themselves in relation to these ap-",
+    "The authors ask themselves\nwhether such a remapping is really necessary",
+    "Again the authors ask why one should",
+])
+def test_the_question_sense_of_ask_is_not_counted(text: str) -> None:
+    assert register.asks(text.splitlines()) == [], text
+
+
+def test_asks_are_counted_by_zone_and_located(tmp_path: Path) -> None:
+    f = tmp_path / "01-intro.tex"
+    f.write_text("Burt and Adelson ask it to be separable.\n\n"
+                 "This section asks which stencils give a pyramid.\n\n"
+                 "\\begin{proof}\n  (A8), asked at one dilation, gives it.\n\\end{proof}\n",
+                 encoding="utf-8")
+    counts, _ = register.analyse(f)
+    assert counts["prose"][3] == 1 and counts["proof"][3] == 1
+    out = "\n".join(register.report([f], show_asks=True))
+    assert "ask at 01-intro.tex:1 (prose)" in out and "ask at 01-intro.tex:6 (proof)" in out
+
+
 def test_register_counts_the_modules_paper_by_default(article_repo: Path) -> None:
     (article_repo / "paper" / "01-intro.tex").write_text(REGISTER_TEX, encoding="utf-8")
     rc, out, _ = run_cli("--root", str(article_repo), "prose", "register", "--module", "line")
