@@ -694,6 +694,8 @@ def test_the_zones_are_counted_apart(tmp_path: Path) -> None:
     "Axiom (A8), asked at one dilation, suffices.",
     "Burt and Adelson ask $w$ to be symmetric.",
     "The definition asks\nthat the mask be normalized.",
+    "optional property, and asks (I4) at one dilation.",
+    "It asks (A8) at one dilation.",
     # the four requirements among the genre baseline's fifteen (prose-baseline.json)
     "Thus this multilocal method asks for rather sophisticated geometrical",
     "Now we have seen that the properties asked to the scale-",

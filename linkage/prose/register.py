@@ -51,6 +51,7 @@ ASK_REQUIREMENT = re.compile(
     rf"to\s+(?:be|{_DET})\b"                            # "asked to be", "asked to the"
     r"|(?:for|more|less|only|much|little|nothing|that|too|at|of|on|along|between|throughout)\b"
     r"|X\b"                                             # inline maths: "asks $u(0) \le f(0)$"
+    r"|\([A-Z]+\d*\)"                                   # an axiom label: "asks (I4) at one"
     rf"|(?:it|them|{_DET})\b"                           # an object: "asks it to", "asks every"
     r"|[A-Za-z]+(?:\s+[A-Za-z]+)?\s+to\s"               # "asks the kernel to", "asks X to"
     r"))",

@@ -190,6 +190,9 @@ derivations and where they turn) must be on the page, not merely named.
   named family in its literature, the scale-space literature included. Never drop an exotic term
   unglossed (§ 0). A paragraph that introduces a proof idea explains each new object in its own
   sentence.
+- **"Require", not "ask", for what an axiom system or a definition demands** ("(A8) required at
+  one dilation"): "ask" there reads as an informality the paper does not intend. The question sense
+  stays ("this section asks which stencils …"); `linkage prose register --asks` locates the other.
 - **Let displayed equations do the work.** Connecting prose stays short and functional. Do not
   narrate a calculation you can show.
 - **Keep the tools to what the argument consumes.** Develop only the machinery the results in front
