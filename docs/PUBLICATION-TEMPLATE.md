@@ -68,11 +68,14 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
 ### 1. Title & Abstract  (~5%)
 - **Contract:** name the object, the gap, the contribution, and the *kind* of
   result (theorem / construction / algorithm), parseable by a non-specialist
-  mathematician.
+  mathematician. It uses no term the paper defines later ("a family *carries* its
+  ladder", with "carries" a Section 6 definition, reads as the article's private image).
 - **Det.:** word count in range; abstract contains no undefined acronyms; the
   main contribution noun-phrase also appears in the introduction's contribution list.
 - **LLM:** "Does the abstract state a *specific* contribution or only a topic?
-  Could a reader tell what is *new* here versus prior work?"
+  Could a reader tell what is *new* here versus prior work? List every term in the
+  abstract that the paper defines (a `\emph` at a definition, a definition
+  environment): each one listed is a failure unless a non-specialist already knows it."
 
 ### 2. Introduction  (~10–15%)
 - **Contract:** (a) motivate from both sides — the imaging problem *and* the
@@ -84,6 +87,12 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
   own technical statement — its classes, its thresholds, its named special
   functions — belongs to that result's own section, not to the introduction's
   summary paragraph or its prior-work paragraphs.
+- **A story that guides the reader, not a summary only a specialist can parse.**
+  Each question follows from the setting the opening paragraphs establish and says
+  why its answer matters (what it changes for the practitioner, what fails without
+  it); no announced count of questions followed by rhetorical ones. The answers and
+  each contribution are told in sentences that introduce what they use, and point to
+  their statements; a list of result fragments without context fails.
 - **Det.:** an explicit contributions passage exists; a roadmap sentence exists;
   every later section is reachable from the roadmap.
 - **LLM:** "Is the gap stated as a precise question or hand-waved? Is each listed
@@ -91,7 +100,9 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
   Does the intro overclaim scope the theorems don't reach? Does the introduction's
   result or prior-work paragraph state a result in more technical detail than the
   question it answers — a class, a threshold, a named special function that
-  belongs to that result's own section instead?"
+  belongs to that result's own section instead? Count the terms each introduction
+  paragraph uses before they are explained: which paragraph's count is above one or
+  two, and which question is posed without what in the setting raises it?"
 
 ### 3. Related work / Background  (~10%; may merge into §2)
 - **Contract:** position against the literature *and* establish the mathematical

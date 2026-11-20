@@ -509,7 +509,7 @@ def cmd_prose_register(args) -> int:
         if not files:
             print(f"no .tex sources under {paper} besides main.tex", file=sys.stderr)
             return 2
-    print("\n".join(register.report(files, args.runs, args.long_at)))
+    print("\n".join(register.report(files, args.runs, args.long_at, args.asks)))
     return 0
 
 
@@ -820,12 +820,14 @@ def build_parser() -> argparse.ArgumentParser:
     ps.set_defaults(func=cmd_prose_stats)
 
     pr = psub.add_parser("register", help="restraint-budget counts (em-dashes, semicolons, "
-                                          "long-sentence runs) by zone")
+                                          "'ask' for a requirement, long-sentence runs) by zone")
     pr.add_argument("paths", nargs="*", help=".tex sources (default: the module's paper)")
     pr.add_argument("--module", help="which `[[modules]]` table's paper to count "
                                      "(default: the only one)")
     pr.add_argument("--runs", action="store_true",
                     help="also locate runs of three or more long sentences in the prose zone")
+    pr.add_argument("--asks", action="store_true",
+                    help="also locate each 'ask' of a requirement (WRITING.md § 3: 'require')")
     pr.add_argument("--long-at", type=int, default=prose_register.DEFAULT_LONG,
                     help="a sentence is long at this many words (default %(default)s)")
     pr.set_defaults(func=cmd_prose_register)
