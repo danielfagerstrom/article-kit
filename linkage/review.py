@@ -38,7 +38,7 @@ from pathlib import Path
 STRUCTURE_TAGS = (
     "SCOPE", "HYPOTHESIS", "COUNT", "QUANTITY", "STATUS",
     "CONTRACT", "PROMISE", "ORPHAN", "ENVELOPE", "POINTER", "TRANSCLUSION",
-    "PROVENANCE", "NOTATION", "UNDEFINED", "UNSOURCED",
+    "PROVENANCE", "NOTATION", "SYNONYM", "UNDEFINED", "UNSOURCED",
 )
 # Former names, read as the current tag. `FRONTIER` became `STATUS` on 2026-11-10: the flag is
 # any status not marked at the point of claim, or marked with the wrong word, and "frontier" now
