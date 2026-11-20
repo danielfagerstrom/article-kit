@@ -7,6 +7,12 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage init --sync --check --rev <ref>` reads the article at a git revision** (hub Q-0862). The
+  article's framework-owned copies and its sync stamp come from `git show <ref>:<path>`, not the
+  working tree, so a checkout that has not been pulled no longer reports drift that origin already
+  synced. Output and exit codes are unchanged; an unknown ref exits 2. `drift`, `last_sync` and
+  `drift_directions` take an optional reader.
+
 - **The per-module "beyond the default" rows move to `docs/AUDIENCE.md`** (hub Q-0841). `WRITING.md`
   § 0 keeps the rule and the default list and names the file; the drafting gate (item 5) and the
   scaffold's `rules/writing.md` point at it. The pyramids theory paper's row is added; `AUDIENCE.md` is the only place a module's row lives. Why: one

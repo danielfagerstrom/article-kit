@@ -1218,6 +1218,14 @@ the report is what a person reads for that.
   before the stamp existed; compare by hand). A
   file absent from the article is not listed.
 
+  `linkage init --sync --check --rev <ref>` reads the article's side at a git revision instead of
+  the working tree: each framework-owned copy and the `.linkage-scaffold.json` stamp come from
+  `git -C <root> show <ref>:<path>` (a path absent at `<ref>` is skipped, as an absent file is);
+  the framework side is still the installed scaffold. Lines and exit codes are those of `--check`
+  without it. Use it on a checkout that has not been pulled (`git fetch`, then `--rev origin/main`),
+  so drift that origin already synced is not reported. An unknown ref or a failing `git` exits 2
+  with one line on stderr; `--rev` without `--check` exits 2. It writes nothing.
+
   Two dependencies bite, and both are silent — a desk with MiKTeX and Graphviz installed hides
   each of them, and neither failure stops the build. **Graphviz is needed at build time**:
   `plastexdepgraph` pulls in `pygraphviz`, a binding against the Graphviz C library, and without
