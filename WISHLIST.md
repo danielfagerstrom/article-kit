@@ -287,6 +287,33 @@ The author on the abstract, § 1 and § 1.1 of the same paper, after its rewrite
 
 ---
 
+## process: section openings that motivate, and two rules left from the introduction item (Paper VI, pass 6)
+
+Rules 1 and 3–5 of the author's pass-6 comments on the pyramid theory paper's introduction are done
+(`WRITING.md` § 3, `PUBLICATION-TEMPLATE.md` §§ B.1–B.2, `linkage prose register --asks`; hub Q-0861).
+Left:
+
+1. **No announced enumeration of questions** (rule 2). "It asks two questions. What does … allow, and
+   what singles out a member? …": an announced count, then the items as rhetorical questions, often
+   miscounted. `PUBLICATION-TEMPLATE.md` § B.2 now forbids it in the introduction; still wanted: a
+   register-reviewer tag that flags a sentence announcing a number of questions or points followed
+   by bare questions, and the named tic in the hub's `wiki/ai-prose-patterns.md` § 1.
+2. **The same holds for every section opening and every passage between statements.** The author
+   on the first theory section (2026-11-19): its opening had "the same problems as the introduction,
+   very dense, no storytelling or motivation and too much of a condensation of the content". So did
+   its first subsection's opening and the text between statements. "Four results carry it." is the
+   enumeration tic again. The readability pass had improved on the draft without delivering, and
+   only the rewritten introduction showed what the author wanted. Suggested: the readability pass in
+   `PROCESS.md` § 8 judges each section opening and its connective prose against the introduction's
+   register (a motivated question, what follows, a list where the path is long), not only sentence
+   length and clause counts. A blind reviewer gets the approved introduction as its calibration.
+3. **A class the paper names and uses throughout is a numbered definition.** The theory paper's three
+   strata were defined in a prose paragraph before the theorem that describes them. The author asked
+   for a numbered definition. Suggested: a `WRITING.md` § 3 line, and a register check that flags an
+   `\emph{...}` term defined in prose and referred to in three or more later statements.
+
+---
+
 ## process: the swallowed-prose gate is in the scaffold, but `linkage init` never copies it
 ## `linkage check` pairs a proof with the statement above it before reading its `% proof of` marker
 

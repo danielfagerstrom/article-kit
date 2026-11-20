@@ -24,6 +24,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
+from collections.abc import Callable
 from pathlib import Path
 
 STAMP = ".linkage-scaffold.json"
@@ -241,25 +244,69 @@ def plugin_setting(root: Path) -> tuple[bool, str]:
     return bool(found), where
 
 
-def drift(root: Path) -> list[str]:
+Reader = Callable[[str], "str | None"]   # a path relative to the article root -> its text, or None if absent
+
+
+def tree_reader(root: Path) -> Reader:
+    """The article's working tree: the default reader."""
+    def read(rel: str) -> str | None:
+        p = root / rel
+        return _read(p) if p.exists() else None
+    return read
+
+
+class RevError(Exception):
+    """`git` could not read the revision."""
+
+
+def git_reader(root: Path, rev: str) -> Reader:
+    """The article as committed at `rev`, through `git -C root show rev:path`. A path absent at
+    `rev` reads as None; an unknown `rev`, or git failing, raises RevError. Writes nothing."""
+    def git(*argv: str) -> subprocess.CompletedProcess:
+        try:
+            return subprocess.run(["git", "-C", str(root), *argv], capture_output=True)
+        except OSError as e:
+            raise RevError(f"git failed: {e}") from e
+
+    probe = git("rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}")
+    if probe.returncode != 0:
+        raise RevError(f"cannot read revision {rev!r} in {root}: "
+                       + (probe.stderr.decode("utf-8", "replace").strip() or "unknown revision"))
+
+    def read(rel: str) -> str | None:
+        r = git("show", f"{rev}:{rel}")
+        if r.returncode == 0:
+            return r.stdout.decode("utf-8")
+        if git("cat-file", "-e", f"{rev}:{rel}").returncode != 0:
+            return None   # the path is not in that revision: absent, as a missing file is
+        raise RevError(f"git show {rev}:{rel} failed: " + r.stderr.decode("utf-8", "replace").strip())
+    return read
+
+
+def drift(root: Path, read: Reader | None = None) -> list[str]:
     """Framework-owned files whose article copy no longer matches the framework's."""
+    read = read or tree_reader(root)
     src = scaffold_dir()
     out = []
     for rel, dest_rel in FRAMEWORK_OWNED.items():
-        dest = root / dest_rel
-        if not dest.exists():
+        theirs = read(dest_rel)
+        if theirs is None:
             continue
-        if _read(dest) != _read(src / rel):
+        if theirs != _read(src / rel):
             out.append(dest_rel)
     return out
 
 
-def last_sync(root: Path) -> dict[str, str]:
+def last_sync(root: Path, read: Reader | None = None) -> dict[str, str]:
     """The hashes `init` recorded, per framework-owned destination, of the scaffold copy the
     article last received. Empty when there is no stamp or it is unreadable."""
-    for path in (root / "blueprint" / STAMP, root / STAMP):
+    read = read or tree_reader(root)
+    for rel in (f"blueprint/{STAMP}", STAMP):
         try:
-            recorded = json.loads(_read(path))["framework_owned"]
+            text = read(rel)
+            if text is None:
+                continue
+            recorded = json.loads(text)["framework_owned"]
         except (OSError, ValueError, KeyError, TypeError):
             continue
         if isinstance(recorded, dict):
@@ -267,7 +314,7 @@ def last_sync(root: Path) -> dict[str, str]:
     return {}
 
 
-def drift_directions(root: Path) -> list[tuple[str, str]]:
+def drift_directions(root: Path, read: Reader | None = None) -> list[tuple[str, str]]:
     """Each drifted framework-owned file with whose change it is.
 
     Compared with the hash recorded at the last sync: `scaffold` when the article's copy is
@@ -275,12 +322,13 @@ def drift_directions(root: Path) -> list[tuple[str, str]]:
     is still what it sent (the article edited its copy), `both` when each moved, `unrecorded`
     when the stamp does not name the file (synced before the stamp existed).
     """
+    read = read or tree_reader(root)
     src = scaffold_dir()
-    recorded = last_sync(root)
+    recorded = last_sync(root, read)
     rels = {dest_rel: rel for rel, dest_rel in FRAMEWORK_OWNED.items()}
     out = []
-    for dest_rel in drift(root):
-        theirs, ours = sha(_read(root / dest_rel)), sha(_read(src / rels[dest_rel]))
+    for dest_rel in drift(root, read):
+        theirs, ours = sha(read(dest_rel) or ""), sha(_read(src / rels[dest_rel]))
         then = recorded.get(dest_rel)
         if then is None:
             direction = "unrecorded"
@@ -302,10 +350,15 @@ DIRECTION_TEXT = {
 }
 
 
-def check(root: Path) -> int:
+def check(root: Path, rev: str | None = None) -> int:
     """`init --sync --check`: print what a sync would change and whose change it is; write nothing.
-    Exit 1 when any framework-owned file differs."""
-    found = drift_directions(root)
+    Exit 1 when any framework-owned file differs. With `rev`, the article side is read from that
+    git revision, not the working tree; an unreadable revision exits 2."""
+    try:
+        found = drift_directions(root, git_reader(root, rev) if rev else None)
+    except RevError as e:
+        print(f"linkage init: {e}", file=sys.stderr)
+        return 2
     for rel, direction in found:
         print(f"{rel}: {direction} \u2014 {DIRECTION_TEXT[direction]}")
     if not found:

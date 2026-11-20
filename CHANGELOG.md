@@ -17,6 +17,28 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   used before they are explained; § B.1: the abstract uses no term the paper defines later, checked
   by listing the abstract's defined terms. Why: passes 1–3 and a blind register review passed an
   introduction the author found "close to unreadable".
+- **`linkage init --sync --check --rev <ref>` reads the article at a git revision** (hub Q-0862). The
+  article's framework-owned copies and its sync stamp come from `git show <ref>:<path>`, not the
+  working tree, so a checkout that has not been pulled no longer reports drift that origin already
+  synced. Output and exit codes are unchanged; an unknown ref exits 2. `drift`, `last_sync` and
+  `drift_directions` take an optional reader.
+- **Four writing-review rules from an evaluation of anti-AI-writing skills** (Weinmeister 2026, on
+  Medium; the hub's source page `@weinmeister2026can`). The evaluation found three things that apply here:
+  rules that fire on every sighting rewrite clean human prose, agents skip rules they are only
+  linked to, and banned-word lists go stale.
+  1. `REVIEWER-CONTRACT.md` § "The prose-surface tags" defines the nine surface tags inline, each
+     with how much evidence a flag needs (one sighting, a condition, or density). It adds three
+     rules: stacked signals are one flag, a phrase that is quoted or discussed is not an instance,
+     and a section with no surface flag is a valid result. Before, these tags were only named, and
+     the definitions sat in the hub's `ai-prose-patterns.md`.
+  2. A new structure tag, `SYNONYM`: one object, two names, the converse of `NOTATION`. Its rule is
+     in `WRITING.md` § 3 ("One name per object"). `linkage review` accepts the tag.
+  3. In `WRITING.md` § 5, the word-level diff after each fix is read for a changed quantifier,
+     negation, hypothesis or modal strength. Such an edit changed a claim, not the style.
+  4. `WRITING.md` § 2 points to the contract for the tag definitions, not to the hub.
+
+  The `write` skill is regenerated (about 4,690 of its 4,800 tokens). The evaluation's list of words
+  current models overuse appears in none of the October–November papers, so no word list is added.
 
 - **The per-module "beyond the default" rows move to `docs/AUDIENCE.md`** (hub Q-0841). `WRITING.md`
   § 0 keeps the rule and the default list and names the file; the drafting gate (item 5) and the

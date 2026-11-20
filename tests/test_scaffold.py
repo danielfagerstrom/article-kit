@@ -8,6 +8,7 @@ in with the smallest article's half that has one edge of every kind, passes
 from __future__ import annotations
 
 import json
+import subprocess
 
 import pytest
 
@@ -253,3 +254,81 @@ def test_check_runs_where_linkage_toml_is_broken(fresh):
 def test_check_needs_sync(fresh):
     rc, _, _ = run_cli("--root", str(fresh), "init", "--check")
     assert rc == 2
+
+
+# --- init --sync --check --rev -------------------------------------------------------
+
+
+@pytest.fixture
+def real_git(monkeypatch, real_run):
+    monkeypatch.setattr(subprocess, "run", real_run)
+
+
+def _git(root, *argv):
+    subprocess.run(["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t",
+                    "-c", "commit.gpgsign=false", *argv], check=True, capture_output=True)
+
+
+def _commit_all(root, msg):
+    _git(root, "add", "-A")
+    _git(root, "commit", "-m", msg)
+
+
+def _check_rev(root, rev):
+    return run_cli("--root", str(root), "init", "--sync", "--check", "--rev", rev)
+
+
+@pytest.fixture
+def repo(fresh, real_git):
+    _git(fresh, "init", "-q")
+    _commit_all(fresh, "scaffold")
+    return fresh
+
+
+def test_rev_reads_the_commit_not_the_working_tree(repo):
+    (repo / CORE).write_text("% unpulled edit\n", encoding="utf-8")
+    assert _check(repo)[0] == 1
+    rc, out, err = _check_rev(repo, "HEAD")
+    assert rc == 0, out + err
+    assert "matches" in out
+
+
+def test_rev_reports_what_the_commit_has_though_the_tree_is_clean(repo):
+    (repo / CORE).write_text("% mine\n", encoding="utf-8")
+    _commit_all(repo, "edit")
+    src = next(rel for rel, dest in scaffold.FRAMEWORK_OWNED.items() if dest == CORE)
+    (repo / CORE).write_text(
+        (scaffold.scaffold_dir() / src).read_text(encoding="utf-8"), encoding="utf-8")
+    assert _check(repo)[0] == 0
+    rc, out, _ = _check_rev(repo, "HEAD")
+    assert rc == 1
+    assert CORE + ": article" in out
+
+
+def test_rev_reads_a_stamp_present_only_at_the_ref(repo):
+    older = "an older scaffold copy\n"
+    _stamp_hash(repo, CORE, older)
+    (repo / CORE).write_text(older, encoding="utf-8")
+    _commit_all(repo, "old sync")
+    (repo / "blueprint" / scaffold.STAMP).unlink()   # the working tree has no stamp
+    assert CORE + ": unrecorded" in _check(repo)[1]
+    rc, out, _ = _check_rev(repo, "HEAD")
+    assert rc == 1
+    assert CORE + ": scaffold" in out
+
+
+def test_rev_unknown_ref_exits_2_with_one_line(repo):
+    rc, out, err = _check_rev(repo, "no-such-ref")
+    assert rc == 2
+    assert out == ""
+    assert len(err.strip().splitlines()) == 1
+
+
+def test_rev_outside_a_git_repository_exits_2(fresh, real_git):
+    rc, _, err = _check_rev(fresh, "HEAD")
+    assert rc == 2 and err.strip()
+
+
+def test_rev_needs_check(repo):
+    rc, _, err = run_cli("--root", str(repo), "init", "--sync", "--rev", "HEAD")
+    assert rc == 2 and "--rev needs --check" in err

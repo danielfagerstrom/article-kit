@@ -49,9 +49,9 @@ budget is stated as limits, not as preferences:
   a listicle *feel* standing in for an argument.
 
 The named tics (negative parallelism, participial summary tails, sincerity markers, salience
-hedges, paraphrase laddering, teaser cataphora, tricolon, process adverbs) are catalogued with
-their causes in the hub's `wiki/ai-prose-patterns.md` § 1. That note owns the vocabulary; the
-reviewer emits its tags.
+hedges, paraphrase laddering, teaser cataphora, tricolon, process adverbs) are defined, with how much
+evidence each flag needs, in [`REVIEWER-CONTRACT.md`](REVIEWER-CONTRACT.md) § "The prose-surface
+tags"; their causes are in the hub's `wiki/ai-prose-patterns.md` § 1.
 
 **Two of those tags are content defects, not style.** *Vague attribution* ("it is well known that",
 "standard results give") and *unearned reference cascade* (a paragraph that names five concepts and
@@ -186,6 +186,8 @@ derivations and where they turn) must be on the page, not merely named.
   definition alone is its shorthand for a specialist reader, not an introduction, so the paper
   introduces the concept in plain words — what it is, why it matters here, one familiar example —
   before giving its formal definition.
+- **One name per object.** Once named, an object keeps its name. A second name reads as a second
+  object; where two literatures name it differently, say so once, where the second name appears.
 - **Define each technical term on first use**, emphasised, and cite where it comes from; place a
   named family in its literature, the scale-space literature included. Never drop an exotic term
   unglossed (§ 0). A paragraph that introduces a proof idea explains each new object in its own
