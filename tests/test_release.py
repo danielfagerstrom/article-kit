@@ -742,19 +742,21 @@ def test_asks_are_counted_by_zone_and_located(tmp_path: Path) -> None:
     assert "ask at 01-intro.tex:1 (prose)" in out and "ask at 01-intro.tex:6 (proof)" in out
 
 
-@pytest.mark.parametrize("text", [
+@pytest.mark.parametrize("text, form", [
     # the pyramid paper's introduction and its first theory section (Paper VI, pass 6)
-    "covariance at the one ratio $q$. It asks two questions. What does covariance under one ratio "
-    "allow\nin $\\RR^d$, and what singles out a member? And which masks on a grid are the steps?",
-    "This section says what that axiom gives. Three\nresults carry it. The dilations form a group.",
-    "Two questions remain: what does the mask allow, and why?",
-    "The paper raises three points.\nIs the ladder closed?",
-    "Four results carry the section.",
-    "There are two facts.",
-    "Three steps follow:\n\nThe first is the grid.",                  # no list after it
+    ("covariance at the one ratio $q$. It asks two questions. What does covariance under one ratio "
+     "allow\nin $\\RR^d$, and what singles out a member? And which masks on a grid are the steps?",
+     "questions"),
+    ("This section says what that axiom gives. Three\nresults carry it. The dilations form a group.",
+     "count"),
+    ("Two questions remain: what does the mask allow, and why?", "questions"),
+    ("The paper raises three points.\nIs the ladder closed?", "questions"),
+    ("Four results carry the section.", "count"),
+    ("There are two facts.", "count"),
+    ("Three steps follow:\n\nThe first is the grid.", "count"),       # no list after it
 ])
-def test_an_announced_enumeration_is_located(text: str) -> None:
-    assert len(register.enumerations(text.splitlines())) == 1, text
+def test_an_announced_enumeration_is_located_with_its_form(text: str, form: str) -> None:
+    assert [h[3] for h in register.enumerations(text.splitlines())] == [form], text
 
 
 @pytest.mark.parametrize("text", [
@@ -780,8 +782,21 @@ def test_enumerations_are_counted_by_zone_and_located(tmp_path: Path) -> None:
     counts, _ = register.analyse(f)
     assert counts["prose"][4] == 1 and counts["proof"][4] == 1
     out = "\n".join(register.report([f], show_enumerations=True))
-    assert "enumeration at 03-pyramid.tex:3 (prose)  Four results carry it." in out
-    assert "enumeration at 03-pyramid.tex:7 (proof)" in out
+    assert "enumeration at 03-pyramid.tex:3 (prose, count)  Four results carry it." in out
+    assert "enumeration at 03-pyramid.tex:7 (proof, count)" in out
+    assert "recurring counts in 03-pyramid.tex: 2 (TALLY: density)" in out
+
+
+def test_one_bare_count_is_not_a_recurrence_and_questions_do_not_add_to_one(
+        tmp_path: Path) -> None:
+    """A count is not wrong in itself (WRITING.md § 5): one bare count in a section is located,
+    not reported as a pattern, and the question form, flagged on its own, is not added in."""
+    f = tmp_path / "01-introduction.tex"
+    f.write_text("It asks two questions. What does it allow? And why?\n\n"
+                 "Three results carry it.\n", encoding="utf-8")
+    hits = register.enumerations(f.read_text(encoding="utf-8").splitlines())
+    assert [h[3] for h in hits] == ["questions", "count"] and not register.recurring(hits)
+    assert "recurring counts" not in "\n".join(register.report([f], show_enumerations=True))
 
 
 STRATA_IN_PROSE = """\
