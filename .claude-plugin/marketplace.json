@@ -12,7 +12,6 @@
       "name": "article-kit",
       "source": "./",
       "description": "The article process's shared skills, agents and hooks: the writing, release and drafting-gate standards as skills, the fidelity review, the length pass, the mathematician who writes blueprint nodes and their Lean, and a log of what instructions load when.",
-      "version": "0.7.1",
       "author": {
         "name": "Daniel Fagerstrom"
       },
