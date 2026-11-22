@@ -11,14 +11,15 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   author on the pyramids paper's first theory section, 2026-11-19). `WRITING.md` § 3: the
   motivation-first rule covers every section and subsection opening and the prose between
   statements, in the approved introduction's register, with no announced count ("Four results
-  carry it."); a class the paper names and uses throughout is a numbered definition.
+  carry it."); a class the paper names and uses throughout is a numbered definition. Both are one
+  line each in § 3, to keep the write skill within its budget; § 5 states them at length.
   `PROCESS.md` § 8: the readability pass judges each opening against the approved introduction, and
   a blind reviewer is given it as calibration. `linkage prose register` gains an `enum` column,
   `--enumerations` (a count of questions followed by bare questions, or a bare count and a verb of
   carrying) and `--terms` (an `\emph` term defined in prose that three or more later statements
   use), both advisory. Why: the readability pass shortened that section's sentences and left it
-  "very dense, no storytelling or motivation". The tic's line in the hub's
-  `wiki/ai-prose-patterns.md` § 1 is the hub's change.
+  "very dense, no storytelling or motivation". Left in `WISHLIST.md`: the tic's row in the hub's
+  `wiki/ai-prose-patterns.md` § 1, and the hub's blind reviewer taking the approved introduction.
 - **An introduction that motivates, and "require", not "ask"** (hub Q-0861; the author on the
   pyramids paper's introduction, 2026-11-18). `WRITING.md` § 3: what an axiom system or a definition
   demands is "required", not "asked"; `linkage prose register` gains an `ask` column and `--asks`
