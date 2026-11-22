@@ -166,10 +166,9 @@ def enumerations(lines) -> list[tuple[str, int, str]]:
         for k, (i, s) in enumerate(sents):
             nxt = sents[k + 1][1] if k + 1 < len(sents) else ""
             m = COUNT_OF_QUESTIONS.search(s)
-            if m and ((s.endswith((".", ":")) and nxt.endswith("?"))
-                      or (":" in s[m.end():] and s.endswith("?"))):
-                hits.append((zone, i, s))
-            elif COUNT_CARRIES.match(s):
+            questions = m and ((s.endswith((".", ":")) and nxt.endswith("?"))
+                               or (":" in s[m.end():] and s.endswith("?")))
+            if questions or COUNT_CARRIES.match(s):
                 hits.append((zone, i, s))
     return hits
 
