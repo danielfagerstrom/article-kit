@@ -208,7 +208,13 @@ In this order, each on the text as it then stands, with `/article-kit:write` inv
 that revises prose:
 
 1. **Readability**, against `PUBLICATION-TEMPLATE.md` § B and § C: each section opens with its aim,
-   terms at first use, figures where an object needs to be seen.
+   terms at first use, figures where an object needs to be seen. Each section and subsection
+   opening, and the connective prose between statements, is judged against the approved
+   introduction's register (a motivated question, what follows, a list where the path is long),
+   not only by sentence length and clause counts: an opening that condenses the section's content
+   fails even when its sentences are short (Paper VI, pass 6). A blind reviewer of this pass is
+   given the approved introduction as its calibration. `linkage prose register --enumerations
+   --terms` locates the announced count and the class defined in prose (`WRITING.md` § 3).
 2. **Register**, blind: one fresh `draft-reviewer` agent (opus) per section, flags only
    ([`REVIEWER-CONTRACT.md`](REVIEWER-CONTRACT.md)); triage per tag; fixes at exact anchors. The
    counts by zone (prose, shared statements, proofs) are the register script's.

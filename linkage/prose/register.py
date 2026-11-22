@@ -57,6 +57,19 @@ ASK_REQUIREMENT = re.compile(
     r"))",
     re.I)
 
+_COUNT = r"(?:two|three|four|five|six|seven|eight|nine|ten|[2-9])"
+# "It asks two questions." / "Two questions remain:", then the items as bare questions.
+COUNT_OF_QUESTIONS = re.compile(
+    rf"\b{_COUNT}\s+(?:[A-Za-z-]+\s+)?(?:questions?|points?|issues?|problems?)\b", re.I)
+# "Four results carry it.": a sentence that is only a count and a verb of carrying.
+COUNT_CARRIES = re.compile(
+    rf"^(?:there\s+are\s+|we\s+have\s+)?{_COUNT}\s+(?:[A-Za-z-]+\s+)?"
+    r"(?:results?|facts?|points?|ideas?|ingredients?|steps?|observations?|consequences?|"
+    r"statements?|theorems?|lemmas?|propositions?|things?|properties|claims?|parts?)"
+    r"(?:\s+(?:carry|drive|underlie|support|organi[sz]e|structure|follow|matter|stand\s+out)"
+    r"(?:\s+(?:it|this|them|the\s+[A-Za-z-]+))?)?\s*[.:]$",
+    re.I)
+
 ENV_END = re.compile(r"\\end\{(definition|proposition|lemma|theorem|corollary|remark)\}")
 ZONES = ("prose", "proof", "statement")
 
@@ -104,18 +117,174 @@ def asks(lines) -> list[tuple[str, int, str]]:
     return hits
 
 
+_BREAK = re.compile(r"\\(?:(?:sub)*section|paragraph|begin|end|item)\b")
+_SENTENCE = re.compile(r"\S.*?(?:[.!?](?=\s|$)|\Z)", re.S)
+
+
+def _plain(text: str) -> str:
+    """Prose without its markup: an `\\emph{...}` keeps its words, a heading and an environment's
+    name and title go, and so do other commands."""
+    text = strip_math(text).replace("~", " ")
+    text = re.sub(r"\\(?:begin|end|(?:sub)*section|paragraph)\*?\{[^}]*\}(?:\[[^]]*\])?", " ",
+                  text)
+    text = re.sub(r"\\(?:emph|textit|textbf|prog)\{([^}]*)\}", r"\1", text)
+    text = re.sub(r"\\[A-Za-z]+\*?", " ", text)
+    return re.sub(r"[{}]", "", text)
+
+
+def paragraphs(lines):
+    """Yield (zone, [(line, sentence), ...]) for each paragraph: a blank line, a change of zone,
+    a sectioning command, `\\begin`, `\\end` or `\\item` ends one."""
+    para: list[tuple[str, int, str]] = []
+
+    def flush():
+        if not para:
+            return
+        text, starts = "", []
+        for _, i, t in para:
+            starts.append((len(text), i))
+            text += t + " "
+        yield para[0][0], [(max(i for off, i in starts if off <= m.start()),
+                            " ".join(m.group().split())) for m in _SENTENCE.finditer(text)]
+        para.clear()
+
+    for zone, i, line in zones(lines):
+        if not line.strip() or (para and para[-1][0] != zone) or _BREAK.match(line.strip()):
+            yield from flush()
+        if line.strip():
+            para.append((zone, i, _plain(line)))
+    yield from flush()
+
+
+_LIST = re.compile(r"\\begin\{(?:enumerate|itemize|description)\}")
+
+
+def _opens_list(lines, i: int) -> bool:
+    """Whether the paragraph holding line `i` (1-based) is followed by a list environment."""
+    j = i
+    while j < len(lines) and lines[j].strip() and not _BREAK.match(lines[j].strip()):
+        j += 1
+    while j < len(lines) and not lines[j].strip():
+        j += 1
+    return j < len(lines) and bool(_LIST.match(lines[j].strip()))
+
+
+def enumerations(lines) -> list[tuple[str, int, str]]:
+    """(zone, line, sentence) for each announced enumeration (`WRITING.md` § 3): a count of
+    questions or points followed by the items as bare questions ("It asks two questions. What
+    …?"), or a sentence that is only a count of results and a verb of carrying them ("Four results
+    carry it."). The questions are looked for in the same paragraph. A count that ends its
+    paragraph with a colon and opens a list ("Three steps follow:", then `\\begin{enumerate}`) is
+    the list § 3 asks for where the path is long, and is not flagged."""
+    lines = list(lines)
+    hits = []
+    for zone, sents in paragraphs(lines):
+        for k, (i, s) in enumerate(sents):
+            nxt = sents[k + 1][1] if k + 1 < len(sents) else ""
+            m = COUNT_OF_QUESTIONS.search(s)
+            questions = m and ((s.endswith((".", ":")) and nxt.endswith("?"))
+                               or (":" in s[m.end():] and s.endswith("?")))
+            listed = s.endswith(":") and k == len(sents) - 1 and _opens_list(lines, i)
+            if questions or (COUNT_CARRIES.match(s) and not listed):
+                hits.append((zone, i, s))
+    return hits
+
+
+STATEMENT_ENV = re.compile(r"\\begin\{(theorem|proposition|lemma|corollary|definition)\}")
+_NOT_TERMS = {"not", "only", "every", "all", "any", "each", "one", "some", "no", "none",
+              "exactly", "strictly", "both", "either", "neither", "same", "must", "may", "can",
+              "never", "always", "is", "are", "and", "or", "but", "at", "in", "on", "of", "for"}
+DEFINED_IN_PROSE_AT = 3
+
+
+def _term(raw: str) -> str | None:
+    """The `\\emph{...}` text as a term: `~` and maths read as spaces, a leading article and a
+    trailing index ("stratum~3", "stratum $k$") dropped. None for emphasis that is not a term."""
+    words = _plain(raw).lower().split()
+    if words and words[0] in ("the", "a", "an"):
+        words = words[1:]
+    while words and re.fullmatch(r"\d+|[a-z]|x", words[-1]):
+        words = words[:-1]
+    if not words or len(words) > 4 or (len(words) == 1 and (words[0] in _NOT_TERMS
+                                                           or len(words[0]) < 3)):
+        return None
+    return " ".join(words)
+
+
+def _forms(word: str) -> set[str]:
+    """A word's singular and plural, English and Latin ("stratum", "strata")."""
+    forms = {word, word + "s", word + "es"}
+    for end, other in (("ies", "y"), ("es", ""), ("s", ""), ("y", "ies"), ("um", "a"),
+                       ("a", "um"), ("on", "a")):
+        if word.endswith(end):
+            forms.add(word[: len(word) - len(end)] + other)
+    return forms
+
+
+def _term_pattern(term: str) -> re.Pattern:
+    *head, last = term.split()
+    alts = "|".join(sorted(map(re.escape, _forms(last)), key=len, reverse=True))
+    return re.compile(r"\b" + "".join(re.escape(w) + r"\s+" for w in head) + rf"(?:{alts})\b")
+
+
+def prose_terms(files: list[Path], at: int = DEFINED_IN_PROSE_AT):
+    """(file, line, term, [labels]) for each term emphasised in the prose zone, outside any
+    numbered environment, that at least `at` later statements (theorem, proposition, lemma,
+    corollary, definition, in any zone and any later file) use, and that no definition environment
+    emphasises: a class the paper names and uses throughout is a numbered definition (`WRITING.md`
+    § 3). `files` are read in order; an `\\emph` that heads an `\\item` is a list heading."""
+    defined, terms, statements = set(), [], []
+    for n, f in enumerate(files):
+        lines = Path(f).read_text(encoding="utf-8").splitlines()
+        env = None
+        for zone, i, line in zones(lines):
+            m = STATEMENT_ENV.search(line)
+            if m and env is None:
+                env = [m.group(1), (n, i), ""]
+            if env is not None:
+                env[2] += line + " "
+            for e in re.finditer(r"\\emph\{((?:[^{}]|\{[^{}]*\})*)\}", line):
+                t = _term(e.group(1))
+                if t is None:
+                    continue
+                if env is not None and env[0] == "definition":
+                    defined.add(t)
+                elif env is None and zone == "prose" and not re.search(
+                        r"\\item(?:\[[^]]*\])?\s*$", line[: e.start()]):
+                    terms.append((n, i, f, t))
+            if env is not None and re.search(rf"\\end\{{{env[0]}\}}", line):
+                label = re.search(r"\\label\{([^}]*)\}", env[2])
+                statements.append((env[1], label.group(1) if label else f"{f.name}:{env[1][1]}",
+                                   _plain(re.sub(r"\\begin\{\w+\}\[([^]]*)\]", r" \1 ",
+                                                 env[2])).lower()))
+                env = None
+    hits, seen = [], []
+    for n, i, f, t in terms:
+        pat = _term_pattern(t)
+        if any(pat.search(d) for d in defined) or any(pat.search(s) for s in seen):
+            continue
+        seen.append(t)
+        uses = [label for pos, label, text in statements if pos > (n, i) and pat.search(text)]
+        if len(uses) >= at:
+            hits.append((f, i, t, uses))
+    return hits
+
+
 def analyse(path: Path, show_runs: bool = False, long_at: int = DEFAULT_LONG):
-    """({zone: (em-dashes, semicolons, words, asks)}, [(first line, sentence lengths)])."""
+    """({zone: (em-dashes, semicolons, words, asks, enumerations)},
+    [(first line, sentence lengths)])."""
     lines = Path(path).read_text(encoding="utf-8").splitlines()
     buf: dict[str, list[tuple[int, str]]] = {z: [] for z in ZONES}
     for zone, i, line in zones(lines):
         buf[zone].append((i, line))
     ask_zones = [zone for zone, _, _ in asks(lines)]
+    enum_zones = [zone for zone, _, _ in enumerations(lines)]
     out = {}
     for zone, items in buf.items():
         text = strip_math("\n".join(ln for _, ln in items))
         out[zone] = (text.count("---"), text.count(";"),
-                     len(re.findall(r"[A-Za-z][A-Za-z'\-]*", text)), ask_zones.count(zone))
+                     len(re.findall(r"[A-Za-z][A-Za-z'\-]*", text)), ask_zones.count(zone),
+                     enum_zones.count(zone))
     # long-sentence runs, prose zone only, paragraph by paragraph
     runs: list[tuple[int | None, list[int]]] = []
     if show_runs:
@@ -142,24 +311,35 @@ def analyse(path: Path, show_runs: bool = False, long_at: int = DEFAULT_LONG):
 
 
 def report(files: list[Path], show_runs: bool = False, long_at: int = DEFAULT_LONG,
-           show_asks: bool = False) -> list[str]:
-    out = [f"{'file':24s} {'zone':10s} {'---':>5s} {'semi':>5s} {'words':>7s} {'ask':>5s}"]
-    tot = {z: [0, 0, 0, 0] for z in ZONES}
+           show_asks: bool = False, show_enumerations: bool = False,
+           show_terms: bool = False) -> list[str]:
+    out = [f"{'file':24s} {'zone':10s} {'---':>5s} {'semi':>5s} {'words':>7s} {'ask':>5s} "
+           f"{'enum':>5s}"]
+    tot = {z: [0, 0, 0, 0, 0] for z in ZONES}
     for f in files:
         counts, runs = analyse(f, show_runs, long_at)
         for zone in ZONES:
-            d, s, w, a = counts[zone]
-            out.append(f"{f.name:24s} {zone:10s} {d:5d} {s:5d} {w:7d} {a:5d}")
-            for k, v in enumerate((d, s, w, a)):
+            d, s, w, a, e = counts[zone]
+            out.append(f"{f.name:24s} {zone:10s} {d:5d} {s:5d} {w:7d} {a:5d} {e:5d}")
+            for k, v in enumerate((d, s, w, a, e)):
                 tot[zone][k] += v
         for start, lens in runs:
             out.append(f"    long-run at {f.name}:{start}  sentence lengths {lens}")
+        lines = Path(f).read_text(encoding="utf-8").splitlines()
         if show_asks:
-            for zone, i, text in asks(Path(f).read_text(encoding="utf-8").splitlines()):
+            for zone, i, text in asks(lines):
                 out.append(f"    ask at {f.name}:{i} ({zone})  {text}")
+        if show_enumerations:
+            for zone, i, text in enumerations(lines):
+                out.append(f"    enumeration at {f.name}:{i} ({zone})  {text}")
     for zone in ZONES:
-        d, s, w, a = tot[zone]
-        out.append(f"{'TOTAL':24s} {zone:10s} {d:5d} {s:5d} {w:7d} {a:5d}")
+        d, s, w, a, e = tot[zone]
+        out.append(f"{'TOTAL':24s} {zone:10s} {d:5d} {s:5d} {w:7d} {a:5d} {e:5d}")
+    if show_terms:
+        for f, i, term, uses in prose_terms(files):
+            shown = ", ".join(uses[:3]) + (", …" if len(uses) > 3 else "")
+            out.append(f"    term in prose at {Path(f).name}:{i}  '{term}', used in {len(uses)} "
+                       f"later statements ({shown})")
     return out
 
 

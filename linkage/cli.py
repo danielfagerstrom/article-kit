@@ -509,7 +509,8 @@ def cmd_prose_register(args) -> int:
         if not files:
             print(f"no .tex sources under {paper} besides main.tex", file=sys.stderr)
             return 2
-    print("\n".join(register.report(files, args.runs, args.long_at, args.asks)))
+    print("\n".join(register.report(files, args.runs, args.long_at, args.asks,
+                                    args.enumerations, args.terms)))
     return 0
 
 
@@ -831,6 +832,12 @@ def build_parser() -> argparse.ArgumentParser:
                     help="also locate runs of three or more long sentences in the prose zone")
     pr.add_argument("--asks", action="store_true",
                     help="also locate each 'ask' of a requirement (WRITING.md § 3: 'require')")
+    pr.add_argument("--enumerations", action="store_true",
+                    help="also locate each announced enumeration: a count of questions followed "
+                         "by bare questions, or 'Four results carry it.' (WRITING.md § 3)")
+    pr.add_argument("--terms", action="store_true",
+                    help="also locate each \\emph term defined in prose and used in three or "
+                         "more later statements: a numbered definition (WRITING.md § 3)")
     pr.add_argument("--long-at", type=int, default=prose_register.DEFAULT_LONG,
                     help="a sentence is long at this many words (default %(default)s)")
     pr.set_defaults(func=cmd_prose_register)

@@ -742,6 +742,101 @@ def test_asks_are_counted_by_zone_and_located(tmp_path: Path) -> None:
     assert "ask at 01-intro.tex:1 (prose)" in out and "ask at 01-intro.tex:6 (proof)" in out
 
 
+@pytest.mark.parametrize("text", [
+    # the pyramid paper's introduction and its first theory section (Paper VI, pass 6)
+    "covariance at the one ratio $q$. It asks two questions. What does covariance under one ratio "
+    "allow\nin $\\RR^d$, and what singles out a member? And which masks on a grid are the steps?",
+    "This section says what that axiom gives. Three\nresults carry it. The dilations form a group.",
+    "Two questions remain: what does the mask allow, and why?",
+    "The paper raises three points.\nIs the ladder closed?",
+    "Four results carry the section.",
+    "There are two facts.",
+    "Three steps follow:\n\nThe first is the grid.",                  # no list after it
+])
+def test_an_announced_enumeration_is_located(text: str) -> None:
+    assert len(register.enumerations(text.splitlines())) == 1, text
+
+
+@pytest.mark.parametrize("text", [
+    "The answers come in that order. The families form three nested strata.",
+    "The three senses answer different questions. Sense (i) is a property.",
+    "It answers the two questions of Section 1. The first is about grids.",
+    "Two examples show the strata apart. The first is strictly in stratum 1.",
+    "These three results carry the proof of Theorem 2.",
+    "The paper asks two questions.\n\nWhat does it find?",          # a new paragraph
+    "Is the ladder closed? Two questions follow from it, and both are answered here.",
+    "Three steps follow:\n\\begin{enumerate}\n\\item First.\n\\end{enumerate}",   # a list
+    "Three steps follow:\n\n\\begin{itemize}\n\\item First.\n\\end{itemize}",
+])
+def test_a_motivated_count_is_not_an_enumeration(text: str) -> None:
+    assert register.enumerations(text.splitlines()) == [], text
+
+
+def test_enumerations_are_counted_by_zone_and_located(tmp_path: Path) -> None:
+    f = tmp_path / "03-pyramid.tex"
+    f.write_text("\\section{A pyramid}\n\nThis section says what the axiom gives. Four results\n"
+                 "carry it.\n\n\\begin{proof}\n  Three consequences follow. First, it is.\n"
+                 "\\end{proof}\n", encoding="utf-8")
+    counts, _ = register.analyse(f)
+    assert counts["prose"][4] == 1 and counts["proof"][4] == 1
+    out = "\n".join(register.report([f], show_enumerations=True))
+    assert "enumeration at 03-pyramid.tex:3 (prose)  Four results carry it." in out
+    assert "enumeration at 03-pyramid.tex:7 (proof)" in out
+
+
+STRATA_IN_PROSE = """\
+Covariance sorts the families into three nested \\emph{strata}. A family is in
+\\emph{stratum~3} if it is covariant under every dilation, and it is \\emph{not} isotropic.
+
+% shared with blueprint thm:lattice-strata
+\\begin{theorem}[the three strata]
+\\label{thm:lattice-strata}
+  Each stratum is described by its exponent.
+\\end{theorem}
+
+\\begin{proposition}[a family strictly in stratum 1]
+\\label{prop:one}
+  It is not isotropic.
+\\end{proposition}
+"""
+
+STRATA_LATER = """\
+\\begin{lemma}[the reduction keeps the stratum]
+\\label{lem:reduction}
+  The marginal is not isotropic.
+\\end{lemma}
+"""
+
+
+def test_a_class_defined_in_prose_and_used_by_three_statements_is_located(tmp_path: Path) -> None:
+    a, b = tmp_path / "03-pyramid.tex", tmp_path / "04-line.tex"
+    a.write_text(STRATA_IN_PROSE, encoding="utf-8")
+    b.write_text(STRATA_LATER, encoding="utf-8")
+    hits = register.prose_terms([a, b])
+    # "strata" and "stratum~3" are one term; "\emph{not}" is emphasis, not a term
+    assert [(f.name, i, t, uses) for f, i, t, uses in hits] == [
+        ("03-pyramid.tex", 1, "strata", ["thm:lattice-strata", "prop:one", "lem:reduction"])]
+    out = "\n".join(register.report([a, b], show_terms=True))
+    assert "term in prose at 03-pyramid.tex:1  'strata', used in 3 later statements" in out
+
+
+def test_a_term_with_a_numbered_definition_or_few_uses_is_not_located(tmp_path: Path) -> None:
+    a, b = tmp_path / "03-pyramid.tex", tmp_path / "04-line.tex"
+    a.write_text(STRATA_IN_PROSE, encoding="utf-8")
+    b.write_text(STRATA_LATER, encoding="utf-8")
+    assert register.prose_terms([a]) == []                 # two later statements only
+    # three lemmas before the term and two statements after it: the earlier ones do not count
+    assert register.prose_terms([b, b, b, a]) == []
+    d = tmp_path / "02-defs.tex"
+    d.write_text("\\begin{definition}\\label{def:strata}\n  The \\emph{strata} are the classes."
+                 "\n\\end{definition}\n", encoding="utf-8")
+    assert register.prose_terms([d, a, b]) == []           # a numbered definition has it
+    c = tmp_path / "01-intro.tex"
+    c.write_text("\\begin{itemize}\n\\item \\emph{The strata} (Section 3).\n\\end{itemize}\n",
+                 encoding="utf-8")
+    assert register.prose_terms([c, b, b, b]) == []        # a list heading defines nothing
+
+
 def test_register_counts_the_modules_paper_by_default(article_repo: Path) -> None:
     (article_repo / "paper" / "01-intro.tex").write_text(REGISTER_TEX, encoding="utf-8")
     rc, out, _ = run_cli("--root", str(article_repo), "prose", "register", "--module", "line")
