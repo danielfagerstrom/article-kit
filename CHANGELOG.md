@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The plugin's version is the commit** (2026-11-22). `plugin.json` and the marketplace's plugin
+  entry no longer carry `version`. Claude Code moves an installed plugin only when its version
+  changes, so the pinned `0.7.1` kept every machine on the copy it first fetched, and the writing
+  rules merged after v0.7.1 reached no session. Without a version string Claude Code uses the
+  commit, and `claude plugin update` brings an install to `main`; the hub runs the update on the
+  laptop and the queue VM. `tests/test_plugin.py` now holds the two files free of a version, and
+  `docs/PLUGIN.md` says how an installed copy stays current.
+
 - **An announced count is overused, not forbidden** (the author, 2026-11-22). `WRITING.md` § 3 now
   says counts are announced sparingly, and § 5 says when one costs the reader: a count followed by
   bare questions the reader must hold open, a wrong count, a count at every opening. A count whose

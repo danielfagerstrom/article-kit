@@ -76,8 +76,25 @@ session here that has the plugin enabled sees each skill twice — once as `fide
 (project) and once as `article-kit:fidelity-review` (plugin). Same file, same behaviour. Article
 sessions, which have no `.claude/skills/`, see only the namespaced names.
 
-The versions in `plugin.json` and `marketplace.json` track `pyproject.toml`'s; `tests/test_plugin.py`
-fails if they drift, which is the "make the divergence detectable" half of ADR-0008.
+The marketplace's `metadata.version` tracks `pyproject.toml`'s; `tests/test_plugin.py` fails if they
+drift, which is the "make the divergence detectable" half of ADR-0008.
+
+### How an installed copy stays current
+
+`plugin.json` and the marketplace's plugin entry carry **no** `version`, and the test holds them
+so. Claude Code takes a plugin's version from `plugin.json`, then from the marketplace entry, and
+only without either from the commit it installs (twelve hex digits). It moves an installed copy
+only when that version changes. With `0.7.1` written there, the copy a machine first fetched
+stayed put until the next release, while the writing rules kept landing on `main`: seven skill
+changes after v0.7.1 reached no installed copy (found 2026-11-22). With no version string, every
+commit on `main` is a new version, and `claude plugin marketplace update article-kit` followed by
+`claude plugin update article-kit@article-kit --scope user` brings an install to `main`.
+
+Claude Code does not run those two commands by itself for a third-party marketplace. The hub runs
+them: a `SessionStart` hook on the laptop and `vm/night.sh` on the queue VM (the hub's `VM.md`,
+"The article-kit plugin"). What a session loads is the user-scope install: a project-scope entry,
+which Claude Code writes for each new checkout or worktree that enables the plugin, copies the
+user install's version, and a stale project entry does not decide what loads (tested 2026-11-22).
 
 ## What an article declares
 
@@ -179,7 +196,8 @@ what is left for the author, is recorded here rather than in a session note.
 - `plugin.json` and `marketplace.json` are valid JSON with the required fields, the marketplace's
   single plugin entry names this plugin, and the three component paths the manifest declares exist
   (a renamed or deleted skill fails the test);
-- the manifest versions match `pyproject.toml`'s;
+- the marketplace's `metadata.version` matches `pyproject.toml`'s, and `plugin.json` and the
+  plugin entry carry no `version` (see "How an installed copy stays current");
 - `scaffold/claude/settings.json` is valid JSON, declares the marketplace and enables
   `article-kit@article-kit`, and still carries both `SessionStart` hooks;
 - a fresh `linkage init` writes that declaration into the new article's `.claude/settings.json`.

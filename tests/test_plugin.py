@@ -6,9 +6,11 @@ Three things can rot silently here, and none of them is caught by anything else 
    `.claude/agents/…` rather than holding copies (one source of truth, hub ADR-0008), so a
    renamed or deleted skill leaves the manifest naming a path that is not there — and a plugin
    with a missing component is only discovered by a session that wanted it;
-2. the **version**, which appears in three files (`pyproject.toml`, `plugin.json`,
-   `marketplace.json`). Detectable divergence is what ADR-0008 asks of a copy that cannot be
-   generated;
+2. the **version**, which appears in `pyproject.toml`, `linkage/__init__.py` and the
+   marketplace's `metadata`, and must *not* appear in `plugin.json` or the marketplace's plugin
+   entry: there it would pin every installed copy until the next release, and the plugin's
+   version is the commit instead (`docs/PLUGIN.md`, "How an installed copy stays current").
+   Detectable divergence is what ADR-0008 asks of a copy that cannot be generated;
 3. the **scaffolded `settings.json`**, which is what makes an article see the plugin at all, and
    which also carries the two `SessionStart` hooks (Q-0121). It is JSON an article inherits
    verbatim; a trailing comma or a dropped hook would reach every new repository.
@@ -54,7 +56,6 @@ def settings():
 def test_the_plugin_manifest_names_the_plugin(manifest):
     assert manifest["name"] == PLUGIN
     assert manifest["description"].strip()
-    assert manifest["version"]
 
 
 def test_every_component_the_manifest_declares_exists(manifest):
@@ -91,14 +92,23 @@ def test_the_marketplace_offers_this_plugin(marketplace):
     assert entries[PLUGIN]["source"] == "./"
 
 
-def test_the_versions_do_not_drift(manifest, marketplace):
+def test_the_versions_do_not_drift(marketplace):
     pkg = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
     version = pkg["project"]["version"]
-    assert manifest["version"] == version
     assert marketplace["metadata"]["version"] == version
-    assert marketplace["plugins"][0]["version"] == version
     import linkage
     assert linkage.__version__ == version
+
+
+def test_the_plugin_carries_no_version_string(manifest, marketplace):
+    # Claude Code takes a plugin's version from plugin.json, then from its marketplace entry, and
+    # only without either from the commit. A version string there keeps every installed copy at
+    # the copy it first fetched until the string changes, i.e. until the next release, while the
+    # writing rules land on main between releases (seven skill changes after v0.7.1 reached no
+    # installed copy, 2026-11-22). Without one, every commit is a new version, and
+    # `claude plugin update` moves an installed copy to main.
+    assert "version" not in manifest
+    assert "version" not in marketplace["plugins"][0]
 
 
 # --- what a scaffolded article declares -------------------------------------------------
