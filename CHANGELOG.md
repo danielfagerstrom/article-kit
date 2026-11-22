@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **An announced count is overused, not forbidden** (the author, 2026-11-22). `WRITING.md` § 3 now
+  says counts are announced sparingly, and § 5 says when one costs the reader: a count followed by
+  bare questions the reader must hold open, a wrong count, a count at every opening. A count whose
+  items follow at once stays. A new surface tag, `TALLY`, in `REVIEWER-CONTRACT.md` gives the
+  evidence: the question form on one sighting unless each question is answered at once, a bare
+  count by density. `linkage prose register --enumerations` marks each hit by form (`questions`,
+  `count`) and says where bare counts recur in a file (two or more). § 3 also drops a clause that
+  repeated its sentence, which keeps the write skill within its budget (about 4,790 tokens).
 - **Section openings that motivate, and a named class is a numbered definition** (hub Q-0869; the
   author on the pyramids paper's first theory section, 2026-11-19). `WRITING.md` § 3: the
   motivation-first rule covers every section and subsection opening and the prose between

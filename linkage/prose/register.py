@@ -169,13 +169,15 @@ def _opens_list(lines, i: int) -> bool:
     return j < len(lines) and bool(_LIST.match(lines[j].strip()))
 
 
-def enumerations(lines) -> list[tuple[str, int, str]]:
-    """(zone, line, sentence) for each announced enumeration (`WRITING.md` § 3): a count of
-    questions or points followed by the items as bare questions ("It asks two questions. What
-    …?"), or a sentence that is only a count of results and a verb of carrying them ("Four results
-    carry it."). The questions are looked for in the same paragraph. A count that ends its
-    paragraph with a colon and opens a list ("Three steps follow:", then `\\begin{enumerate}`) is
-    the list § 3 asks for where the path is long, and is not flagged."""
+def enumerations(lines) -> list[tuple[str, int, str, str]]:
+    """(zone, line, sentence, form) for each announced count (`WRITING.md` § 5,
+    `REVIEWER-CONTRACT.md` `TALLY`). `form` is "questions" for a count of questions or points
+    followed by the items as bare questions ("It asks two questions. What …?"), looked for in the
+    same paragraph, and "count" for a sentence that is only a count of results and a verb of
+    carrying them ("Four results carry it."). A count is not wrong in itself: the question form
+    is the costly one, and a bare count matters where it recurs (`recurring`). A count that ends
+    its paragraph with a colon and opens a list ("Three steps follow:", then
+    `\\begin{enumerate}`) gives its items at once and is not located."""
     lines = list(lines)
     hits = []
     for zone, sents in paragraphs(lines):
@@ -185,9 +187,19 @@ def enumerations(lines) -> list[tuple[str, int, str]]:
             questions = m and ((s.endswith((".", ":")) and nxt.endswith("?"))
                                or (":" in s[m.end():] and s.endswith("?")))
             listed = s.endswith(":") and k == len(sents) - 1 and _opens_list(lines, i)
-            if questions or (COUNT_CARRIES.match(s) and not listed):
-                hits.append((zone, i, s))
+            if questions:
+                hits.append((zone, i, s, "questions"))
+            elif COUNT_CARRIES.match(s) and not listed:
+                hits.append((zone, i, s, "count"))
     return hits
+
+
+RECURRING_AT = 2   # bare counts in one file (a section) before they are a pattern, not a sentence
+
+
+def recurring(hits) -> bool:
+    """Whether the bare counts among one file's `enumerations` hits recur (`TALLY`: density)."""
+    return sum(1 for h in hits if h[3] == "count") >= RECURRING_AT
 
 
 STATEMENT_ENV = re.compile(r"\\begin\{(theorem|proposition|lemma|corollary|definition)\}")
@@ -278,7 +290,7 @@ def analyse(path: Path, show_runs: bool = False, long_at: int = DEFAULT_LONG):
     for zone, i, line in zones(lines):
         buf[zone].append((i, line))
     ask_zones = [zone for zone, _, _ in asks(lines)]
-    enum_zones = [zone for zone, _, _ in enumerations(lines)]
+    enum_zones = [h[0] for h in enumerations(lines)]
     out = {}
     for zone, items in buf.items():
         text = strip_math("\n".join(ln for _, ln in items))
@@ -330,8 +342,12 @@ def report(files: list[Path], show_runs: bool = False, long_at: int = DEFAULT_LO
             for zone, i, text in asks(lines):
                 out.append(f"    ask at {f.name}:{i} ({zone})  {text}")
         if show_enumerations:
-            for zone, i, text in enumerations(lines):
-                out.append(f"    enumeration at {f.name}:{i} ({zone})  {text}")
+            hits = enumerations(lines)
+            for zone, i, text, form in hits:
+                out.append(f"    enumeration at {f.name}:{i} ({zone}, {form})  {text}")
+            if recurring(hits):
+                n = sum(1 for h in hits if h[3] == "count")
+                out.append(f"    recurring counts in {f.name}: {n} (TALLY: density)")
     for zone in ZONES:
         d, s, w, a, e = tot[zone]
         out.append(f"{'TOTAL':24s} {zone:10s} {d:5d} {s:5d} {w:7d} {a:5d} {e:5d}")

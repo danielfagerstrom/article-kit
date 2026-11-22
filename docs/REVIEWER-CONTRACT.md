@@ -198,6 +198,7 @@ tells of their own (Weinmeister, *Can AI fix its own slop?*, Medium).
 | `TRICOLON` | a list of three whose third item pads or repeats the second | only when an item is padding; three real items are not a flag |
 | `PARALADDER` | one claim restated in stacked glosses: "in other words", "that is" | only where a rung adds nothing for the reader of `WRITING.md` § 0; the probe is *demote*, never *delete* |
 | `ATTITUDE` | *elegant*, *remarkable*, *striking*, *surprising* | density: a second one in the same section, or one the stated result does not bear out |
+| `TALLY` | an announced count: "It asks two questions. What …?", "Three results carry it." | the question form (a count, then bare questions the reader must hold open): one sighting, unless each question is short and answered at once; a bare count: density, a second one in the same section; a count whose items follow at once ("two cases: …", a list) is not a flag, and a wrong count is `COUNT` |
 
 Three rules hold across the table:
 

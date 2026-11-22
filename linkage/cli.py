@@ -833,8 +833,9 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--asks", action="store_true",
                     help="also locate each 'ask' of a requirement (WRITING.md § 3: 'require')")
     pr.add_argument("--enumerations", action="store_true",
-                    help="also locate each announced enumeration: a count of questions followed "
-                         "by bare questions, or 'Four results carry it.' (WRITING.md § 3)")
+                    help="also locate each announced count, marked by form: 'questions' (a count "
+                         "followed by bare questions) or 'count' ('Three results carry it.'), and "
+                         "say where bare counts recur in a file (WRITING.md § 5; TALLY)")
     pr.add_argument("--terms", action="store_true",
                     help="also locate each \\emph term defined in prose and used in three or "
                          "more later statements: a numbered definition (WRITING.md § 3)")

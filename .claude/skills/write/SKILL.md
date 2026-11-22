@@ -173,9 +173,9 @@ derivations and where they turn) must be on the page, not merely named.
   not.
 - **Motivation first, then the statement, then the comments.** Every section and subsection opens
   with what the result is and why it matters, one plain sentence on the aim before each move.
-  Technical comments on a statement or a proof come *after* the statement and before the proof,
-  never before the reader has seen the statement. Results before proof talk; details after.
-  So too between statements, in the approved introduction's register; no announced count.
+  Technical comments on a statement or a proof come *after* the statement and before the proof.
+  Results before proof talk; details after.
+  So too between statements, in the approved introduction's register; counts announced sparingly.
 - **Borrowed facts are stated, not folded in.** A result taken from the literature becomes its own
   numbered theorem or definition with a page anchor read from the axiom ledger, never from memory.
   This is the prose-level counterpart of that ledger, and it is gate item 3.

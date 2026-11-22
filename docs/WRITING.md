@@ -178,9 +178,9 @@ derivations and where they turn) must be on the page, not merely named.
   not.
 - **Motivation first, then the statement, then the comments.** Every section and subsection opens
   with what the result is and why it matters, one plain sentence on the aim before each move.
-  Technical comments on a statement or a proof come *after* the statement and before the proof,
-  never before the reader has seen the statement. Results before proof talk; details after.
-  So too between statements, in the approved introduction's register; no announced count.
+  Technical comments on a statement or a proof come *after* the statement and before the proof.
+  Results before proof talk; details after.
+  So too between statements, in the approved introduction's register; counts announced sparingly.
 - **Borrowed facts are stated, not folded in.** A result taken from the literature becomes its own
   numbered theorem or definition with a page anchor read from the axiom ledger, never from memory.
   This is the prose-level counterpart of that ledger, and it is gate item 3.
@@ -300,8 +300,13 @@ tics. So read this file before drafting, and expect the review to be what holds 
 between statements, says in the approved introduction's register the question the section answers
 and why it arises, and what follows, with a list where the path is long; it is not a condensation
 of the section's content. An announced count ("It asks two questions. What …?", "Four results
-carry it.") is replaced by what the questions or results are and why they come up;
-`linkage prose register --enumerations` locates one. A class the paper names and uses throughout
+carry it.") is not wrong in itself, but models overuse it, and it can tax the reader: a count
+followed by bare questions makes the reader hold that many open questions before any content, a
+count is easily wrong (the "two" questions were four), and a count at every opening gives the
+sections one shape. A count whose items follow at once ("two cases: …", a list) tells the reader
+something and stays. Where one costs the reader, say what the questions or results are and why
+they come up. `linkage prose register --enumerations` locates each, marked by form, and says where
+bare counts recur; the `TALLY` tag of `REVIEWER-CONTRACT.md` says when one is a flag. A class the paper names and uses throughout
 (the pyramid paper's three strata, defined in prose before the theorem that describes them) is a
 numbered definition, not a term emphasised in a prose paragraph; `linkage prose register --terms`
 locates an `\emph` term defined in prose that three or more later statements use.
