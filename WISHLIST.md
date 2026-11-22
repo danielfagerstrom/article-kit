@@ -287,23 +287,6 @@ The author on the abstract, § 1 and § 1.1 of the same paper, after its rewrite
 
 ---
 
-## process: section openings that motivate, two parts left (Paper VI, pass 6)
-
-The rules are done (`WRITING.md` §§ 3 and 5, `PROCESS.md` § 8 pass 1,
-`linkage prose register --enumerations` and `--terms`; hub Q-0869). Left:
-
-1. **The announced enumeration as a named tic** in the hub's `wiki/ai-prose-patterns.md` § 1, a
-   hub pull request. Suggested row, after "over-signposting": `| discourse | **announced
-   enumeration** | "It asks two questions. What …?" / "Four results carry it." — a count announced,
-   then the items as bare questions or not at all; often miscounted | coined |`.
-2. **The blind reviewer takes the approved introduction as calibration.** `PROCESS.md` § 8 pass 1
-   says a blind reviewer of the readability pass is given it; the hub's `draft-reviewer` agent
-   (`.claude/agents/draft-reviewer.md`) and `review-draft` skill (`.claude/skills/review-draft/`)
-   do not yet pass or ask for it. Suggested: the skill reads the article's approved introduction, when one is
-   recorded, and hands it to the agent as the register to judge openings and connective prose by.
-
----
-
 ## process: the swallowed-prose gate is in the scaffold, but `linkage init` never copies it
 ## `linkage check` pairs a proof with the statement above it before reading its `% proof of` marker
 
