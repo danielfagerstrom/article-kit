@@ -751,6 +751,7 @@ def test_asks_are_counted_by_zone_and_located(tmp_path: Path) -> None:
     "The paper raises three points.\nIs the ladder closed?",
     "Four results carry the section.",
     "There are two facts.",
+    "Three steps follow:\n\nThe first is the grid.",                  # no list after it
 ])
 def test_an_announced_enumeration_is_located(text: str) -> None:
     assert len(register.enumerations(text.splitlines())) == 1, text
@@ -764,6 +765,8 @@ def test_an_announced_enumeration_is_located(text: str) -> None:
     "These three results carry the proof of Theorem 2.",
     "The paper asks two questions.\n\nWhat does it find?",          # a new paragraph
     "Is the ladder closed? Two questions follow from it, and both are answered here.",
+    "Three steps follow:\n\\begin{enumerate}\n\\item First.\n\\end{enumerate}",   # a list
+    "Three steps follow:\n\n\\begin{itemize}\n\\item First.\n\\end{itemize}",
 ])
 def test_a_motivated_count_is_not_an_enumeration(text: str) -> None:
     assert register.enumerations(text.splitlines()) == [], text
@@ -822,7 +825,8 @@ def test_a_term_with_a_numbered_definition_or_few_uses_is_not_located(tmp_path: 
     a.write_text(STRATA_IN_PROSE, encoding="utf-8")
     b.write_text(STRATA_LATER, encoding="utf-8")
     assert register.prose_terms([a]) == []                 # two later statements only
-    assert register.prose_terms([b, a]) == []              # the lemma comes before the term
+    # three lemmas before the term and two statements after it: the earlier ones do not count
+    assert register.prose_terms([b, b, b, a]) == []
     d = tmp_path / "02-defs.tex"
     d.write_text("\\begin{definition}\\label{def:strata}\n  The \\emph{strata} are the classes."
                  "\n\\end{definition}\n", encoding="utf-8")

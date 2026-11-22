@@ -156,11 +156,27 @@ def paragraphs(lines):
     yield from flush()
 
 
+_LIST = re.compile(r"\\begin\{(?:enumerate|itemize|description)\}")
+
+
+def _opens_list(lines, i: int) -> bool:
+    """Whether the paragraph holding line `i` (1-based) is followed by a list environment."""
+    j = i
+    while j < len(lines) and lines[j].strip() and not _BREAK.match(lines[j].strip()):
+        j += 1
+    while j < len(lines) and not lines[j].strip():
+        j += 1
+    return j < len(lines) and bool(_LIST.match(lines[j].strip()))
+
+
 def enumerations(lines) -> list[tuple[str, int, str]]:
     """(zone, line, sentence) for each announced enumeration (`WRITING.md` § 3): a count of
     questions or points followed by the items as bare questions ("It asks two questions. What
     …?"), or a sentence that is only a count of results and a verb of carrying them ("Four results
-    carry it."). The questions are looked for in the same paragraph."""
+    carry it."). The questions are looked for in the same paragraph. A count that ends its
+    paragraph with a colon and opens a list ("Three steps follow:", then `\\begin{enumerate}`) is
+    the list § 3 asks for where the path is long, and is not flagged."""
+    lines = list(lines)
     hits = []
     for zone, sents in paragraphs(lines):
         for k, (i, s) in enumerate(sents):
@@ -168,7 +184,8 @@ def enumerations(lines) -> list[tuple[str, int, str]]:
             m = COUNT_OF_QUESTIONS.search(s)
             questions = m and ((s.endswith((".", ":")) and nxt.endswith("?"))
                                or (":" in s[m.end():] and s.endswith("?")))
-            if questions or COUNT_CARRIES.match(s):
+            listed = s.endswith(":") and k == len(sents) - 1 and _opens_list(lines, i)
+            if questions or (COUNT_CARRIES.match(s) and not listed):
                 hits.append((zone, i, s))
     return hits
 
