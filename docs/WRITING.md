@@ -180,12 +180,7 @@ derivations and where they turn) must be on the page, not merely named.
   with what the result is and why it matters, one plain sentence on the aim before each move.
   Technical comments on a statement or a proof come *after* the statement and before the proof,
   never before the reader has seen the statement. Results before proof talk; details after.
-  This holds at every section and subsection opening and in the prose between statements, in the
-  register of the approved introduction: the question the section answers and why it arises, what
-  follows, a list where the path is long; not a condensation of the section's content. No
-  announced count ("It asks two questions. What …?", "Four results carry it."): say what the
-  questions or results are and why they come up. `linkage prose register --enumerations` locates
-  the announced count.
+  So too between statements, in the approved introduction's register; no announced count.
 - **Borrowed facts are stated, not folded in.** A result taken from the literature becomes its own
   numbered theorem or definition with a page anchor read from the axiom ledger, never from memory.
   This is the prose-level counterpart of that ledger, and it is gate item 3.
@@ -203,10 +198,7 @@ derivations and where they turn) must be on the page, not merely named.
   named family in its literature, the scale-space literature included. Never drop an exotic term
   unglossed (§ 0). A paragraph that introduces a proof idea explains each new object in its own
   sentence.
-- **A class the paper names and uses throughout is a numbered definition**, not a term
-  emphasised in a prose paragraph (the pyramid paper's three strata, defined in prose before the
-  theorem that describes them). `linkage prose register --terms` locates an `\emph` term defined
-  in prose that three or more later statements use.
+- **A named class used throughout is a numbered definition.**
 - **"Require", not "ask", for what an axiom system or a definition demands** ("(A8) required at
   one dilation"): "ask" there reads as an informality the paper does not intend. The question sense
   stays ("this section asks which stencils …"); `linkage prose register --asks` locates the other.
@@ -303,6 +295,16 @@ tics. So read this file before drafting, and expect the review to be what holds 
    a prose edit most easily changes in mathematics: a quantifier (*every*, *some*, *only*), a
    negation, a hypothesis, the strength of a modal or a hedge. An edit that moves one of them
    changed a claim, not the style.
+
+**Two § 3 rules the review checks, at length.** A section or subsection opening, and the prose
+between statements, says in the approved introduction's register the question the section answers
+and why it arises, and what follows, with a list where the path is long; it is not a condensation
+of the section's content. An announced count ("It asks two questions. What …?", "Four results
+carry it.") is replaced by what the questions or results are and why they come up;
+`linkage prose register --enumerations` locates one. A class the paper names and uses throughout
+(the pyramid paper's three strata, defined in prose before the theorem that describes them) is a
+numbered definition, not a term emphasised in a prose paragraph; `linkage prose register --terms`
+locates an `\emph` term defined in prose that three or more later statements use.
 
 Two passes with opposite schedules: the **referent audit** (§ 0) runs early and repeatedly, because
 it changes what gets written next; the **tic pass** runs once, late, on text that is then frozen,
