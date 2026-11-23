@@ -475,6 +475,32 @@ Record: the pyramids repository, `records/pyramids/REVIEW-citation-audit-theory-
 
 ---
 
+## `linkage release export`: an appendix chapter (`A1`) in a module's `chapters`
+
+*Requested 2026-11-23 by the pyramids repository, at the theory paper's release preparation
+(`pyramids-v0.1`).* The module table there lists `chapters = ["02", "03", "04", "05", "A1"]`: the
+paper's supplement is the blueprint's Appendix A, `parts/A1-line.tex`, which the development's
+`content.tex` inputs after `\appendix`. `chapter_files` and the closure read `A1` correctly (the
+dry run passes), but `export_content_tex` sets each part's counter by `int(name[:2])`, which raises
+`ValueError: invalid literal for int() with base 10: 'A1'` at the real export; and if it did not,
+the export's `content.tex` would carry no `\appendix`, so the part would print as a numbered chapter
+where the development prints Appendix A.
+
+*Suggested shape.* In `export_content_tex`, take the two-digit parts as now, then, for parts whose
+prefix is a capital letter (and digits), emit `\appendix` once and set the counter to the letter's
+index (`ord(L) - ord("A")`) before each new letter. The pyramids repository's stopgap,
+`scripts/release_export.py`, wraps `linkage`'s CLI with exactly this function; it is deleted when
+this is fulfilled.
+
+*A smaller one, from the same dry run.* Declarations of the shared packages a repository names in
+`paths.lean_packages` (here `AffineHemigroup.OriginDatum`, `ScaleSpace.CascadeFamily` and nine more)
+are listed under "tagged declarations found in no module (skeleton names that moved, or typos)",
+although they are found, in a Lake dependency the export does not carry. `linkage check` already
+resolves them through `lean_packages` and `shared_namespaces`; the dry run could list them as
+"in a shared package" instead, so that the list of real misses stays empty.
+
+---
+
 *No other open requests.*
 
 ---
