@@ -486,6 +486,12 @@ dry run passes), but `export_content_tex` sets each part's counter by `int(name[
 the export's `content.tex` would carry no `\appendix`, so the part would print as a numbered chapter
 where the development prints Appendix A.
 
+The real export (`--draft`, 2026-11-23) found a second site: `readme` writes "the article's
+sections N–M (the blueprint's chapters of the same numbers)" from `[int(c) for c in chapters]`,
+which raises on `A1` too. That sentence also assumes the paper's sections carry the blueprint's
+chapter numbers, which a paper with a section the blueprint does not have (here the line, § 4)
+breaks; naming the blueprint's chapters (and appendices) would be right for both.
+
 *Suggested shape.* In `export_content_tex`, take the two-digit parts as now, then, for parts whose
 prefix is a capital letter (and digits), emit `\appendix` once and set the counter to the letter's
 index (`ord(L) - ord("A")`) before each new letter. The pyramids repository's stopgap,
