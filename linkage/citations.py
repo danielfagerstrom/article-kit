@@ -8,7 +8,7 @@ statement, the blueprint node.
 
 The forms an article uses:
 
-- `[\sscite{key}, loc]` and `\sscite{key}` (any `\...cite...` macro, as `paper.CITE_RE`);
+- `[\sscite{key}, loc]` and `\sscite{key}` (any `\...cite...` macro, as `paper.CITE_RE`; `form` is the macro name, or `prog`, `progpaper`);
 - `\cite[loc]{key}`, where the last optional argument is the locator;
 - `\prog{module}{loc}`, the key being the module name;
 - `\progpaper{module}`, with no locator.
@@ -73,10 +73,12 @@ def _scan(text: str) -> list[tuple[int, str, str, str]]:
         loc = _clean(opts[-1]) if opts else ""
         if not loc:
             tail = _BRACKET_TAIL.match(text, m.end())
-            # Only a bracket the citation opens: `[` right before the macro.
-            if tail and re.search(r"\[\s*$", text[max(0, m.start() - 40):m.start()]):
+            # Only a bracket the citation opens: `[` right before the macro, however much
+            # text precedes it.
+            if tail and text[:m.start()].rstrip().endswith("["):
                 loc = _clean(tail.group(1))
-        form = "cite"
+        # The macro name, so `\sscite` and `\cite` rows differ.
+        form = re.match(r"\\([A-Za-z]*[Cc]ite[A-Za-z]*)", macro).group(1)
         for key in m.group(1).split(","):
             key = key.strip()
             if not key or "#" in key or "\\" in key:

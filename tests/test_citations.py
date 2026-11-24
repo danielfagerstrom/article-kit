@@ -25,8 +25,8 @@ ROWS = [
     ("alpha2020", "cite", "Thm.~3", "prose", None),
     ("beta2019", "cite", "", "prose", None),
     ("gamma2018", "cite", "", "prose", None),
-    ("delta2021", "cite", "p.~12", "prose", None),
-    ("epsilon2022", "cite", "", "prose", None),
+    ("delta2021", "sscite", "p.~12", "prose", None),
+    ("epsilon2022", "sscite", "", "prose", None),
     ("isotropic", "prog", "Thm.~3.6, p.~13", "prose", None),
     ("selection", "progpaper", "", "prose", None),
     ("zeta2017", "cite", "p.~5", "shared-statement", "thm:main"),
@@ -70,3 +70,38 @@ def test_without_the_flag_it_summarises(article):
     rc, out, _ = run_cli("citations")
     assert rc == 0
     assert "8 in the paper sources, 4 with a locator" in out
+
+
+EDGE = r"""
+\input{sec}
+
+% shared with blueprint thm:a
+\begin{theorem}\label{t:a}
+  First line with a long run of preceding words so the bracket is far from the start
+  [\sscite{eta2015}, Lem.~2]
+  and \cite{theta2016}.
+\end{theorem}
+
+Prose between. \cite[see][Ch.~4]{iota2014}
+
+% shared with blueprint thm:b
+\begin{lemma}\label{t:b}
+  Uses \cite[p.~9]{kappa2013}.
+\end{lemma}
+"""
+
+
+def test_edges_two_optionals_multiline_shared_and_inputs(article):
+    article.paper(document(EDGE))
+    article.file("paper/sec.tex", "A section cites \\cite[p.~1]{lambda2012}.\n")
+    rc, out, _ = run_cli("citations", "--inventory")
+    assert rc == 0
+    got = [(r["file"], r["key"], r["form"], r["locator"], r["zone"], r["node"])
+           for r in json.loads(out)]
+    assert got == [
+        ("paper/paper.tex", "eta2015", "sscite", "Lem.~2", "shared-statement", "thm:a"),
+        ("paper/paper.tex", "theta2016", "cite", "", "shared-statement", "thm:a"),
+        ("paper/paper.tex", "iota2014", "cite", "Ch.~4", "prose", None),
+        ("paper/paper.tex", "kappa2013", "cite", "p.~9", "shared-statement", "thm:b"),
+        ("paper/sec.tex", "lambda2012", "cite", "p.~1", "prose", None),
+    ]
