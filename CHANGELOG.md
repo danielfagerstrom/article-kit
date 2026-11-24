@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage citations --inventory`; pass 7 says how the checkers report** (2026-11-24). The
+  citation audit's list is now a command: JSON, one row per citation (file, line, key, form,
+  locator, paragraph with comments stripped, zone, blueprint node of a shared statement), over
+  `\cite[loc]{key}`, `[\sscite{key}, loc]`, `\prog`, `\progpaper` and the bare forms. `PROCESS.md`
+  pass 7 adds that checker subagents return a table as text and the session files it as
+  `findings-<group>.md`, and that a page range must cover the item while a single page is where
+  the cited part is. Wanted by the pyramids theory paper's audit.
+
 - **The plugin's version is the commit** (2026-11-22). `plugin.json` and the marketplace's plugin
   entry no longer carry `version`. Claude Code moves an installed plugin only when its version
   changes, so the pinned `0.7.1` kept every machine on the copy it first fetched, and the writing
