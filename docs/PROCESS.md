@@ -229,9 +229,10 @@ that revises prose:
    by an agent that did not write the sentence.
    - *The list:* `linkage citations --inventory` (JSON: file, line, key, form, locator, the
      paragraph with comments stripped, the zone, and the blueprint node of a shared statement)
-     covers `\cite[loc]{key}`, `[\sscite{key}, loc]`, `\prog{module}{loc}`, `\progpaper{module}`
-     and the bare forms. Split the rows into checker groups by source; a later round re-reads
-     only the rows that changed.
+     covers `\cite[loc]{key}`, `[\sscite{key}, loc]` (several to a bracket too),
+     `\prog{module}{loc}` and `\progpaper{module}` (keyed by the citekey the paper's
+     `progkey@<label>` map gives, the label kept as `module`) and the bare forms. Split the rows
+     into checker groups by source; a later round re-reads only the rows that changed.
    - *The checkers return text.* A subagent's write into the repository is refused ("subagents
      should return findings as text"), so the brief asks for a table in the reply, one row per
      inventory id, and the session files it unchanged as `findings-<group>.md` under the module's

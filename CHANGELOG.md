@@ -10,7 +10,8 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 - **`linkage citations --inventory`; pass 7 says how the checkers report** (2026-11-24). The
   citation audit's list is now a command: JSON, one row per citation (file, line, key, form,
   locator, paragraph with comments stripped, zone, blueprint node of a shared statement), over
-  `\cite[loc]{key}`, `[\sscite{key}, loc]`, `\prog`, `\progpaper` and the bare forms. `PROCESS.md`
+  `\cite[loc]{key}`, `[\sscite{key}, loc]` (several to a bracket too), `\prog` and `\progpaper`
+  (keyed by the citekey the paper maps the module to) and the bare forms. `PROCESS.md`
   pass 7 adds that checker subagents return a table as text and the session files it as
   `findings-<group>.md`, and that a page range must cover the item while a single page is where
   the cited part is. Wanted by the pyramids theory paper's audit.

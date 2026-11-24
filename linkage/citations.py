@@ -8,10 +8,11 @@ statement, the blueprint node.
 
 The forms an article uses:
 
-- `[\sscite{key}, loc]` and `\sscite{key}` (any `\...cite...` macro, as `paper.CITE_RE`; `form` is the macro name, or `prog`, `progpaper`);
+- `[\sscite{key}, loc]` and `\sscite{key}` (any `\...cite...` macro, as `paper.CITE_RE`; `form` is the macro name, or `prog`, `progpaper`), also several in one bracket, `[\sscite{a}, loc; \sscite{b}, loc]`;
 - `\cite[loc]{key}`, where the last optional argument is the locator;
-- `\prog{module}{loc}`, the key being the module name;
-- `\progpaper{module}`, with no locator.
+- `\prog{module}{loc}` and `\progpaper{module}` (no locator). The key is the citekey the paper
+  maps the module label to (`\@namedef{progkey@<label>}{<key>}` in its macros), or the label
+  where it maps none; `module` keeps the label (null on the other rows).
 
 A `\cite{a,b}` gives one row per key. A macro's own definition (`#1`) is not a citation.
 """
@@ -27,7 +28,11 @@ from .paper import CITE_RE, Sources, _braced, _line, read
 # `\prog{module}{loc}`, `\progpaper{module}`: the name must not run on (`\prog@key`).
 PROG_RE = re.compile(r"\\prog(paper)?(?![A-Za-z@])\s*\{")
 # The `[` ... `]` of the bracketed form, immediately before a citation macro: `[\sscite{k}, loc]`.
-_BRACKET_TAIL = re.compile(r"\s*,\s*([^\]\[]*?)\s*\]")
+# Several citations share one bracket, `[\sscite{a}, loc; \sscite{b}, loc]`: a locator ends at
+# the `]` or at a `;` that opens the next citation.
+_BRACKET_TAIL = re.compile(r"\s*,\s*([^\]\[]*?)\s*(?:\]|;(?=\s*\\[A-Za-z]*[Cc]ite))")
+# The paper's map from a module label to its citekey, `\@namedef{progkey@V-line v0.1}{key}`.
+_PROGKEY_RE = re.compile(r"\\@namedef\{progkey@([^}]*)\}\{([^}]*)\}")
 _OPT = re.compile(r"\s*\[([^\]]*)\]")
 
 
@@ -63,7 +68,8 @@ def _shared_spans(cfg: Config, src, text: str) -> list[tuple[int, int, str]]:
 
 
 def _scan(text: str) -> list[tuple[int, str, str, str]]:
-    """(position, key, form, locator) for every citation in `text`, in order."""
+    r"""(position, key, form, locator) for every citation in `text`, in order; a `\prog`
+    row's key is the module label."""
     found: list[tuple[int, str, str, str]] = []
     for m in CITE_RE.finditer(text):
         macro = m.group(0)
@@ -75,7 +81,10 @@ def _scan(text: str) -> list[tuple[int, str, str, str]]:
             tail = _BRACKET_TAIL.match(text, m.end())
             # Only a bracket the citation opens: `[` right before the macro, however much
             # text precedes it.
-            if tail and text[:m.start()].rstrip().endswith("["):
+            # (or a `;` inside one, for the second citation of a shared bracket).
+            before = text[:m.start()].rstrip()
+            opened = before.rfind("[") > before.rfind("]")
+            if tail and (before.endswith("[") or (before.endswith(";") and opened)):
                 loc = _clean(tail.group(1))
         # The macro name, so `\sscite` and `\cite` rows differ.
         form = re.match(r"\\([A-Za-z]*[Cc]ite[A-Za-z]*)", macro).group(1)
@@ -104,15 +113,19 @@ def _scan(text: str) -> list[tuple[int, str, str, str]]:
 def inventory(cfg: Config, src: Sources | None = None) -> list[dict]:
     """One row per citation, over every paper source (those `\\input`ed included)."""
     src = src or read(cfg)
+    progkeys = {_clean(a): b.strip()
+                for s in src.files for a, b in _PROGKEY_RE.findall(s.text)}
     rows: list[dict] = []
     for s in src.files:
         spans = _shared_spans(cfg, s, s.text)
         for pos, key, form, loc in _scan(s.text):
             node = next((lab for a, b, lab in spans if a <= pos < b), None)
+            module = key if form in ("prog", "progpaper") else None
             rows.append({
                 "file": s.rel,
                 "line": _line(s.text, pos),
-                "key": key,
+                "key": progkeys.get(key, key) if module else key,
+                "module": module,
                 "form": form,
                 "locator": loc,
                 "zone": "shared-statement" if node else "prose",

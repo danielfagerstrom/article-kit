@@ -746,8 +746,9 @@ def build_parser() -> argparse.ArgumentParser:
     ci = sub.add_parser("citations", help="every citation of the paper sources, with its "
                                           "locator and paragraph (the citation audit's list)")
     ci.add_argument("--inventory", action="store_true",
-                    help="JSON, one row per citation: file, line, key, form, locator, "
-                         "paragraph, zone (prose | shared-statement), blueprint node")
+                    help="JSON, one row per citation: file, line, key, module (of a \\prog), "
+                         "form, locator, paragraph, zone (prose | shared-statement), "
+                         "blueprint node")
     ci.set_defaults(func=cmd_citations)
     cl = sub.add_parser("closure", help="audit each \\leanok node's \\uses{} against what "
                                         "its Lean declaration actually cites (advisory)")

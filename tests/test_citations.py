@@ -105,3 +105,27 @@ def test_edges_two_optionals_multiline_shared_and_inputs(article):
         ("paper/paper.tex", "kappa2013", "cite", "p.~9", "shared-statement", "thm:b"),
         ("paper/sec.tex", "lambda2012", "cite", "p.~1", "prose", None),
     ]
+
+
+SHARED_AND_MODULES = r"""
+\makeatletter
+\@namedef{progkey@V-line v0.1}{fagerstrom2026spatial}
+\makeatother
+One bracket, two sources [\sscite{mu2011}, p.~448; \sscite{nu2010}, (2), p.~426].
+A module \prog{V-line v0.1}{Thm.~7.3, p.~37}, its paper \progpaper{V-line v0.1},
+and one the paper maps to no key \prog{cone}{Lem.~1}.
+"""
+
+
+def test_a_shared_bracket_and_module_citekeys(article):
+    article.paper(document(SHARED_AND_MODULES))
+    rc, out, _ = run_cli("citations", "--inventory")
+    assert rc == 0
+    got = [(r["key"], r["module"], r["form"], r["locator"]) for r in json.loads(out)]
+    assert got == [
+        ("mu2011", None, "sscite", "p.~448"),
+        ("nu2010", None, "sscite", "(2), p.~426"),
+        ("fagerstrom2026spatial", "V-line v0.1", "prog", "Thm.~7.3, p.~37"),
+        ("fagerstrom2026spatial", "V-line v0.1", "progpaper", ""),
+        ("cone", "cone", "prog", "Lem.~1"),
+    ]
