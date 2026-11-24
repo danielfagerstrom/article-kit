@@ -227,6 +227,21 @@ that revises prose:
    states a general rule goes to the wishlist the same day.
 7. **Citation audit**: every page-anchored citation in the prose read against the held copy, late,
    by an agent that did not write the sentence.
+   - *The list:* `linkage citations --inventory` (JSON: file, line, key, form, locator, the
+     paragraph with comments stripped, the zone, and the blueprint node of a shared statement)
+     covers `\cite[loc]{key}`, `[\sscite{key}, loc]` (several to a bracket too),
+     `\prog{module}{loc}` and `\progpaper{module}` (keyed by the citekey the paper's
+     `progkey@<label>` map gives, the label kept as `module`) and the bare forms. Split the rows
+     into checker groups by source; a later round re-reads only the rows that changed.
+   - *The checkers return text.* A subagent's write into the repository is refused ("subagents
+     should return findings as text"), so the brief asks for a table in the reply, one row per
+     inventory id, and the session files it unchanged as `findings-<group>.md` under the module's
+     records (`records/<module>/citation-audit-<paper>/`).
+   - *Page ranges.* The brief says: a page range must cover the item, a single page is where the
+     cited part is. In the pyramids theory audit four of six wrong locators were in the author's
+     own released modules (a clause on the page after its theorem's first page, a remark on the
+     last page of a section cited at its first page), and most minor rows were single pages that
+     should have been ranges.
 
 ### 9. External review
 

@@ -25,6 +25,7 @@ linkage init --sync --check                     # write nothing; list the files 
 linkage check                                   # every in-repo edge, plus drift and shape advisories
 linkage check --wiki $WIKI_VAULT                # also the \notes{} edge to the hub
 linkage paper                                   # the paper sources: refs, cite keys, pointers, front matter
+linkage citations --inventory                   # every citation of the paper sources as JSON (pass 7's list)
 linkage closure                                 # what each \leanok node's Lean decl cites, against its \uses{} (advisory)
 linkage shape [DIR]                             # instruction files that hold records (no linkage.toml needed)
 linkage manifest                                # write blueprint-manifest-<slug>.json for the hub

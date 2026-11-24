@@ -249,6 +249,20 @@ def cmd_paper(args) -> int:
     return 0
 
 
+def cmd_citations(args) -> int:
+    """Every citation of the paper sources: the list the citation audit (pass 7) reads from."""
+    from . import citations
+    cfg = config.load(args.root)
+    rows = citations.inventory(cfg)
+    if args.inventory:
+        print(json.dumps(rows, indent=1, ensure_ascii=False))
+    else:
+        located = sum(1 for r in rows if r["locator"])
+        print(f"Citations: {len(rows)} in the paper sources, {located} with a locator "
+              f"(`--inventory` lists them as JSON).")
+    return 0
+
+
 def cmd_closure(args) -> int:
     r"""Diff each \leanok node's inferred constant closure against its \uses{} (advisory).
 
@@ -729,6 +743,13 @@ def build_parser() -> argparse.ArgumentParser:
                                       "keys, item pointers, \\tag numbering, the "
                                       "declarations and the abstract")
     pp.set_defaults(func=cmd_paper)
+    ci = sub.add_parser("citations", help="every citation of the paper sources, with its "
+                                          "locator and paragraph (the citation audit's list)")
+    ci.add_argument("--inventory", action="store_true",
+                    help="JSON, one row per citation: file, line, key, module (of a \\prog), "
+                         "form, locator, paragraph, zone (prose | shared-statement), "
+                         "blueprint node")
+    ci.set_defaults(func=cmd_citations)
     cl = sub.add_parser("closure", help="audit each \\leanok node's \\uses{} against what "
                                         "its Lean declaration actually cites (advisory)")
     cl.add_argument("--export", type=Path, metavar="PATH",

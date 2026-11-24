@@ -446,35 +446,6 @@ step that carries an idea of the argument is never one. The trust-base subsectio
 printed proofs compress these devices. Estimated saving on the seven proofs: 15-20% beyond
 wording. Records: the pyramids repository, `notes/HANDOFF.md` and `CHANGELOG.md` of 2026-11-16.
 
-## process: the citation audit needs an inventory, and its checkers return text
-
-**Wanted by** the pyramids theory paper (Paper VI), pass 7, 2026-11-22.
-
-Pass 7 of `PROCESS.md` § 8 says what to read, not how to find every citation or how to split the
-reading. The theory paper's audit wrote both by hand, and both are what the next article needs:
-
-- *The inventory.* A script listed every citation with its file, line, citekey, locator and the
-  paragraph around it, comments stripped, over the forms an article uses: `[\sscite{key}, loc]`,
-  `\cite[loc]{key}`, `\prog{module}{loc}`, `\progpaper{module}` and the bare forms. It found 194
-  citations, 150 with a locator, and the split by source made six checker groups. A
-  `linkage citations --inventory` (JSON, one row per citation, with the zone, prose or shared
-  statement, and the blueprint node for a shared one) would make this reproducible and let a
-  later round check only what changed.
-- *The checkers return text.* A subagent's write into the repository is refused ("subagents should
-  return findings as text"). Every one of the six checkers was refused, and all reported it. The
-  session saved each returned table unchanged. `PROCESS.md` pass 7 could say so: the brief asks for
-  a table in the reply, and the session files it as `findings-<group>.md` under the module's
-  records.
-- *Where the errors were.* Of six wrong locators, four were in the author's own released modules (a
-  clause on the page after its theorem's first page, a remark on the last page of a section cited at
-  its first page), and most minor rows were single pages that should be ranges. A brief that says
-  "a page range must cover the item, a single page is where the cited part is" caught them.
-
-Record: the pyramids repository, `records/pyramids/REVIEW-citation-audit-theory-paper.md` and
-`records/pyramids/citation-audit-theory/` (the brief, the inventory, the findings).
-
----
-
 ## `linkage release export`: an appendix chapter (`A1`) in a module's `chapters`
 
 *Requested 2026-11-23 by the pyramids repository, at the theory paper's release preparation
