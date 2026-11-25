@@ -197,6 +197,12 @@ npm run build && git add src/routes.json public/papers public/bibliography && gi
 npm run verify                                                # then check every channel answers
 ```
 
+**An appendix chapter** (`chapters = [..., "A1"]`, the part `parts/A1-line.tex`) is exported as the
+development prints it: `content.tex` carries one `\appendix` before the first and the counter at
+the letter's index, and the README names the blueprint's chapters and appendices. The dry run
+lists a tagged declaration of a shared package (`paths.lean_packages`) as "in a shared package",
+not among the declarations found in no module.
+
 **The module's parameters are read from `linkage.toml`, not typed on the command line.** One
 `[[modules]]` table per releasable module names its `chapters`, `paper` directory, `tag`, Lean
 `roots`, `headline` declaration, `records` directory (the process account, the response plans and
