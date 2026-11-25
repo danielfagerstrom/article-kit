@@ -32,28 +32,6 @@ or a skill, and deletes the item. A lessons file inside an article repository me
 
 ---
 
-## `linkage check` reads no dotted Lean name, and can match the wrong declaration
-
-**Wanted by** `spatial-hemigroup-pyramids`, review response r1, batch 2b, 2026-11-23 (PR #96 there).
-
-`artifacts.DECL_RE` captures `[A-Za-z_][\w']*` after the declaration keyword, so it stops at the
-first dot: `theorem SymLevyData.hasTriplet` and `theorem CarriesLatticeLadder.knot_data` are recorded
-as `SymLevyData` and `CarriesLatticeLadder`. Check 1 (`checks.py`, "Lean decls of proved nodes
-exist") then compares only the last segment of the `\lean{}` name. Two failures follow:
-
-- A tag `\lean{Pyramids.SymLevyData.hasTriplet}` fails as undeclared, although Lean declares it.
-- A tag `\lean{Pyramids.CarriesLatticeLadder.knot_data}` **passes** because an unrelated
-  `theorem knot_data` exists in another file (`LineAppendix/ModulatedCandidate.lean`). The check
-  can bless a binding to a declaration that is not the one named.
-
-The article worked around it by binding each node to an assembled, undotted declaration.
-**Suggested shape:** capture dotted names (`[A-Za-z_][\w'.]*`), prefix each with the enclosing
-`namespace` blocks, and compare full names, falling back to the last segment only when it is
-unique. The `boundary`, `closure` and `release` readers that import `DECL_HEADS` probably need the
-same change.
-
----
-
 ## process: skills and agents as a Claude Code plugin
 
 **Wanted by** ADR-0001 step 6, 2026-09-21.
