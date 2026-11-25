@@ -424,37 +424,6 @@ step that carries an idea of the argument is never one. The trust-base subsectio
 printed proofs compress these devices. Estimated saving on the seven proofs: 15-20% beyond
 wording. Records: the pyramids repository, `notes/HANDOFF.md` and `CHANGELOG.md` of 2026-11-16.
 
-## process: what the first release of a second module in a repository met (`pyramids-v0.1`)
-
-*Filed 2026-11-23 by the pyramids repository, at the close of the theory paper's release.* Five
-things the checklist and `RELEASE.md` § "The commands" did not say, each found by running them; the
-record is `records/pyramids/RELEASE-prep-pyramids-v0.1.md` there.
-
-1. **The module's `tag` must be the prefixed tag.** `changelog_date` matches `## <tag> — DATE —`
-   with `<tag>` exactly the module table's `tag`. The table said `v0.1` (the plain tag the export
-   carries) while checklist item 2 asks for `## pyramids-v0.1 — …`, so the deposit would have been
-   dated the day of the export. `RELEASE.md` could say: in a multi-module repository the table's
-   `tag` is the prefixed one (as `spatial-hemigroup-affine`'s `iso-v0.1` was), and the export's own
-   tag is set by hand.
-2. **A module needs `response_plans` named.** Without it the export takes
-   `<records>/PLAN-review-response.md`, which in a repository whose records predate the module's
-   split was another plan (the single draft's blind review). The dry run did not show which plan it
-   would export; listing it in the dry run's output would have caught it.
-3. **`--build` refuses from a worktree.** `build_in_place` requires the export beside
-   `cfg.root`; in a session worktree that is `.claude/worktrees/`, so the release export with
-   `--build` must run from the main checkout. `RELEASE.md` § "The commands" could say so, or the
-   check could use the git common directory's parent.
-4. **`lake-store` is not found on Windows.** `shutil.which("lake-store")` misses the
-   `~/.local/bin/lake-store` shell shim (no `.cmd` wrapper), so the export prints "link by hand"
-   and builds anyway, which without links means cloning every package and compiling Mathlib.
-   Linking first by hand (`python …/lake-store.py link <export> --yes`) worked; a `.cmd` wrapper
-   beside the shim, or calling `lake-store.py` through Python, would make it automatic.
-5. **The Lean build runs where the store is.** The export built from scratch on the laptop in 41
-   minutes (3,771 jobs); nothing in the checklist says where the build of a large closure should
-   run, and this repository's handoff said "the VM only".
-
-The site's first publication of a new paper also failed in research-site's `site-sync`, filed in
-research-site's `WISHLIST.md` (2026-11-23).
 
 ---
 

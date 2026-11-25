@@ -22,6 +22,7 @@ import json
 import os
 import shutil
 import subprocess
+import types
 from pathlib import Path
 
 import pytest
@@ -1424,6 +1425,84 @@ def test_dry_run_warns_when_licenses_is_absent(article_repo: Path, unblocked) ->
     _, out, _ = run_cli("--root", str(article_repo), "release", "export",
                         "--module", "line", "--dry-run")
     assert "warning: LICENSES/" not in out
+
+
+# ---- the dry run names the plan; `--build` from a worktree; `lake-store` by Python --------------
+
+def test_dry_run_prints_the_response_plan_it_would_export(article_repo: Path, unblocked) -> None:
+    rc, out, _ = run_cli("--root", str(article_repo), "release", "export",
+                         "--module", "line", "--dry-run")
+    assert rc == 0
+    assert "response plan exported as notes/PLAN-review-response.md:" in out
+
+
+def test_main_checkout_of_a_worktree_is_the_repository_it_was_added_from(tmp_path: Path) -> None:
+    main = tmp_path / "main"
+    (main / ".git" / "worktrees" / "w").mkdir(parents=True)
+    wt = main / ".claude" / "worktrees" / "w"
+    wt.mkdir(parents=True)
+    wt.joinpath(".git").write_text(f"gitdir: {main / '.git' / 'worktrees' / 'w'}\n",
+                                   encoding="utf-8")
+    assert release.main_checkout(wt) == main.resolve()
+    assert release.main_checkout(main) == main.resolve()  # a main checkout: itself
+    assert release.main_checkout(tmp_path) == tmp_path.resolve()  # no repository: itself
+
+
+def test_lake_store_falls_back_to_the_script_through_python(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    monkeypatch.setenv("WIKI_VAULT", str(tmp_path))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+    assert release.lake_store_command() is None
+    (tmp_path / "lake-store.py").write_text("", encoding="utf-8")
+    assert release.lake_store_command() == [release.sys.executable,
+                                            str(tmp_path / "lake-store.py")]
+    monkeypatch.setattr(shutil, "which", lambda name: "/bin/lake-store"
+                        if name == "lake-store" else None)
+    assert release.lake_store_command() == ["/bin/lake-store"]
+
+
+def _fake_worktree(tmp_path: Path) -> tuple[Path, Path]:
+    main = tmp_path / "dev" / "repo"
+    (main / ".git" / "worktrees" / "w").mkdir(parents=True)
+    wt = main / ".claude" / "worktrees" / "w"
+    wt.mkdir(parents=True)
+    wt.joinpath(".git").write_text(f"gitdir: {main / '.git' / 'worktrees' / 'w'}\n",
+                                   encoding="utf-8")
+    return main, wt
+
+
+def test_build_in_place_accepts_an_export_beside_the_main_checkout(tmp_path: Path,
+                                                                   monkeypatch, capsys) -> None:
+    main, wt = _fake_worktree(tmp_path)
+    out = main.parent / "repo-export"
+    out.mkdir()
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, **kw):
+        calls.append(list(cmd))
+        return types.SimpleNamespace(returncode=1, stdout="", stderr="")
+
+    monkeypatch.setattr(release, "lake_store_command", lambda: ["py", "lake-store.py"])
+    monkeypatch.setattr(release.subprocess, "run", fake_run)
+    ex = types.SimpleNamespace(cfg=types.SimpleNamespace(root=wt))
+    assert release.build_in_place(ex, out, out / "paper.tex") == 2
+    assert calls == [["py", "lake-store.py", "link", "repo-export", "--yes"]]
+    assert "lake-store link FAILED" in capsys.readouterr().out
+
+
+def test_build_in_place_refuses_a_misplaced_export_from_a_worktree(tmp_path: Path,
+                                                                   monkeypatch, capsys) -> None:
+    main, wt = _fake_worktree(tmp_path)
+    calls: list[list[str]] = []
+    monkeypatch.setattr(release.subprocess, "run",
+                        lambda cmd, **kw: calls.append(list(cmd)))
+    ex = types.SimpleNamespace(cfg=types.SimpleNamespace(root=wt))
+    for out in (wt / "export", main / "export", main.parent / "repo"):
+        out.mkdir(parents=True, exist_ok=True)
+        assert release.build_in_place(ex, out, out / "paper.tex") == 2
+    assert calls == []
+    assert f"is not beside {main.resolve()}" in capsys.readouterr().out
 
 
 # ---- an appendix chapter ------------------------------------------------------------------------
