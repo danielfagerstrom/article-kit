@@ -25,5 +25,8 @@ the tag has at most two components (`Lib.foo`) and that segment is unique among 
   under that qualification) are now fatal; an article rebinds them to the declaration it means.
 - `manifest.lean_decls` lists full names.
 - `closure.DeclIndex.resolve` uses the same rule as check 1 (`artifacts.lean_name_matches`), so the
-  two readers agree; a tag with more than one extra leading component over a root-level name
-  does not match it.
+  two readers agree on a tag; a tag with more than one extra leading component over a root-level
+  name does not match it. A *source token* (a use inside a proof) then falls back to a unique final
+  component at any length, as before: a token is often a field-notation chain on a local
+  (`D.jumpPart.exponent_le_sq_at`), whose leading components name no namespace. Without the
+  fallback the affine module's closure of `exponent_gaussian_limit` fell from 215 declarations to 7.

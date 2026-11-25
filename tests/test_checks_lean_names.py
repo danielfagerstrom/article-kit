@@ -70,6 +70,16 @@ def test_closure_resolves_by_the_same_rule():
     assert index.resolve("Lib.b") == "A.b"
 
 
+def test_closure_reads_a_field_notation_chain_by_its_last_segment():
+    from linkage.closure import DeclIndex
+    index = DeclIndex(module={"Lib.Datum.exponent_le": "M", "Lib.Datum": "M"},
+                      short={"exponent_le": {"Lib.Datum.exponent_le"}, "Datum": {"Lib.Datum"}})
+    # A use inside a proof: `D` is a local, not a namespace.
+    assert index.resolve("D.jumpPart.exponent_le", token=True) == "Lib.Datum.exponent_le"
+    # The same string as a \lean{} tag names no declaration.
+    assert index.resolve("D.jumpPart.exponent_le") is None
+
+
 def test_a_library_prefix_falls_back_to_a_unique_last_segment(article):
     article.lean("namespace Inner\ntheorem only_one : True := trivial\nend Inner\n")
     assert lean_fatal(article, "Lib.only_one") == []

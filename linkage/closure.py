@@ -95,17 +95,22 @@ class DeclIndex:
     short: dict[str, set[str]] = field(default_factory=dict)
     """final component -> the full names carrying it, for resolving an unqualified token."""
 
-    def resolve(self, name: str) -> str | None:
+    def resolve(self, name: str, *, token: bool = False) -> str | None:
         """The full declaration name a `\\lean{}` tag or a source token denotes, if ours.
 
-        The rule is check 1's (`artifacts.lean_name_matches`), because a blueprint tag is
-        written the way a reader would write it and a source token is written under whatever
-        `open`/namespace is in scope. Ambiguity (two declarations matching) resolves to
-        nothing: guessing would invent an edge, which is the one thing an audit must not do.
+        A tag follows check 1's rule (`artifacts.lean_name_matches`), since a blueprint tag is
+        written the way a reader would write it. A source token tries that rule first, then
+        falls back to a unique final component at any length: a token is often a field-notation
+        chain on a local (`D.jumpPart.exponent_le_sq_at`), whose leading components name no
+        namespace, so check 1's limit on extra components would drop a real use. Ambiguity (two
+        declarations matching) resolves to nothing: guessing would invent an edge, which is the
+        one thing an audit must not do.
         """
         if name in self.module:
             return name
         hits = lean_name_matches(name, self.module)
+        if token and not hits:
+            hits = self.short.get(name.split(".")[-1], set())
         return next(iter(hits)) if len(hits) == 1 else None
 
     def closure(self, start: str) -> set[str]:
@@ -155,7 +160,7 @@ def scan_lean(cfg: Config) -> DeclIndex:
         index.direct[name] = tokens  # resolved below, once every name is known
     for name, tokens in index.direct.items():
         index.direct[name] = {r for t in tokens
-                              if (r := index.resolve(t)) is not None and r != name}
+                              if (r := index.resolve(t, token=True)) is not None and r != name}
     return index
 
 
@@ -181,7 +186,7 @@ def apply_export(index: DeclIndex, export: dict) -> DeclIndex:
         index.short.setdefault(name.split(".")[-1], set()).add(name)
     for name, consts in export.items():
         index.direct[name] = {r for c in consts
-                              if (r := index.resolve(str(c))) is not None and r != name}
+                              if (r := index.resolve(str(c), token=True)) is not None and r != name}
     return index
 
 
