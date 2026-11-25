@@ -7,6 +7,16 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage check` resolves dotted Lean names and namespaces** (2026-11-25). A declaration is
+  recorded under its full name (`theorem SymLevyData.hasTriplet` inside `namespace Pyramids` is
+  `Pyramids.SymLevyData.hasTriplet`; `section` and `mutual` blocks nest, `end` closes them), and
+  check 1 compares full names: a tag matches a declared name it equals or is a dotted suffix of
+  (or the reverse), and falls back to the last segment only for a tag of at most two components
+  whose last segment is unique. A tag naming another namespace's `knot_data` is now undeclared.
+  `boundary` (pins, shadows) and `closure` read names the same way
+  ([ADR-0003](adr/0003-lean-tags-compare-full-names.md)). Wanted by the pyramids article
+  (PR #96 there).
+
 - **`linkage release export` takes an appendix chapter** (2026-11-25). A module whose `chapters`
   include `A1` exports: `content.tex` gets one `\appendix` and the counter at the letter's index
   (`A` is 0) before each new letter, and the README names the blueprint's chapters and

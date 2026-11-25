@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import trust
-from .artifacts import DECL_HEADS
+from .artifacts import DECL_HEADS, resolve_lean_name
 from .config import Config
 
 # --- reading Lean source ------------------------------------------------------
@@ -226,15 +226,14 @@ def mathlib_names(cfg: Config) -> set[str]:
     Opt-in (`--with-mathlib`): it reads several thousand files, which is fine for a
     deliberate run and wrong for a check CI runs on every push.
     """
-    from .artifacts import DECL_RE as NAME_RE
-    from .artifacts import read
+    from .artifacts import declared_names, read
 
     root = cfg.lean / ".lake" / "packages" / "mathlib" / "Mathlib"
     if not root.is_dir():
         return set()
     names: set[str] = set()
     for f in root.rglob("*.lean"):
-        names |= set(NAME_RE.findall(read(f)))
+        names |= {_short(n) for n in declared_names(read(f))}
     return names
 
 
@@ -299,8 +298,9 @@ def run(cfg: Config, *, strict_shadows: bool = False,
 
 
 def _names(path: Path) -> set[str]:
-    from .artifacts import DECL_RE as NAME_RE
-    return set(NAME_RE.findall(path.read_text(encoding="utf-8")))
+    """Full, namespace-qualified declaration names (`artifacts.declared_names`)."""
+    from .artifacts import declared_names
+    return declared_names(path.read_text(encoding="utf-8"))
 
 
 def _short(name: str) -> str:
@@ -345,7 +345,7 @@ def _check_pins(cfg: Config, rep: Report, guard: str | None,
             rep.fatal.append(
                 f"[axiom-pin] {where}: the pin expects output for `{p.expect_decl}` but "
                 f"prints `{p.decl}` — one of the two was copied and not edited")
-        if _short(p.decl) not in declared:
+        if not resolve_lean_name(p.decl, declared):
             rep.fatal.append(
                 f"[axiom-pin] {where}: `{p.decl}` is pinned but declared nowhere under "
                 f"{cfg.lean.name}/ — a stale pin guards nothing")
@@ -498,7 +498,7 @@ def _check_shadows(cfg: Config, rep: Report, *, strict: bool,
         if root.is_dir():
             standard |= {n for f in root.rglob("*.lean")
                          if ".lake" not in f.relative_to(root).parts
-                         for n in _names(f)}
+                         for n in map(_short, _names(f))}
     if with_mathlib:
         standard |= mathlib_names(cfg)
 
