@@ -97,7 +97,10 @@ In order; a release is not done until the last item.
    where the paper's statements needed 79, and the separation took a day after the final read.
 2. **The changelog entry** headed `## <tag> — <date> — <title>`; the version chosen (`v0.x` while a
    preprint, `v1.0` at journal submission of *that module*). A multi-module repository prefixes its
-   tags with the module (`cone-v0.1`), and the export carries the plain `vX.Y`.
+   tags with the module (`cone-v0.1`), and the export carries the plain `vX.Y`. In such a
+   repository the module table's `tag` is **the prefixed one** (`iso-v0.1`, `pyramids-v0.1`):
+   `changelog_date` matches `## <tag> — DATE —` with the table's `tag` exactly, and a plain `v0.1`
+   there dates the deposit the day of the export. The export's own plain tag is set by hand.
 3. **Reserve the DOI** (author): the Zenodo deposit opened as a private draft through the API, which
    prints the DOI the PDF will carry. The first release creates the concept DOI; later ones are new
    versions under it. The token is the author's and stays in the author's terminal: an assistant
@@ -120,6 +123,10 @@ In order; a release is not done until the last item.
    is a local staging tree, tagged and read by the Zenodo commands but never pushed anywhere on its
    own. It still sits **beside the repository, under a name of its own** (`lake-store`'s link
    needs this — #31), not inside it or reusing its name.
+   **Where the Lean build runs.** On the laptop or on the VM, as the author chooses (2026-11-23);
+   the repository's handoff saying "the VM only" does not decide it. A large closure is long: the
+   pyramids export built from scratch on the laptop in 41 minutes (3,771 jobs). Plan for it, and
+   link the store first (`--build` does).
 6. **Deposit** (author): `reserve` a draft (checklist item 3), `upload` the PDF and a zip of the
    tagged tree — which also makes the PDF the draft's default preview — then read the draft
    deposit as a stranger would (title, abstract, creator with ORCID, licence, version, date,
@@ -209,6 +216,17 @@ lists the flags that override a parameter for one run (`--tag`, `--chapters`, `-
 `--shared-nodes`, `--date`, `--extra-notes`), and
 `spatial-hemigroup-scale-space`'s `records/cone/RELEASE-procedure.md` holds the command as run for
 `cone-v0.1`, in the older spelling. A repository with one module needs no `--module`.
+
+**Name `response_plans` in every module table.** Without it the export takes
+`<records>/PLAN-review-response.md`, which in a repository whose records predate the module's
+split can be another plan (a single draft's blind review). The dry run prints the plan it would
+export, and says when that is the default; read the line.
+
+**`--build` links the store itself.** The export must sit beside the repository; from a
+session worktree the check reads the main checkout (the parent of git's common directory), so the
+export goes beside that, not in `.claude/worktrees/`. `--build` calls `lake-store` from `PATH`
+(or `lake-store.cmd`) and, failing both, `lake-store.py` through Python, found in `$WIKI_VAULT`
+or `~/Documents/Notes`; the link is automatic. Only when none is found does it say to link by hand.
 
 **A paper with a supplement** names it in its module table: `supplement = "supplement"` for a
 `supplement.tex` built in the paper directory beside `main.tex`. The export then carries

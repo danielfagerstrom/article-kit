@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **Release fixes from `pyramids-v0.1`** (2026-11-25). `RELEASE.md` says that a multi-module
+  repository's module `tag` is the prefixed one (what `changelog_date` matches), that a module
+  names `response_plans`, and where the Lean build of a large closure runs. The export's dry run
+  prints the response plan it would export, and says when it is the default. `--build` checks the
+  export's place against the main checkout (read from a worktree's `.git` file), so it works from
+  a session worktree, and calls `lake-store.py` through Python when no `lake-store` or
+  `lake-store.cmd` is on `PATH`.
+
 - **`linkage citations --inventory`; pass 7 says how the checkers report** (2026-11-24). The
   citation audit's list is now a command: JSON, one row per citation (file, line, key, form,
   locator, paragraph with comments stripped, zone, blueprint node of a shared statement), over
