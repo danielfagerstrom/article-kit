@@ -6,9 +6,8 @@ r"""Check 1 compares full, namespace-qualified Lean names (Q-0876).
 
 from __future__ import annotations
 
-from linkage import artifacts
-
 from fixtures.article import statement
+from linkage import artifacts
 
 
 def lean_fatal(article, tag):
