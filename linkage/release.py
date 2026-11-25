@@ -44,6 +44,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 from dataclasses import dataclass
@@ -1430,6 +1431,11 @@ def _export(cfg: Config, args) -> int:
         print(f"warning: LICENSES/ lacks {', '.join(missing)}, which the Lean headers and the "
               "README name; the export copies only what is there "
               "(`linkage init` writes both into a repository that has no LICENSES/)")
+    plans = mod.response_plan_files()
+    print("response plan exported as notes/PLAN-review-response.md: "
+          + (", ".join(plans) if plans else "none")
+          + ("" if mod.response_plans else
+             "  (the default; name `response_plans` in the module table if it is another plan)"))
     if args.dry_run:
         return 1 if cite_failures else 0
     if cite_failures:
@@ -1725,6 +1731,42 @@ Lean sources under Apache 2.0, text under CC BY 4.0 (`LICENSES/`).
 """
 
 
+def main_checkout(root: Path) -> Path:
+    """The repository's main checkout: a worktree's `.git` is a file reading
+    `gitdir: <main>/.git/worktrees/<name>`, so the main checkout is the parent of the common
+    `.git` three levels up. `root` itself where it is no worktree (or git's layout is unusual)."""
+    root = root.resolve()
+    dotgit = root / ".git"
+    if not dotgit.is_file():
+        return root
+    text = dotgit.read_text(encoding="utf-8", errors="replace").strip()
+    if not text.startswith("gitdir:"):
+        return root
+    gitdir = Path(text.removeprefix("gitdir:").strip())
+    if not gitdir.is_absolute():
+        gitdir = root / gitdir
+    gitdir = gitdir.resolve()
+    if gitdir.parent.name != "worktrees" or gitdir.parent.parent.name != ".git":
+        return root
+    return gitdir.parent.parent.parent
+
+
+def lake_store_command() -> list[str] | None:
+    """How to call `lake-store`: the command on PATH; `lake-store.cmd` where Python's `subprocess`
+    does not find the shell script by bare name (Windows); failing both, `lake-store.py` through
+    this interpreter, found in `$WIKI_VAULT` or the hub (`~/Documents/Notes`), since the shim
+    `~/.local/bin/lake-store` has no `.cmd` beside it there."""
+    found = shutil.which("lake-store") or shutil.which("lake-store.cmd")
+    if found:
+        return [found]
+    dirs = [Path(v) for v in (os.environ.get("WIKI_VAULT"),) if v]
+    dirs.append(Path.home() / "Documents" / "Notes")
+    for d in dirs:
+        if (d / "lake-store.py").is_file():
+            return [sys.executable, str(d / "lake-store.py")]
+    return None
+
+
 def build_in_place(ex: Exporter, out: Path, paper: Path) -> int:
     """`--build`: link the shared package store, `lake build`, run the guard, and check the
     paper's printed `#print axioms` block against the guard's output."""
@@ -1736,20 +1778,21 @@ def build_in_place(ex: Exporter, out: Path, paper: Path) -> int:
     # compiled Mathlib from source (Paper I's v1.1.0, three and a half hours). A deeper export is
     # also invisible to `lake-store gc` and `wt-remove`, and a recursive delete of it would follow
     # its junctions into the store. So a misplaced export stops here, before the build.
-    if out.resolve().parent != ex.cfg.root.resolve().parent or out.name == ex.cfg.root.name:
-        print(f"the export {out} is not beside {ex.cfg.root} under a name of its own, so "
-              f"lake-store cannot link it; export to {ex.cfg.root.parent / (out.name + '-export')}"
+    # From a session worktree (`.claude/worktrees/<name>`) the repository's own directory is not
+    # beside its siblings; the main checkout is, so the check reads that.
+    home = main_checkout(ex.cfg.root)
+    if out.resolve().parent != home.parent or out.name == home.name:
+        print(f"the export {out} is not beside {home} under a name of its own, so "
+              f"lake-store cannot link it; export to {home.parent / (out.name + '-export')}"
               f" or similar")
         return 2
-    # `lake-store` is a shell script with a `.cmd` wrapper beside it; Python's `subprocess` finds
-    # neither by bare name on Windows, so the wrapper is named explicitly there.
-    store = shutil.which("lake-store") or shutil.which("lake-store.cmd")
+    store = lake_store_command()
     if store is None:
         print("lake-store not on PATH; link the shared package store by hand before building")
     else:
         # --yes: a package the export cloned itself is replaced by the store's copy of the same
         # revision; the export is generated, so its copy holds nothing of its own.
-        if subprocess.run([store, "link", out.name, "--yes"], check=False).returncode != 0:
+        if subprocess.run([*store, "link", out.name, "--yes"], check=False).returncode != 0:
             print("lake-store link FAILED: not building from fresh clones (hours); fix the link")
             return 2
     form = out / ex.form.name
