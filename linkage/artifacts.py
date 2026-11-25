@@ -23,8 +23,90 @@ DECL_HEADS = ("theorem", "lemma", "def", "abbrev", "structure", "inductive", "cl
 DECL_RE = re.compile(
     r"(?m)^\s*(?:@\[[^\]]*\]\s*)?"
     r"(?:(?:private|protected|noncomputable|scoped|local|partial|unsafe)\s+)*"
-    r"(?:" + "|".join(DECL_HEADS) + r")\s+([A-Za-z_][\w']*)"
+    r"(?:" + "|".join(DECL_HEADS) + r")\s+([A-Za-z_][\w'.]*)"
 )
+# (the name keeps its dots: `theorem SymLevyData.hasTriplet` declares `SymLevyData.hasTriplet`,
+# not `SymLevyData`; `declared_names` prefixes the enclosing namespaces)
+
+NAMESPACE_RE = re.compile(r"^\s*namespace\s+(\S+)")
+SECTION_RE = re.compile(r"^\s*(?:noncomputable\s+)?section\b\s*(\S*)")
+MUTUAL_RE = re.compile(r"^\s*mutual\b")
+END_RE = re.compile(r"^\s*end\b\s*(\S*)")
+
+_BLOCK_COMMENT_RE = re.compile(r"/-.*?-/", re.S)
+_LINE_COMMENT_RE = re.compile(r"--[^\n]*")
+_STRING_RE = re.compile(r'"(?:[^"\\]|\\.)*"')
+
+
+def strip_noise(text: str) -> str:
+    """Lean source with comments and string literals blanked, line structure preserved."""
+    def blank(m: re.Match) -> str:
+        return re.sub(r"[^\n]", " ", m.group(0))
+
+    text = _BLOCK_COMMENT_RE.sub(blank, text)
+    text = _STRING_RE.sub(blank, text)
+    return _LINE_COMMENT_RE.sub(blank, text)
+
+
+class Scope:
+    """The enclosing `namespace` blocks of a Lean file, read line by line.
+
+    `section` and `mutual` blocks nest too and are closed by `end` like a namespace, so each
+    is pushed (a section contributes no name); `end` pops the innermost block.
+    """
+
+    def __init__(self) -> None:
+        self.stack: list[str] = []   # the namespace a block adds ("" for section / mutual)
+
+    def feed(self, line: str) -> bool:
+        """Update the scope for a block opener or closer; True when the line was one."""
+        if m := NAMESPACE_RE.match(line):
+            self.stack.append(m.group(1))
+        elif SECTION_RE.match(line) or MUTUAL_RE.match(line):
+            self.stack.append("")
+        elif END_RE.match(line):
+            if self.stack:
+                self.stack.pop()
+        else:
+            return False
+        return True
+
+    def qualify(self, name: str) -> str:
+        """`name` as declared here: prefixed by the enclosing namespaces."""
+        if name.startswith("_root_."):
+            return name[len("_root_."):]
+        return ".".join([*(n for n in self.stack if n), name])
+
+
+def declared_names(text: str) -> set[str]:
+    """Full, namespace-qualified names of the declarations in one Lean source."""
+    scope = Scope()
+    out: set[str] = set()
+    for line in strip_noise(text).splitlines():
+        if scope.feed(line):
+            continue
+        if m := DECL_RE.match(line):
+            out.add(scope.qualify(m.group(1)))
+    return out
+
+
+def resolve_lean_name(tag: str, declared: set[str] | frozenset[str]) -> bool:
+    r"""Whether a `\lean{tag}` names one of the `declared` full names.
+
+    Exact match; or one name is the other's dotted suffix (the tag carries a library prefix
+    the source leaves implicit, or the reverse). Failing that, the last segment alone, but
+    only when it is unique among the declarations *and* the tag is no more qualified than a
+    library prefix: `Lib.foo` may be a `foo` declared in a namespace the tag does not repeat,
+    while `Lib.Sub.foo` names `Sub`, and a lone `foo` elsewhere is a different declaration.
+    """
+    if tag in declared:
+        return True
+    if any(d.endswith("." + tag) or tag.endswith("." + d) for d in declared):
+        return True
+    parts = tag.split(".")
+    if len(parts) > 2:
+        return False
+    return sum(1 for d in declared if d.split(".")[-1] == parts[-1]) == 1
 
 
 def read(p: Path) -> str:
@@ -49,7 +131,7 @@ def lean_declared_names(cfg: Config) -> set[str]:
     for f in cfg.lean.rglob("*.lean"):
         if ".lake" in f.parts:
             continue
-        names |= set(DECL_RE.findall(read(f)))
+        names |= declared_names(read(f))
 
     for pkg in cfg.lean_packages:
         root = cfg.lean / ".lake" / "packages" / pkg
@@ -61,7 +143,7 @@ def lean_declared_names(cfg: Config) -> set[str]:
         for f in root.rglob("*.lean"):
             if any(part == ".lake" for part in f.relative_to(root).parts):
                 continue
-            names |= set(DECL_RE.findall(read(f)))
+            names |= declared_names(read(f))
     return names
 
 

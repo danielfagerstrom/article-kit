@@ -89,7 +89,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import homes, trust
-from .artifacts import ledger_entries_from_text, unshared_statements
+from .artifacts import ledger_entries_from_text, resolve_lean_name, unshared_statements
 from .config import Config
 from .model import Blueprint, ControlChar, LedgerEntry, Node, PaperMarker
 from .parse_latex import split_ledger_ref
@@ -307,8 +307,7 @@ def run(
         if not n.leanok:
             continue  # \notready nodes may not have a Lean decl yet
         for d in n.lean:
-            last = d.split(".")[-1]
-            if last not in lean_names:
+            if not resolve_lean_name(d, lean_names):
                 fatal.append(
                     f"[lean]   {n.label}: \\lean{{{d}}} not declared in {cfg.lean.name}/"
                 )

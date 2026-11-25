@@ -60,7 +60,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .artifacts import DECL_HEADS
+from .artifacts import DECL_HEADS, Scope, strip_noise
 from .checks import uses_paths
 from .config import Config
 from .model import Blueprint, Node
@@ -79,27 +79,7 @@ DECL_KEYWORDS = DECL_HEADS + ("example",)
 DECL_LINE_RE = re.compile(
     r"^\s*(?:@\[[^\]]*\]\s*)?"
     r"(?:(?:private|protected|noncomputable|scoped|local|partial|unsafe)\s+)*"
-    r"(?:" + "|".join(DECL_KEYWORDS) + r")\s+(" + _ID + r")")
-NAMESPACE_RE = re.compile(r"^\s*namespace\s+(\S+)")
-END_RE = re.compile(r"^\s*end\s+(\S+)")
-
-BLOCK_COMMENT_RE = re.compile(r"/-.*?-/", re.S)
-LINE_COMMENT_RE = re.compile(r"--[^\n]*")
-STRING_RE = re.compile(r'"(?:[^"\\]|\\.)*"')
-
-
-def strip_noise(text: str) -> str:
-    """Lean source with comments and string literals blanked, line structure preserved.
-
-    Blanked rather than removed: the namespace/declaration scan is line-based, so a block
-    comment must not swallow the lines it spans.
-    """
-    def blank(m: re.Match) -> str:
-        return re.sub(r"[^\n]", " ", m.group(0))
-
-    text = BLOCK_COMMENT_RE.sub(blank, text)
-    text = STRING_RE.sub(blank, text)
-    return LINE_COMMENT_RE.sub(blank, text)
+    r"(?:" + "|".join(DECL_KEYWORDS) + r")\s+(" + _ID + r"(?:\." + _ID + r")*)")
 
 
 @dataclass
@@ -157,20 +137,14 @@ def scan_lean(cfg: Config) -> DeclIndex:
         if ".lake" in f.parts:
             continue
         mod = f.relative_to(cfg.lean).with_suffix("").as_posix().replace("/", ".")
-        ns: list[str] = []
+        scope = Scope()
         cur: str | None = None
         for line in strip_noise(f.read_text(encoding="utf-8")).splitlines():
-            if m := NAMESPACE_RE.match(line):
-                ns.append(m.group(1))
-                cur = None
-                continue
-            if m := END_RE.match(line):
-                if ns and ns[-1] == m.group(1):
-                    ns.pop()
+            if scope.feed(line):
                 cur = None
                 continue
             if m := DECL_LINE_RE.match(line):
-                cur = ".".join([*ns, m.group(1)])
+                cur = scope.qualify(m.group(1))
                 index.module.setdefault(cur, mod)
                 index.short.setdefault(cur.split(".")[-1], set()).add(cur)
                 bodies.setdefault(cur, []).append(line[m.end(1):])

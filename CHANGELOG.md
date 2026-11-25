@@ -7,6 +7,16 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **`linkage check` resolves dotted Lean names and namespaces** (2026-11-25). A declaration is
+  recorded under its full name (`theorem SymLevyData.hasTriplet` inside `namespace Pyramids` is
+  `Pyramids.SymLevyData.hasTriplet`; `section` and `mutual` blocks nest, `end` closes them), and
+  check 1 compares full names: a tag matches a declared name it equals or is a dotted suffix of
+  (or the reverse), and falls back to the last segment only for a tag of at most two components
+  whose last segment is unique. A tag naming another namespace's `knot_data` is now undeclared.
+  `boundary` (pins, shadows) and `closure` read names the same way
+  ([ADR-0003](adr/0003-lean-tags-compare-full-names.md)). Wanted by the pyramids article
+  (PR #96 there).
+
 - **`linkage citations --inventory`; pass 7 says how the checkers report** (2026-11-24). The
   citation audit's list is now a command: JSON, one row per citation (file, line, key, form,
   locator, paragraph with comments stripped, zone, blueprint node of a shared statement), over
