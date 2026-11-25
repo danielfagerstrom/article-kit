@@ -1503,3 +1503,41 @@ def test_build_in_place_refuses_a_misplaced_export_from_a_worktree(tmp_path: Pat
         assert release.build_in_place(ex, out, out / "paper.tex") == 2
     assert calls == []
     assert f"is not beside {main.resolve()}" in capsys.readouterr().out
+
+
+# ---- an appendix chapter ------------------------------------------------------------------------
+
+def test_content_tex_opens_the_appendix_once_and_counts_its_letters() -> None:
+    text = release.export_content_tex(["05-z.tex", "A1-a.tex", "A2-b.tex", "B1-c.tex"], "v0.1",
+                                      extra=False)
+    assert text.count("\\appendix") == 1
+    assert text.index("\\setcounter{chapter}{4}") < text.index("\\appendix")
+    tail = text[text.index("\\appendix"):]
+    assert tail.count("\\setcounter{chapter}{0}") == 1       # A, once for A1 and A2
+    assert tail.count("\\setcounter{chapter}{1}") == 1       # B
+    assert tail.index("parts/A1-a.tex") < tail.index("parts/A2-b.tex") < tail.index("{1}")
+
+
+def test_the_export_of_a_module_with_an_appendix_chapter(tmp_path: Path, unblocked) -> None:
+    root = build_article(tmp_path / "art")
+    toml = root / "linkage.toml"
+    toml.write_text(toml.read_text(encoding="utf-8").replace(
+        'chapters = ["02"]', 'chapters = ["02", "A1"]', 1), encoding="utf-8")
+    (root / "blueprint" / "src" / "parts" / "A1-line.tex").write_text(
+        "\\begin{theorem}\n  \\label{thm:app}\n  \\lean{Shared.elsewhere}\n  Appendix.\n"
+        "\\end{theorem}\n", encoding="utf-8")
+    out_dir = tmp_path / "export"
+    rc, out, _ = run_cli("--root", str(root), "release", "export", "--module", "line",
+                         "--draft", "--dry-run", "--out", str(out_dir))
+    assert rc == 0
+    assert "in a shared package" in out and "Shared.elsewhere" in out
+    assert "found in no module" not in out
+    rc, out, _ = run_cli("--root", str(root), "release", "export", "--module", "line",
+                         "--draft", "--out", str(out_dir))
+    assert rc == 0
+    content = (out_dir / "blueprint" / "src" / "content.tex").read_text(encoding="utf-8")
+    assert content.count("\\appendix") == 1
+    assert content.index("\\appendix") < content.index("parts/A1-line.tex")
+    assert content.count("\\setcounter{chapter}{0}") == 1
+    readme = (out_dir / "README.md").read_text(encoding="utf-8")
+    assert "blueprint's chapter 2 and Appendix A" in readme
