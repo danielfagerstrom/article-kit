@@ -424,38 +424,6 @@ step that carries an idea of the argument is never one. The trust-base subsectio
 printed proofs compress these devices. Estimated saving on the seven proofs: 15-20% beyond
 wording. Records: the pyramids repository, `notes/HANDOFF.md` and `CHANGELOG.md` of 2026-11-16.
 
-## `linkage release export`: an appendix chapter (`A1`) in a module's `chapters`
-
-*Requested 2026-11-23 by the pyramids repository, at the theory paper's release preparation
-(`pyramids-v0.1`).* The module table there lists `chapters = ["02", "03", "04", "05", "A1"]`: the
-paper's supplement is the blueprint's Appendix A, `parts/A1-line.tex`, which the development's
-`content.tex` inputs after `\appendix`. `chapter_files` and the closure read `A1` correctly (the
-dry run passes), but `export_content_tex` sets each part's counter by `int(name[:2])`, which raises
-`ValueError: invalid literal for int() with base 10: 'A1'` at the real export; and if it did not,
-the export's `content.tex` would carry no `\appendix`, so the part would print as a numbered chapter
-where the development prints Appendix A.
-
-The real export (`--draft`, 2026-11-23) found a second site: `readme` writes "the article's
-sections N–M (the blueprint's chapters of the same numbers)" from `[int(c) for c in chapters]`,
-which raises on `A1` too. That sentence also assumes the paper's sections carry the blueprint's
-chapter numbers, which a paper with a section the blueprint does not have (here the line, § 4)
-breaks; naming the blueprint's chapters (and appendices) would be right for both.
-
-*Suggested shape.* In `export_content_tex`, take the two-digit parts as now, then, for parts whose
-prefix is a capital letter (and digits), emit `\appendix` once and set the counter to the letter's
-index (`ord(L) - ord("A")`) before each new letter. The pyramids repository's stopgap,
-`scripts/release_export.py`, wraps `linkage`'s CLI with exactly this function; it is deleted when
-this is fulfilled.
-
-*A smaller one, from the same dry run.* Declarations of the shared packages a repository names in
-`paths.lean_packages` (here `AffineHemigroup.OriginDatum`, `ScaleSpace.CascadeFamily` and nine more)
-are listed under "tagged declarations found in no module (skeleton names that moved, or typos)",
-although they are found, in a Lake dependency the export does not carry. `linkage check` already
-resolves them through `lean_packages` and `shared_namespaces`; the dry run could list them as
-"in a shared package" instead, so that the list of real misses stays empty.
-
----
-
 ## process: what the first release of a second module in a repository met (`pyramids-v0.1`)
 
 *Filed 2026-11-23 by the pyramids repository, at the close of the theory paper's release.* Five

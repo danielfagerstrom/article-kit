@@ -550,11 +550,21 @@ def export_content_tex(files: list[str], tag: str, extra: bool = True) -> str:
     ]
     # The further files of a chapter split over several continue it, so the counter is set once
     # for each chapter and not for each file.
+    # An appendix part (`A1-line.tex`) is a capital letter and digits: `\appendix` once, before the
+    # first, and the counter at the letter's index, so that the part prints as Appendix A.
     chapter = None
+    appendix = False
     for name in files:
-        if name[:2] != chapter:
-            chapter = name[:2]
-            lines.append(f"\\setcounter{{chapter}}{{{int(chapter) - 1}}}")
+        key = name[:1] if name[:1].isupper() else name[:2]
+        if key != chapter:
+            chapter = key
+            if key.isupper():
+                if not appendix:
+                    lines.append("\\appendix")
+                    appendix = True
+                lines.append(f"\\setcounter{{chapter}}{{{ord(key) - ord('A')}}}")
+            else:
+                lines.append(f"\\setcounter{{chapter}}{{{int(key) - 1}}}")
         lines.append(f"\\input{{parts/{name}}}")
     return "\n".join(lines) + "\n"
 
@@ -951,6 +961,11 @@ class Exporter:
     def find(self, name: str, mods: dict[str, str]) -> list[str]:
         return find_modules(name, mods, self.libraries(), self.cfg.shared_namespaces)
 
+    def is_shared(self, name: str) -> bool:
+        """Whether the tag names a declaration of a shared package (`paths.shared_namespaces`),
+        found in a Lake dependency the export does not carry, as `linkage check` resolves it."""
+        return any(name.startswith(pkg + ".") for pkg in self.cfg.shared_namespaces)
+
     def closure_for(self, chapters: list[str], paper: Path, roots: list[str],
                     mods: dict[str, str]):
         tags = self.harvest_tags(chapters, paper)
@@ -958,7 +973,7 @@ class Exporter:
         missing = []
         for d in tags:
             hits = self.find(d, mods)
-            if not hits:
+            if not hits and not self.is_shared(d):
                 missing.append(d)
             for h in hits:
                 root_mods.setdefault(h, []).append(d)
@@ -1087,7 +1102,9 @@ class Exporter:
         by_module: dict[str, list[str]] = collections.defaultdict(list)
         for d, places in tags.items():
             hits = self.find(d, mods)
-            if not hits:
+            if not hits and self.is_shared(d):
+                where = "*in a shared package*"
+            elif not hits:
                 unfound.append((d, places))
                 where = "*not found*"
             else:
@@ -1362,6 +1379,12 @@ def _export(cfg: Config, args) -> int:
 
     print(f"chapters {', '.join(chapters)}, paper {mod.paper}: {len(tags)} tagged declarations, "
           f"{len(root_mods)} root modules, closure {len(exported)} of {len(mods)} modules")
+    in_shared = [d for d in tags if ex.is_shared(d)]
+    if in_shared:
+        print(f"tagged declarations in a shared package ({len(in_shared)}, not carried by the "
+              f"export):")
+        for d in in_shared:
+            print(f"  {d}  ({tags[d][0]} {tags[d][1]})")
     if missing:
         print("tagged declarations found in no module (skeleton names that moved, or typos):")
         for d in missing:
@@ -1655,10 +1678,16 @@ def readme(ex: Exporter, chapters: list[str], tags, exported: set[str], mods: di
     boundary = ([ln.strip() for ln in boundary_file.read_text(encoding="utf-8").splitlines()
                  if ln.strip() and not ln.lstrip().startswith("#")]
                 if boundary_file.exists() else [])
-    nums = [int(c) for c in chapters]
-    sections = (f"sections {nums[0]}–{nums[-1]}"
-                if nums == list(range(nums[0], nums[-1] + 1))
-                else "sections " + ", ".join(str(n) for n in nums))
+    nums = [int(c) for c in chapters if c.isdigit()]
+    letters = list(dict.fromkeys(c[0] for c in chapters if not c.isdigit()))
+    named = []
+    if nums:
+        run = len(nums) > 2 and nums == list(range(nums[0], nums[-1] + 1))
+        named.append(("chapters " if len(nums) > 1 else "chapter ")
+                     + (f"{nums[0]}–{nums[-1]}" if run else ", ".join(str(n) for n in nums)))
+    if letters:
+        named.append(("Appendices " if len(letters) > 1 else "Appendix ") + ", ".join(letters))
+    sections = "blueprint's " + " and ".join(named)
     cites_block = ""
     if ex.cites:
         lines = ["## Cited releases", "",
@@ -1697,8 +1726,7 @@ other modules of the same theory and stays private until they are released.
   the full development, each with the page-verified citation it rests on and the step it carries
   beyond its source; `blueprint/AXIOMS-verbatim.md`, where it is present, sets the sources' own
   wording beside each entry. {on}
-- `blueprint/src/parts/` — the statements and proofs of record of the article's {sections} (the
-  blueprint's chapters of the same numbers), with the `\\lean{{}}` tag naming the declaration
+- `blueprint/src/parts/` — the statements and proofs of record of the {sections}, with the `\\lean{{}}` tag naming the declaration
   behind each statement; a chapter of another module is included where the article transcribes a
   statement from it.
 - {sources} — the article's sources.

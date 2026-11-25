@@ -17,6 +17,13 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   ([ADR-0003](adr/0003-lean-tags-compare-full-names.md)). Wanted by the pyramids article
   (PR #96 there).
 
+- **`linkage release export` takes an appendix chapter** (2026-11-25). A module whose `chapters`
+  include `A1` exports: `content.tex` gets one `\appendix` and the counter at the letter's index
+  (`A` is 0) before each new letter, and the README names the blueprint's chapters and
+  appendices instead of "the article's sections N–M". The dry run lists the declarations of
+  `paths.lean_packages` / `shared_namespaces` as "in a shared package", not as found in no module.
+  Wanted by the pyramids repository, whose `scripts/release_export.py` wrapper this replaces.
+
 - **`linkage citations --inventory`; pass 7 says how the checkers report** (2026-11-24). The
   citation audit's list is now a command: JSON, one row per citation (file, line, key, form,
   locator, paragraph with comments stripped, zone, blueprint node of a shared statement), over
