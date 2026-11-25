@@ -94,19 +94,33 @@ def resolve_lean_name(tag: str, declared: set[str] | frozenset[str]) -> bool:
     r"""Whether a `\lean{tag}` names one of the `declared` full names.
 
     Exact match; or one name is the other's dotted suffix (the tag carries a library prefix
-    the source leaves implicit, or the reverse). Failing that, the last segment alone, but
+    the source leaves implicit — at most one extra component — or the reverse). Failing that, the last segment alone, but
     only when it is unique among the declarations *and* the tag is no more qualified than a
     library prefix: `Lib.foo` may be a `foo` declared in a namespace the tag does not repeat,
     while `Lib.Sub.foo` names `Sub`, and a lone `foo` elsewhere is a different declaration.
     """
+    return bool(lean_name_matches(tag, declared))
+
+
+def lean_name_matches(tag: str, declared: set[str] | frozenset[str] | dict) -> set[str]:
+    r"""The `declared` full names a `\lean{tag}` denotes: none, one, or several.
+
+    The rule of `resolve_lean_name`; the tag carries at most one extra leading component
+    over a declared name (a library prefix), so `Pyramids.Sub.knot_data` is not a root-level
+    `knot_data`.
+    """
     if tag in declared:
-        return True
-    if any(d.endswith("." + tag) or tag.endswith("." + d) for d in declared):
-        return True
+        return {tag}
+    depth = tag.count(".")
+    hits = {d for d in declared
+            if d.endswith("." + tag) or (tag.endswith("." + d) and depth - d.count(".") <= 1)}
+    if hits:
+        return hits
     parts = tag.split(".")
     if len(parts) > 2:
-        return False
-    return sum(1 for d in declared if d.split(".")[-1] == parts[-1]) == 1
+        return set()
+    last = {d for d in declared if d.split(".")[-1] == parts[-1]}
+    return last if len(last) == 1 else set()
 
 
 def read(p: Path) -> str:

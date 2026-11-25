@@ -57,8 +57,8 @@ def test_rule1_accepts_an_inductive_class_or_opaque_head(article):
 
 
 def test_rule1_matches_on_the_final_component_only(article):
-    """`\\lean{A.b.c}` resolves against `c` — namespaces are not reconstructed."""
-    article.blueprint(statement(label="thm:x", lean="Whatever.Namespace.smooth", leanok=True))
+    """`\\lean{Lib.c}` resolves against a unique `c` — a library prefix is not reconstructed."""
+    article.blueprint(statement(label="thm:x", lean="Whatever.smooth", leanok=True))
     article.lean("theorem smooth : True := trivial\n")
     assert only(article.check(), "lean") == []
 

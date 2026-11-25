@@ -24,5 +24,6 @@ the tag has at most two components (`Lib.foo`) and that segment is unique among 
 - Tags that passed on a coincidence of last segments (three or more components, nothing declared
   under that qualification) are now fatal; an article rebinds them to the declaration it means.
 - `manifest.lean_decls` lists full names.
-- `closure.DeclIndex.resolve` still falls back to a unique last segment for any token; it indexes
-  full names now, but its fallback was not tightened.
+- `closure.DeclIndex.resolve` uses the same rule as check 1 (`artifacts.lean_name_matches`), so the
+  two readers agree; a tag with more than one extra leading component over a root-level name
+  does not match it.

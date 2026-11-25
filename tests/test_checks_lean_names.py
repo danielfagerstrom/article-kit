@@ -53,6 +53,23 @@ def test_a_tag_naming_the_wrong_declaration_is_rejected(article):
     assert "not declared" in msg
 
 
+def test_a_root_level_namesake_is_not_the_declaration(article):
+    article.lean("theorem knot_data : True := trivial\n")
+    (msg,) = lean_fatal(article, "Pyramids.CarriesLatticeLadder.knot_data")
+    assert "not declared" in msg
+    assert not artifacts.resolve_lean_name(
+        "Pyramids.CarriesLatticeLadder.knot_data", {"knot_data"})
+    assert artifacts.resolve_lean_name("Lib.knot_data", {"knot_data"})
+
+
+def test_closure_resolves_by_the_same_rule():
+    from linkage.closure import DeclIndex
+    index = DeclIndex(module={"knot_data": "M", "A.b": "M"})
+    assert index.resolve("Pyramids.CarriesLatticeLadder.knot_data") is None
+    assert index.resolve("Lib.knot_data") == "knot_data"
+    assert index.resolve("Lib.b") == "A.b"
+
+
 def test_a_library_prefix_falls_back_to_a_unique_last_segment(article):
     article.lean("namespace Inner\ntheorem only_one : True := trivial\nend Inner\n")
     assert lean_fatal(article, "Lib.only_one") == []

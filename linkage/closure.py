@@ -60,7 +60,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .artifacts import DECL_HEADS, Scope, strip_noise
+from .artifacts import DECL_HEADS, Scope, lean_name_matches, strip_noise
 from .checks import uses_paths
 from .config import Config
 from .model import Blueprint, Node
@@ -98,17 +98,15 @@ class DeclIndex:
     def resolve(self, name: str) -> str | None:
         """The full declaration name a `\\lean{}` tag or a source token denotes, if ours.
 
-        Exact match first, then by final component — the same suffix rule the rest of the
-        package uses for `\\lean{}` tags (`checks.py` compares `d.split(".")[-1]`), because a
-        blueprint tag is written the way a reader would write it and a source token is
-        written under whatever `open`/namespace is in scope. Ambiguity (two declarations of
-        the same short name in different namespaces) resolves to nothing: guessing would
-        invent an edge, which is the one thing an audit must not do.
+        The rule is check 1's (`artifacts.lean_name_matches`), because a blueprint tag is
+        written the way a reader would write it and a source token is written under whatever
+        `open`/namespace is in scope. Ambiguity (two declarations matching) resolves to
+        nothing: guessing would invent an edge, which is the one thing an audit must not do.
         """
         if name in self.module:
             return name
-        cands = self.short.get(name.split(".")[-1], set())
-        return next(iter(cands)) if len(cands) == 1 else None
+        hits = lean_name_matches(name, self.module)
+        return next(iter(hits)) if len(hits) == 1 else None
 
     def closure(self, start: str) -> set[str]:
         """Everything `start` reaches through `direct`, transitively (start excluded)."""
