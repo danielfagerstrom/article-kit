@@ -169,7 +169,11 @@ short:
 
 `PUBLICATION-TEMPLATE.md` § B.2 already asks for a story, for questions before answers, and against
 an announced count of questions followed by rhetorical ones. The draft broke all three, so those
-rules need a check that bites. The rest is new.
+rules need a check that bites. That check must not become a ban: the author has no rule against
+the question-and-answer form or a rhetorical question (2026-11-26). A pass that removed every one
+would overcorrect. What is flagged is a question that is overused, formulaic (every subsection opening
+the same way) or harder to read than the statement it stands for, judged in its context. The rest
+is new.
 1. **The reader and their problem come first.** The introduction opens with the situation of the
    reader who would use the results (here, someone implementing a scale space as a pyramid), says
    what they need and what goes wrong without the paper, and only then the paper's question. An
