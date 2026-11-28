@@ -70,20 +70,23 @@ api.zotero.org
 *.googleapis.com
 astral.sh
 release-assets.githubusercontent.com
+dl.google.com
+drivemcp.googleapis.com
 relay.fullyjustified.net
 data1.fullyjustified.net
 data2.fullyjustified.net
 ```
 
-The first three are the hub's list (Zotero metadata; Drive API; uv installer). The rest are
-Tectonic: `release-assets.githubusercontent.com` is where `github.com` release-asset downloads
+The first three are the hub's list (Zotero metadata; Drive API; uv installer). `dl.google.com`
+serves the `gwscli` installer and `drivemcp.googleapis.com` is Google's Drive MCP server, which
+the librarian reads Drive through since library#48. The rest are Tectonic: `release-assets.githubusercontent.com` is where `github.com` release-asset downloads
 redirect (the pinned binary; verified 2026-07-24), and `relay.fullyjustified.net` is Tectonic's
 default package-bundle relay, redirecting to `data1`/`data2.fullyjustified.net` (verified: the
 relay 302s to `data1`). If the dialog accepts wildcards, `*.fullyjustified.net` covers the three.
 
 ### 3. Environment variables
 
-**Identical to the hub environment** — same five names, same values (the environments share the
+**Identical to the hub environment** — same names, same values (the environments share the
 account-side secrets; paste the same block). See the hub's `CLOUD.md` § "Environment variables" for
 what each is and the no-secrets-store caveat:
 
@@ -92,7 +95,10 @@ ZOTERO_API_KEY=…        # read-only Zotero key
 ZOTERO_USER_ID=…
 LIBRARY_ROLE=reader
 LIBRARY_CONFIG_JSON={"gdrive_root_folder_id":"…","gdrive_credentials":"/root/.config/library/gdrive-sa.json"}
-GDRIVE_SA_JSON=…        # read-only service-account JSON, minified to one line
+GDRIVE_SA_JSON=…        # the drive.readonly user grant (authorized_user JSON, secret
+                        # queue-gdrive-agent-oauth-ro), one line; the name is historical
+LIBRARY_CONVERT_KEY_JSON=…  # optional: the converter's service-account key (secret
+                        # gdrive-sa-key), one line; written to convert-sa.json
 ```
 
 ### 4. Setup script — leave it blank
