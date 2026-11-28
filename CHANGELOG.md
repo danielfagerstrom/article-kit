@@ -13,7 +13,7 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
   writes `LIBRARY_CONVERT_KEY_JSON` to `convert-sa.json`, named in `config.json` as
   `convert_credentials`. `docs/CLOUD.md` lists the two hosts and the new variable. Article repos
   pick the script up with `linkage init --sync`; article-kit's own `.claude/cloud-setup.sh` is
-  still to be refreshed the same way.
+  the scaffold's copy again.
 
 - **Release fixes from `pyramids-v0.1`** (2026-11-25). `RELEASE.md` says that a multi-module
   repository's module `tag` is the prefixed one (what `changelog_date` matches), that a module
