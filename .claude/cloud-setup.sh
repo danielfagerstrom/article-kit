@@ -15,9 +15,10 @@
 #   1. ensure uv is on PATH and resolve a Python 3.13 interpreter (prefer the
 #      image's system one; `uv python install` is proxy-blocked in the sandbox)
 #   2. locate the attached Notes-vault and librarian checkouts, then
-#      editable-install `wiki` (from the vault) and `library` (with .[drive])
-#   3. materialise the librarian's Drive config + service account from env vars
-#      (schema-agnostic — the librarian owns the shapes)
+#      editable-install `wiki` (from the vault) and `library` (with .[drive]), and
+#      install `gwscli` (the librarian's Drive file transfers, library#48)
+#   3. materialise the librarian's Drive config, Drive read grant and the
+#      converter's key from env vars (schema-agnostic — the librarian owns the shapes)
 #   4. install Tectonic (pinned, same release asset as docs.yml) so sessions can
 #      compile-check paper/main.tex and blueprint/src/print.tex
 #   5. persist WIKI_VAULT for the session and smoke-test the result
@@ -28,10 +29,19 @@
 #   LIBRARY_CONFIG_JSON  the librarian's cloud config.json — the two Drive keys
 #                        (gdrive_root_folder_id + gdrive_credentials → the SA
 #                        path below, default /root/.config/library/gdrive-sa.json).
-#   GDRIVE_SA_JSON       the read-only Google service-account JSON, one line. SECRET.
+#   GDRIVE_SA_JSON       the Drive read grant, one line. SECRET. Since library#48 an
+#                        `authorized_user` (drive.readonly) from the OAuth client marked
+#                        as an AI agent (secret queue-gdrive-agent-oauth-ro), not a
+#                        service-account key; the variable keeps its old name.
+#   LIBRARY_CONVERT_KEY_JSON  the service-account key that invokes the remote
+#                        converter (secret gdrive-sa-key), one line. SECRET. Optional:
+#                        without it, `convert --remote` cannot authenticate.
 #   ZOTERO_API_KEY,      read straight from the environment by the librarian
 #   ZOTERO_USER_ID       (zotero/api.py) — no file needed. SECRET (read-only key).
 #   LIBRARY_ROLE=reader  marks a read-only session (acquire request → git inbox).
+#
+# The environment's network policy must also allow dl.google.com (the gwscli
+# installer) and drivemcp.googleapis.com (see CLOUD.md).
 #
 # Assumptions: Ubuntu 24.04, runs as root (Claude Code web default). The Notes
 # vault (danielfagerstrom/notes-wiki) and librarian (danielfagerstrom/library)
@@ -145,7 +155,7 @@ persist_env() {
 # Fast path: on a resumed session everything may already be installed. Skip the
 # heavy work (SessionStart hooks aren't cached, so this keeps warm restarts quick).
 if command -v wiki >/dev/null 2>&1 && command -v library >/dev/null 2>&1 \
-   && command -v linkage >/dev/null 2>&1 \
+   && command -v linkage >/dev/null 2>&1 && command -v gwscli >/dev/null 2>&1 \
    && command -v tectonic >/dev/null 2>&1 && [ -f "$CFG_DIR/config.json" ]; then
   log "already provisioned — skipping install."
   persist_env
@@ -207,7 +217,15 @@ else
     || warn "could not install linkage — \`linkage check\` unavailable this session."
 fi
 
-# ── 3. Materialise librarian config + service account from env (schema-agnostic) ──
+# gwscli moves the librarian's Drive files (Drive MCP refuses files over 10 MB). The
+# environment's network policy must allow dl.google.com and drivemcp.googleapis.com.
+if ! command -v gwscli >/dev/null 2>&1; then
+  log "installing gwscli → /usr/local/bin"
+  curl -fsSL https://dl.google.com/workspace-cli/install.sh | GWSCLI_INSTALL_DIR=/usr/local/bin bash \
+    || warn "could not install gwscli (is dl.google.com allowed?); Drive downloads will fail"
+fi
+
+# ── 3. Materialise librarian config + Drive grant + converter key from env (schema-agnostic) ──
 mkdir -p "$CFG_DIR"
 write_if_set() {  # write_if_set VALUE DEST MODE VARNAME
   if [ -n "$1" ]; then
@@ -219,10 +237,25 @@ write_if_set() {  # write_if_set VALUE DEST MODE VARNAME
 }
 # Zotero creds (ZOTERO_API_KEY / ZOTERO_USER_ID) and LIBRARY_ROLE are read from
 # the environment directly — no file to write. Only the config.json (Drive keys)
-# and the service-account JSON need materialising.
+# and the Drive grant need materialising (and the converter's key, below).
 write_if_set "${LIBRARY_CONFIG_JSON:-}" "$CFG_DIR/config.json" 644 LIBRARY_CONFIG_JSON
 write_if_set "${GDRIVE_SA_JSON:-}"      "$SA_PATH"             600 GDRIVE_SA_JSON
-log "service-account path (point LIBRARY_CONFIG_JSON's gdrive_credentials here): $SA_PATH"
+log "Drive read grant path (point LIBRARY_CONFIG_JSON's gdrive_credentials here): $SA_PATH"
+# The converter's key, if given: written beside it and named in config.json as
+# convert_credentials (library#48: the Drive grant cannot sign the Cloud Run ID token).
+if [ -n "${LIBRARY_CONVERT_KEY_JSON:-}" ]; then
+  write_if_set "$LIBRARY_CONVERT_KEY_JSON" "$CFG_DIR/convert-sa.json" 600 LIBRARY_CONVERT_KEY_JSON
+  if [ -f "$CFG_DIR/config.json" ]; then
+    python3 - "$CFG_DIR" <<'PY' || warn "could not name convert_credentials in config.json"
+import json, os, sys
+d = sys.argv[1]
+p = os.path.join(d, "config.json")
+cfg = json.load(open(p))
+cfg["convert_credentials"] = os.path.join(d, "convert-sa.json")
+json.dump(cfg, open(p, "w"), indent=2)
+PY
+  fi
+fi
 
 # ── 4. Tectonic — the LaTeX toolchain (pinned; same asset as docs.yml) ────────
 # A single static binary; it fetches TeX packages on demand from the bundle CDN
@@ -233,7 +266,7 @@ if command -v tectonic >/dev/null 2>&1; then
 else
   log "installing Tectonic ${TECTONIC_VERSION} → /usr/local/bin"
   TMPD="$(mktemp -d)"
-  if curl -fsSL -o "$TMPD/tectonic.tar.gz" \
+  if curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors -o "$TMPD/tectonic.tar.gz" \
       "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-x86_64-unknown-linux-musl.tar.gz"; then
     tar -xzf "$TMPD/tectonic.tar.gz" -C "$TMPD" tectonic
     mv "$TMPD/tectonic" /usr/local/bin/tectonic
