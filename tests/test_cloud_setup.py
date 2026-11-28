@@ -7,6 +7,7 @@ The script only runs in a cloud session, so these read it: it installs `gwscli`,
 from __future__ import annotations
 
 import shutil
+import sys
 
 import pytest
 
@@ -17,6 +18,11 @@ SCRIPT = SCRIPT_PATH.read_text(encoding="utf-8")
 
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="a Windows runner's `bash` can be the WSL launcher, with no distribution; "
+    "the script runs only in a Linux cloud session, and the Linux job parses it",
+)
 def test_the_script_parses(real_run):
     result = real_run(["bash", "-n", str(SCRIPT_PATH)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
