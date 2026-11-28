@@ -334,6 +334,37 @@ needs the result, not its provenance. Not `TRANSCLUSION`, which is a blueprint h
 > *probe:* cite the result and drop the explanation, or move the axiom accounting to the trust-base
 > subsection if it is missing there. *refs:* `thm:delay-existence`, `sec:trust-base`.
 
+### The introduction's two checks
+
+`PUBLICATION-TEMPLATE.md` § B.2 asked for a story and for contributions told in sentences, and the
+computation paper of spatial-hemigroup-pyramids broke both and passed passes 1–5; the author's
+pass-6 review found its contributions list "hard to make any sense of without having read the
+article", and no word on what the paper tries to achieve and to what extent (2026-11-25, Q-0886).
+A review declaring `B.2` runs both checks, and files what they find as `CONTRACT`.
+
+**The blind-reader test.** Read only § 1. Name the reader the introduction's opening addresses and
+their problem; for each contribution, say in a sentence what it means for that reader. Flag every
+contribution you cannot, anchored on it, with the term or step that stopped you in `claim`. An
+opening that names no reader is one flag, anchored on its first sentence.
+
+> *anchor:* `the rate is $O(h^{2})$ uniformly on the admissible class`
+> *claim:* read from § 1 alone, the contribution names an admissible class § 1 never introduces and
+> a rate for a step size the reader of the opening (someone implementing a pyramid) is not told
+> matters to them.
+> *probe:* open the contribution with its plain claim for that reader, introduce what it uses, and
+> leave the rate to the result's section unless the question needs it. *refs:* `thm:rate`.
+
+**No passage on the aim and its reach.** The introduction has no passage, separate from the
+contributions, saying what the paper set out to do and how much of it is done (proved, only
+measured, partial, left out). One flag, anchored on the contributions passage's first sentence. A
+passage that exists but names no limit, while the discussion lists some, is the same flag.
+
+> *anchor:* `The contributions are the following.`
+> *claim:* § 1 says what the paper proves and never what it set out to do or what is left: the
+> discussion's § 8.2 lists two cases only measured, which the introduction does not mention.
+> *probe:* add a short passage before the contributions naming the aim, each limit in a sentence,
+> and pointing to § 8.2. *refs:* `sec:discussion-limits`.
+
 ## The scope-audit mode
 
 `WRITING.md` § 5 and `PROCESS.md` § 8 require, before a frozen build, that every summary of a result
@@ -488,6 +519,10 @@ the list stays as the checklist a later change to either side is held to.
    rewrite; correctness stays Lean's, grounding `note-evaluator`'s, integrity `linkage check`'s.
 8. **The scope-audit mode**, as [above](#the-scope-audit-mode), invoked by `mode: scope-audit` in
    the brief.
+9. **The introduction's two checks**, as [above](#the-introductions-two-checks): a review that
+   declares `B.2` reads § 1 alone for the blind-reader test, and flags as `CONTRACT` each
+   contribution it cannot say the meaning of for the named reader, and an introduction with no
+   passage on the aim and its reach. Not yet in the agent file (Q-0886, 2026-11-28).
 
 ## Open questions
 

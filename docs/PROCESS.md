@@ -217,7 +217,9 @@ that revises prose:
    --terms` locates the announced count and the class defined in prose (`WRITING.md` § 3).
 2. **Register**, blind: one fresh `draft-reviewer` agent (opus) per section, flags only
    ([`REVIEWER-CONTRACT.md`](REVIEWER-CONTRACT.md)); triage per tag; fixes at exact anchors. The
-   counts by zone (prose, shared statements, proofs) are the register script's.
+   counts by zone (prose, shared statements, proofs) are the register script's. The review of § 1
+   also runs the contract's two introduction checks: the blind-reader test of each contribution,
+   and the passage on the aim and its reach.
 3. **Scope audit**: restate every claim of the abstract, the introduction and the conclusion from
    its statement and compare. Every such pass so far has found a dropped hypothesis.
 4. **Length**, only where there is a page limit: the `/article-kit:tighten` skill.

@@ -78,10 +78,22 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
   environment): each one listed is a failure unless a non-specialist already knows it."
 
 ### 2. Introduction  (~10–15%)
-- **Contract:** (a) motivate from both sides — the imaging problem *and* the
-  mathematical question; (b) state the gap/question precisely; (c) an explicit
-  **Contributions** paragraph or list; (d) high-level positioning vs. prior work;
-  (e) a roadmap sentence.
+- **Contract:** (a) open with the reader and their problem, then motivate from
+  both sides — the imaging problem *and* the mathematical question; (b) state the
+  gap/question precisely; (c) an explicit **Contributions** paragraph or list;
+  (d) high-level positioning vs. prior work; (e) a roadmap sentence; (f) a passage
+  on the aim and how far the paper reaches it. (a) and (f) are the next two lines.
+- **The reader and their problem come first.** The introduction opens with the
+  situation of the reader who would use the results (someone implementing a scale
+  space as a pyramid), says what they need and what goes wrong without the paper,
+  and only then poses the paper's question. An introduction that opens with a
+  companion paper's results has no reader yet.
+- **The aim, and how far the paper reaches it.** A short passage, separate from the
+  contributions, says what the paper set out to do and how much of it is done: what
+  is proved, what is only measured, what is partial or left out. It names each limit
+  in a sentence and points to the discussion for the list. This is the
+  introduction's form of the honesty rule: the reader knows what to expect before
+  investing in the paper.
 - **Questions before answers.** The introduction states what is asked and why,
   then what is found, each at the level of a reader of the abstract. A result's
   own technical statement — its classes, its thresholds, its named special
@@ -90,9 +102,15 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
 - **A story that guides the reader, not a summary only a specialist can parse.**
   Each question follows from the setting the opening paragraphs establish and says
   why its answer matters (what it changes for the practitioner, what fails without
-  it); no announced count of questions followed by rhetorical ones. The answers and
-  each contribution are told in sentences that introduce what they use, and point to
-  their statements; a list of result fragments without context fails.
+  it); no announced count of questions followed by rhetorical ones. A question is
+  judged in its context, not banned: what fails is one that is overused, formulaic
+  (every subsection opening the same way) or harder to read than the statement it
+  stands for.
+- **Contributions a reader of the introduction alone can follow.** Each contribution
+  opens with a plain claim, introduces what it uses, and points to its statement. A
+  threshold, an order of convergence or a named special function stays in the
+  result's section unless the question needs it. A list of result fragments without
+  context, or a compressed enumeration of the main theorems, fails.
 - **Det.:** an explicit contributions passage exists; a roadmap sentence exists;
   every later section is reachable from the roadmap.
 - **LLM:** "Is the gap stated as a precise question or hand-waved? Is each listed
@@ -102,7 +120,10 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
   question it answers — a class, a threshold, a named special function that
   belongs to that result's own section instead? Count the terms each introduction
   paragraph uses before they are explained: which paragraph's count is above one or
-  two, and which question is posed without what in the setting raises it?"
+  two, and which question is posed without what in the setting raises it? Who is the
+  reader the opening names, and what is their problem? Reading only § 1, what does
+  each contribution mean for that reader — which one can you not say? Where is the
+  passage on what the paper aims at and how far it gets?"
 
 ### 3. Related work / Background  (~10%; may merge into §2)
 - **Contract:** position against the literature *and* establish the mathematical

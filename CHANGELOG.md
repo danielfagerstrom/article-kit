@@ -7,6 +7,17 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **An introduction names its reader, its aim and how far it gets** (2026-11-28).
+  `PUBLICATION-TEMPLATE.md` § B.2's contract opens with the reader who would use the results and
+  their problem, and asks for a passage, separate from the contributions, on what the paper set out
+  to do and how much is done, each limit in a sentence; each contribution is a plain claim a reader
+  of § 1 alone can follow, and a question is judged in context, not banned.
+  `REVIEWER-CONTRACT.md` adds the introduction's two checks, both filed as `CONTRACT`: a
+  blind-reader test (read only § 1, say what each contribution means for the named reader, flag
+  each one you cannot) and a flag for no aim-and-reach passage; `PROCESS.md` pass 2 runs them.
+  From the author's pass-6 review of the pyramids computation paper (2026-11-25). The hub's
+  `draft-reviewer.md` has yet to pick the checks up (item 9 of the contract's adoption list).
+
 - **Release fixes from `pyramids-v0.1`** (2026-11-25). `RELEASE.md` says that a multi-module
   repository's module `tag` is the prefixed one (what `changelog_date` matches), that a module
   names `response_plans`, and where the Lean build of a large closure runs. The export's dry run
