@@ -424,6 +424,28 @@ step that carries an idea of the argument is never one. The trust-base subsectio
 printed proofs compress these devices. Estimated saving on the seven proofs: 15-20% beyond
 wording. Records: the pyramids repository, `notes/HANDOFF.md` and `CHANGELOG.md` of 2026-11-16.
 
+---
+
+## process: a Lean identity "at every point" about an integral says nothing where it diverges
+
+**Wanted by** the pyramids computation paper (Paper VI), external review round 2, 2026-11-28.
+
+Round 1's response stated a convolution identity "at every point" (`prop:separable-frame`(1))
+because its Lean, `convd_push_eq_dilFun`, holds at every point with no hypothesis on `f`. It holds
+there because `convd` is a Bochner integral, which Lean sets to 0 where the integrand is not
+integrable. For $f = r^{-1}1_{r<1} \in L^1(\mathbb R^2)$ the convolution diverges at the origin, so
+"at every point" presupposes a value where there is none. A referee found it with a counterexample;
+the axiom report, `linkage check` and the fidelity review cannot see it.
+
+- **The rule.** A printed statement transcribed from a Lean identity between integrals (or `tsum`s,
+  or divisions) that holds "for every x" says "at every x where either side converges absolutely,
+  and then both do", unless the Lean carries an integrability hypothesis.
+- **Where it belongs.** `WRITING.md` § 3 (or `RELEASE.md`'s fidelity notes), and the fidelity-review
+  skill's checklist: a card for a pointwise statement asks whether the declaration's integrals carry
+  an integrability hypothesis.
+
+Records: the pyramids repository, `records/pyramids/PLAN-review-response-computation-round2.md`,
+the Summary.
 
 ---
 
