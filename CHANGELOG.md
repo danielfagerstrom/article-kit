@@ -7,6 +7,18 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **An introduction names its reader, its aim and how far it gets** (2026-11-28).
+  `PUBLICATION-TEMPLATE.md` § B.2's contract opens with the reader who would use the results and
+  their problem, and asks for a passage, separate from the contributions, on what the paper set out
+  to do and how much is done, each limit in a sentence; each contribution is a plain claim a reader
+  of § 1 alone can follow, and a question is judged in context, not banned.
+  `REVIEWER-CONTRACT.md` adds the introduction's two checks, both filed as `CONTRACT`: a
+  blind-reader test (read only § 1, say what each contribution means for the named reader, flag
+  each one you cannot) and a flag for no aim-and-reach passage; `PROCESS.md` pass 2 runs them.
+  From the author's pass-6 review of the pyramids computation paper (2026-11-25). The hub's
+  `draft-reviewer.md` runs them when a review declares `B.2` (item 9 of the contract's adoption
+  list; notes-wiki#391).
+
 - **The scaffold's `cloud-setup.sh` follows the hub's Drive MCP change** (2026-11-28). It installs
   `gwscli` (from `dl.google.com`, which the cloud environment must allow, with
   `drivemcp.googleapis.com`), documents `GDRIVE_SA_JSON` as the `drive.readonly` user grant, and

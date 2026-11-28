@@ -153,49 +153,6 @@ the manifest with its module.
 
 ---
 
-## process: an introduction says who it is for, what the paper aims at, and how far it gets
-
-From the author's pass-6 review of the computation paper of spatial-hemigroup-pyramids
-(2026-11-25, PROCESS.md § 8 pass 6, its § 1), after passes 1–5 had passed it. The comments, in
-short:
-- "no motivation why the content would be interesting for anyone, no story telling";
-- "no clue about why someone who is going to implement a spatial scale space should read it and
-  what to expect";
-- "The introduction need also contain an overview of what we try to achieve and to what extent we
-  do that";
-- the contributions list "reads like a compressed enumeration of the main theorems", which "is hard
-  to make any sense of without having read the article";
-- the questions paragraph "overuses rhetorical questions and enumeration".
-
-`PUBLICATION-TEMPLATE.md` § B.2 already asks for a story, for questions before answers, and against
-an announced count of questions followed by rhetorical ones. The draft broke all three, so those
-rules need a check that bites. That check must not become a ban: the author has no rule against
-the question-and-answer form or a rhetorical question (2026-11-26). A pass that removed every one
-would overcorrect. What is flagged is a question that is overused, formulaic (every subsection opening
-the same way) or harder to read than the statement it stands for, judged in its context. The rest
-is new.
-1. **The reader and their problem come first.** The introduction opens with the situation of the
-   reader who would use the results (here, someone implementing a scale space as a pyramid), says
-   what they need and what goes wrong without the paper, and only then the paper's question. An
-   introduction that opens with the companion paper's results has no reader yet.
-2. **The aim, and how far the paper reaches it.** A short passage, separate from the contributions,
-   says what the paper set out to do and how much of it is done: what is proved, what is only
-   measured, and what is partial or left out. It names the limits in a sentence each and points to
-   the discussion for the list. This is the introduction's form of the honesty rule, and it tells the
-   reader what to expect before they invest in the paper.
-3. **Contributions are told in sentences that a reader of the introduction alone can follow.** Each
-   opens with a plain claim, introduces what it uses, and points to its statement. A threshold, an
-   order of convergence or a named special function stays in the section unless the question needs
-   it.
-
-Suggested shape:
-- items 1 and 2 as lines in § B.2's contract;
-- for the `draft-reviewer`, a blind-reader test of the introduction: "read only § 1; for each
-  contribution, say what it means for the reader the introduction names; flag every one you cannot";
-- a flag for an introduction with no passage on the aim and its reach.
-
-The rewrite that answered these comments is in that repository's pull request for the pass.
-
 ## process: writing rules from an author's section review (Paper VII, pass 6)
 
 The author's first comments on the isotropic paper of spatial-hemigroup-affine (2026-10-06, PROCESS.md
