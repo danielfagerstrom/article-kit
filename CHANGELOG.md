@@ -7,6 +7,14 @@ accumulates under Unreleased. A tag is what the article repositories pin: the re
 
 ## Unreleased
 
+- **The scaffold's `cloud-setup.sh` follows the hub's Drive MCP change** (2026-11-28). It installs
+  `gwscli` (from `dl.google.com`, which the cloud environment must allow, with
+  `drivemcp.googleapis.com`), documents `GDRIVE_SA_JSON` as the `drive.readonly` user grant, and
+  writes `LIBRARY_CONVERT_KEY_JSON` to `convert-sa.json`, named in `config.json` as
+  `convert_credentials`. `docs/CLOUD.md` lists the two hosts and the new variable. Article repos
+  pick the script up with `linkage init --sync`; article-kit's own `.claude/cloud-setup.sh` is
+  the scaffold's copy again.
+
 - **Release fixes from `pyramids-v0.1`** (2026-11-25). `RELEASE.md` says that a multi-module
   repository's module `tag` is the prefixed one (what `changelog_date` matches), that a module
   names `response_plans`, and where the Lean build of a large closure runs. The export's dry run
