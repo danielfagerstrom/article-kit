@@ -84,8 +84,8 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
   (d) high-level positioning vs. prior work; (e) a roadmap sentence; (f) a passage
   on the aim and how far the paper reaches it. (a) and (f) are the next two lines.
 - **The reader and their problem come first.** The introduction opens with the
-  situation of the reader who would use the results (someone implementing a scale
-  space as a pyramid), says what they need and what goes wrong without the paper,
+  situation of the reader who would use the results (for the pyramids computation
+  paper, someone implementing a scale space as a pyramid), says what they need and what goes wrong without the paper,
   and only then poses the paper's question. An introduction that opens with a
   companion paper's results has no reader yet.
 - **The aim, and how far the paper reaches it.** A short passage, separate from the
@@ -106,8 +106,8 @@ flags, never verdicts). Rough proportions assume a theory-primary paper.
   judged in its context, not banned: what fails is one that is overused, formulaic
   (every subsection opening the same way) or harder to read than the statement it
   stands for.
-- **Contributions a reader of the introduction alone can follow.** Each contribution
-  opens with a plain claim, introduces what it uses, and points to its statement. A
+- **Contributions a reader of the introduction alone can follow.** Each answer and each
+  contribution opens with a plain claim, introduces what it uses, and points to its statement. A
   threshold, an order of convergence or a named special function stays in the
   result's section unless the question needs it. A list of result fragments without
   context, or a compressed enumeration of the main theorems, fails.
