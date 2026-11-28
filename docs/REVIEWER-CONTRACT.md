@@ -522,7 +522,7 @@ the list stays as the checklist a later change to either side is held to.
 9. **The introduction's two checks**, as [above](#the-introductions-two-checks): a review that
    declares `B.2` reads § 1 alone for the blind-reader test, and flags as `CONTRACT` each
    contribution it cannot say the meaning of for the named reader, and an introduction with no
-   passage on the aim and its reach. Not yet in the agent file (Q-0886, 2026-11-28).
+   passage on the aim and its reach (Q-0886, 2026-11-28).
 
 ## Open questions
 
